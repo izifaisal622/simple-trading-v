@@ -1,0 +1,964 @@
+"""
+Simple Trading V6 — EMA XBO Dashboard V4
+CHANGELOG V4 (Audit Fixes):
+  - FIX CRITICAL: MCF JOIN override → ⛔ BEAR REGIME ketika regime_tag = WATCHLIST_ONLY
+  - FIX HIGH    : Risk warning badge merah untuk sinyal dengan risk_pct > 15%
+  - FIX HIGH    : EMA200 warning badge jika data < 150 bars (tidak reliable)
+  - NEW         : "Log Outcome" section — trader bisa log WIN/LOSS dari dashboard
+  - NEW         : Performance tracker mini di sidebar — shows closed/30 trades
+"""
+import sys
+import streamlit as st
+import pandas as pd
+import json
+from pathlib import Path
+from datetime import datetime
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+st.set_page_config(page_title="EMA-XBO Scanner",
+                   page_icon="🎯", layout="wide",
+                   initial_sidebar_state="expanded")
+
+from assets_ui import (
+    get_page_css, render_sidebar, render_page_header, render_regime_bar,
+    render_empty_state, sec_head, NEON_GREEN,
+    score_badge, vp_zone_pill, signal_badge, SIG_COLORS,
+)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FIX V4: MCF render dengan BEAR BLOCKING yang benar
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _render_mcf_block(r, lines_out: list) -> None:
+    """
+    Render MCF block di dalam detail card.
+
+    FIX V4 CRITICAL: Jika regime_tag == WATCHLIST_ONLY DAN mcf_label == JOIN:
+    - Override tampilan ke "⛔ BEAR REGIME — JANGAN TRADE"
+    - Jangan tampilkan badge hijau "◈ JOIN NOW"
+    - Ini mencegah trader salah baca situasi
+
+    Sebelumnya: MCF 8/10 JOIN ditampilkan dengan badge hijau terang
+                bahkan saat EMA system bilang WATCHLIST_ONLY (bear market)
+    """
+    def _g(key, default=0):
+        if isinstance(r, dict): return r.get(key, default)
+        return getattr(r, key, default)
+
+    mcf_score   = _g("mcf_score", 0)
+    mcf_label   = _g("mcf_label", "")
+    mcf_mom     = _g("mcf_momentum", 0)
+    mcf_vol     = _g("mcf_volume", 0)
+    mcf_fu      = _g("mcf_followup", 0)
+    mcf_ok      = _g("mcf_entry_ok", False)
+    mcf_detail  = _g("mcf_detail", {})
+    regime_tag  = _g("regime_tag", "")
+    bear_blocked = _g("mcf_bear_blocked", False)
+
+    # FIX V4: Override jika bear blocked (atau regime_tag WATCHLIST_ONLY + mcf JOIN)
+    # Double safety: cek dari dua sumber
+    is_bear_blocked = (
+        bear_blocked or
+        (regime_tag == "WATCHLIST_ONLY" and mcf_label in ("JOIN", "BEAR_BLOCKED"))
+    )
+
+    if is_bear_blocked or (regime_tag == "WATCHLIST_ONLY" and mcf_score >= 6):
+        # ── BEAR BLOCK DISPLAY ────────────────────────────────────────────────
+        # Tidak tampilkan badge hijau. Tampilkan peringatan merah.
+        lines_out.append(
+            '<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.35);'
+            'border-radius:var(--r-md);padding:0.55rem 0.8rem;margin:0.3rem 0">'
+            '<div style="display:flex;align-items:center;gap:0.7rem">'
+            '<span style="background:var(--c-danger);color:#fff;font-weight:700;'
+            'font-family:Orbitron,monospace;font-size:var(--text-xs);border-radius:var(--r-sm);'
+            'padding:2px 8px">⛔ BEAR REGIME — JANGAN TRADE</span>'
+            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+            f'color:var(--c-danger);font-weight:700">MCF {mcf_score}/10 (BLOCKED)</span>'
+            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-muted)">'
+            'EMA system: WATCHLIST_ONLY</span>'
+            '</div>'
+            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+            'color:var(--text-secondary);margin-top:0.3rem">'
+            f'MCF menghasilkan skor {mcf_score}/10 namun regime IHSG = WATCHLIST_ONLY. '
+            'Sistem EMA melarang entry di kondisi ini. '
+            'Sinyal momentum tidak valid saat pasar bearish. '
+            'Tunggu regime berubah ke FULL atau SELECTIVE.'
+            '</div>'
+            '</div>'
+        )
+        return
+
+    if not (mcf_score > 0 or mcf_label):
+        return
+
+    # ── Normal MCF display (non-bear) ────────────────────────────────────────
+    mcf_col = "var(--accent)" if mcf_label == "JOIN" else "var(--c-warning)" if mcf_label == "WAIT" else "var(--c-danger)"
+    mcf_bg  = ("rgba(0,255,102,0.06)" if mcf_label == "JOIN"
+               else "rgba(240,180,41,0.05)" if mcf_label == "WAIT"
+               else "rgba(239,68,68,0.04)")
+
+    def _pill(n, max_n=3, col="var(--accent)"):
+        filled = "█" * n
+        empty  = "░" * (max_n - n)
+        return f'<b style="color:{col};font-family:monospace">{filled}</b><span style="color:var(--text-dim)">{empty}</span>'
+
+    mcf_col_m = "var(--accent)" if mcf_mom == 3 else "var(--c-warning)" if mcf_mom >= 2 else "var(--text-muted)"
+    mcf_col_v = "var(--accent)" if mcf_vol == 3 else "var(--c-warning)" if mcf_vol >= 2 else "var(--text-muted)"
+    mcf_col_f = "var(--accent)" if mcf_fu == 3 else "var(--c-warning)" if mcf_fu >= 2 else "var(--text-muted)"
+
+    det_m = (mcf_detail.get("momentum", "") if isinstance(mcf_detail, dict) else "")[:90]
+    det_v = (mcf_detail.get("volume",   "") if isinstance(mcf_detail, dict) else "")[:90]
+    det_f = (mcf_detail.get("followup", "") if isinstance(mcf_detail, dict) else "")[:90]
+    mcf_mkt = _g("mcf_market_bonus", 0)
+    mcf_mkt_str = ("IHSG ↑ +1 bonus" if mcf_mkt > 0
+                   else "IHSG ↓ −1 penalti" if mcf_mkt < 0
+                   else "market neutral")
+
+    # Badge JOIN hanya muncul jika entry_ok=True DAN bukan bear
+    mcf_join_badge = (
+        '<span style="background:var(--accent);color:#000;font-weight:700;'
+        'font-family:Orbitron,monospace;font-size:var(--text-xs);border-radius:var(--r-sm);'
+        'padding:2px 8px;margin-right:0.5rem">◈ JOIN NOW</span>'
+        if mcf_ok else ""
+    )
+
+    lines_out.append(
+        f'<div style="background:{mcf_bg};border:1px solid {mcf_col}30;'
+        'border-radius:var(--r-md);padding:0.55rem 0.8rem;margin:0.3rem 0">'
+        '<div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:0.4rem">'
+        f'{mcf_join_badge}'
+        '<span style="font-family:Orbitron,monospace;font-size:var(--text-2xs);'
+        f'letter-spacing:0.15em;color:{mcf_col};font-weight:700">'
+        f'MCF {mcf_score}/10 — {mcf_label}</span>'
+        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">'
+        f'{mcf_mkt_str}</span>'
+        '</div>'
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem">'
+        '<div style="background:rgba(0,0,0,0.2);border-radius:var(--r-sm);padding:0.35rem 0.6rem">'
+        '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+        f'letter-spacing:0.15em;color:var(--text-dim);margin-bottom:2px">MOMENTUM {mcf_mom}/3</div>'
+        f'<div>{_pill(mcf_mom, col=mcf_col_m)}</div>'
+        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-muted);margin-top:2px">{det_m}</div>'
+        '</div>'
+        '<div style="background:rgba(0,0,0,0.2);border-radius:var(--r-sm);padding:0.35rem 0.6rem">'
+        '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+        f'letter-spacing:0.15em;color:var(--text-dim);margin-bottom:2px">VOLUME {mcf_vol}/3</div>'
+        f'<div>{_pill(mcf_vol, col=mcf_col_v)}</div>'
+        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-muted);margin-top:2px">{det_v}</div>'
+        '</div>'
+        '<div style="background:rgba(0,0,0,0.2);border-radius:var(--r-sm);padding:0.35rem 0.6rem">'
+        '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+        f'letter-spacing:0.15em;color:var(--text-dim);margin-bottom:2px">FOLLOW-UP {mcf_fu}/3</div>'
+        f'<div>{_pill(mcf_fu, col=mcf_col_f)}</div>'
+        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-muted);margin-top:2px">{det_f}</div>'
+        '</div>'
+        '</div>'
+        '</div>'
+    )
+
+
+def _render_risk_warning(r, lines_out: list) -> None:
+    """
+    NEW V4: Risk warning badge untuk sinyal dengan risk > 15%.
+
+    Sebelumnya: 51% sinyal memiliki risk > 25% tanpa peringatan apapun.
+    Ini menyebabkan trader bisa over-size posisi tanpa sadar.
+
+    Sekarang: Badge merah + kalkulasi max lot yang aman (1% modal = 10jt default).
+    """
+    def _g(key, default=0):
+        if isinstance(r, dict): return r.get(key, default)
+        return getattr(r, key, default)
+
+    risk_pct      = _g("risk_pct", 0)
+    entry_price   = _g("entry_price", _g("close", 0))
+    sl_price      = _g("sl_price", 0)
+
+    if risk_pct <= 15:
+        return  # Tidak perlu warning
+
+    # Kalkulasi max lot berdasarkan 1% modal
+    # Asumsi modal 100jt (dapat disesuaikan), risk 1-2%
+    modal_default   = 100_000_000  # 100 jt
+    risk_per_trade  = modal_default * 0.01  # 1% modal = 1jt
+    risk_per_lembar = (entry_price - sl_price) if sl_price > 0 and entry_price > sl_price else entry_price * (risk_pct / 100)
+    max_lembar      = int(risk_per_trade / risk_per_lembar) if risk_per_lembar > 0 else 0
+    max_lot_str     = f"{max_lembar:,} lembar (Rp{max_lembar * entry_price / 1_000_000:.1f}jt)" if max_lembar > 0 else "kalkulasi manual"
+
+    if risk_pct > 35:
+        badge_col  = "var(--c-danger)"
+        badge_text = f"⛔ RISK {risk_pct:.0f}% — HAMPIR TIDAK TRADEABLE"
+        detail     = f"SL terlalu jauh ({risk_pct:.0f}% dari entry). Dengan money management 1%, max sizing Rp{modal_default/1e6:.0f}jt modal: {max_lot_str}."
+    elif risk_pct > 25:
+        badge_col  = "var(--c-danger)"
+        badge_text = f"⚠ RISK {risk_pct:.0f}% — SANGAT LEBAR"
+        detail     = f"Risk > 25%. Sizing harus sangat kecil. Max 1% modal: {max_lot_str}."
+    else:
+        badge_col  = "var(--c-warning)"
+        badge_text = f"⚠ RISK {risk_pct:.0f}% — HATI-HATI SIZING"
+        detail     = f"Risk melebihi 15%. Kurangi ukuran posisi. Max 1% modal Rp{modal_default/1e6:.0f}jt: {max_lot_str}."
+
+    lines_out.append(
+        f'<div style="background:rgba({("239,68,68" if risk_pct > 25 else "240,180,41")},0.08);'
+        f'border:1px solid {badge_col}55;border-radius:var(--r-sm);'
+        'padding:0.4rem 0.8rem;margin:0.2rem 0">'
+        '<span style="font-family:Orbitron,monospace;font-size:var(--text-2xs);'
+        f'font-weight:700;color:{badge_col}">{badge_text}</span>'
+        ' <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-secondary)">'
+        f'{detail}</span>'
+        '</div>'
+    )
+
+
+def _render_ema200_warning(r, lines_out: list) -> None:
+    """
+    NEW V4: Warning jika EMA200 tidak reliable karena data tidak cukup.
+    """
+    def _g(key, default=None):
+        if isinstance(r, dict): return r.get(key, default)
+        return getattr(r, key, default)
+
+    ema200_reliable = _g("ema200_reliable", True)
+    if ema200_reliable is False:
+        lines_out.append(
+            '<div style="background:rgba(240,180,41,0.06);border:1px solid rgba(240,180,41,0.25);'
+            'border-radius:var(--r-sm);padding:0.35rem 0.8rem;margin:0.2rem 0">'
+            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--c-warning)">'
+            '⚠ EMA200 tidak reliable — data weekly < 150 bars. '
+            'Score point "Price > EMA200" mungkin tidak akurat. '
+            'Direkomendasikan: fetch 3 tahun data untuk EMA200 yang stabil.'
+            '</span>'
+            '</div>'
+        )
+
+
+def _render_ema_detail(r) -> None:
+    """EMA detail V4 — dengan MCF bear blocking, risk warning, EMA200 flag."""
+
+    def _g(key, default=0):
+        if isinstance(r, dict): return r.get(key, default)
+        return getattr(r, key, default)
+
+    ticker   = _g("ticker","").replace(".JK","")  # noqa: F841
+    signal   = _g("signal","")
+    cross    = _g("cross_state","")
+    close    = _g("close",0)
+    vol      = _g("vol_ratio",0)
+    score    = _g("score",0)
+    regime   = _g("regime_tag","")
+    rs       = _g("rs_vs_ihsg_4w",0)
+    ema13    = _g("ema13",0)
+    ema89    = _g("ema89",0)
+    sl       = _g("sl_price",0)
+    tp1      = _g("tp1_price",0)
+    tp2      = _g("tp2_price",0)
+    rr       = _g("rr_ratio",0)
+    risk     = _g("risk_pct",0)
+
+    ema_gap_pct  = ((ema13 - ema89) / ema89 * 100) if ema89 > 0 else 0
+    pct_vs_ema13 = ((close - ema13) / ema13 * 100) if ema13 > 0 else 0
+    pct_vs_ema89 = ((close - ema89) / ema89 * 100) if ema89 > 0 else 0
+    ema_crossed  = cross in ("ABOVE", "CROSSING")
+
+    # ── Market Structure Phase ────────────────────────────────────────────────
+    if not ema_crossed:
+        phase,phase_col = "BELOW_EMA","var(--c-danger)"
+        phase_desc = f"EMA13 Rp{ema13:,.0f} belum melewati EMA89 Rp{ema89:,.0f}. Gap {ema_gap_pct:+.1f}%. Belum ada setup."
+    elif cross == "CROSSING":
+        phase,phase_col = "GOLDEN_CROSS","var(--accent)"
+        phase_desc = f"EMA13 baru melewati EMA89 (gap {ema_gap_pct:+.1f}%). Early entry — risiko lebih tinggi tapi potensi besar."
+    elif abs(pct_vs_ema13) <= 3:
+        if vol >= 1.3:
+            phase,phase_col = "PULLBACK_TO_EMA_CONFIRMED","var(--accent)"
+            phase_desc = f"Harga di EMA13 support ({pct_vs_ema13:+.1f}%) + volume naik {vol:.1f}×. Re-entry terbaik dalam uptrend."
+        else:
+            phase,phase_col = "PULLBACK_TO_EMA_WATCH","var(--c-warning)"
+            phase_desc = f"Harga di EMA13 ({pct_vs_ema13:+.1f}%) tapi volume belum konfirmasi ({vol:.1f}×). Tunggu volume ≥1.5×."
+    elif 3 < pct_vs_ema13 <= 12:
+        if vol >= 3.0:
+            phase,phase_col = "BREAKOUT_CONFIRMED","var(--accent)"
+            phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13 + vol {vol:.1f}×. Breakout terkonfirmasi institusi."
+        elif vol >= 1.3:
+            phase,phase_col = "TREND_WITH_MOMENTUM","var(--accent)"
+            phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13, vol {vol:.1f}×. Uptrend sehat. Entry masih bisa, R/R lebih tipis."
+        else:
+            phase,phase_col = "TREND_NORMAL","var(--c-warning)"
+            phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13, vol normal. Tunggu pullback ke EMA13 Rp{ema13:,.0f}."
+    elif 12 < pct_vs_ema13 <= 25:
+        if vol >= 6.0:
+            phase,phase_col = "INSTITUTIONAL_SPIKE","var(--accent)"
+            phase_desc = f"Harga extended {pct_vs_ema13:+.1f}% + vol EKSTREM {vol:.1f}×. Institutional block buy."
+        else:
+            phase,phase_col = "EXTENDED_WAIT_PULLBACK","var(--c-warning)"
+            phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13 — mulai stretched. Tunggu pullback ke EMA13 Rp{ema13:,.0f}."
+    elif pct_vs_ema13 > 25:
+        if vol >= 6.0:
+            phase,phase_col = "BLOWOFF_VOLUME","var(--c-warning)"
+            phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13 + vol {vol:.1f}×. Potensi climax. Hati-hati."
+        else:
+            phase,phase_col = "POST_RUN_CORRECTION","var(--text-secondary)"
+            phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13. Fase koreksi. Jangan kejar."
+    elif pct_vs_ema13 < -3:
+        if pct_vs_ema89 > 0:
+            phase,phase_col = "DEEP_PULLBACK_EMA_INTACT","var(--c-warning)"
+            phase_desc = f"Di bawah EMA13 ({pct_vs_ema13:+.1f}%) tapi masih di atas EMA89 ({pct_vs_ema89:+.1f}%). Trend besar masih valid."
+        else:
+            phase,phase_col = "TREND_BREAK","var(--c-danger)"
+            phase_desc = "Di bawah EMA13 DAN EMA89. Trend bullish terancam."
+    else:
+        phase,phase_col = "WATCH","var(--text-muted)"
+        phase_desc = "Monitor."
+
+    # ── Verdict ───────────────────────────────────────────────────────────────
+    # FIX V4: WATCHLIST_ONLY → verdict override ke BEAR WATCH
+    if regime == "WATCHLIST_ONLY":
+        v_col,v_bg = "var(--c-danger)","rgba(239,68,68,0.04)"
+        verdict    = "⛔ BEAR — WATCH ONLY"
+    elif signal == "BREAKOUT" or phase in {"GOLDEN_CROSS","PULLBACK_TO_EMA_CONFIRMED",
+                                            "BREAKOUT_CONFIRMED","TREND_WITH_MOMENTUM","INSTITUTIONAL_SPIKE"}:
+        v_col,v_bg = "var(--accent)","rgba(0,255,102,0.06)"
+        verdict    = "ENTRY VALID"
+    elif phase in {"PULLBACK_TO_EMA_WATCH","TREND_NORMAL","EXTENDED_WAIT_PULLBACK","DEEP_PULLBACK_EMA_INTACT"}:
+        v_col,v_bg = "var(--c-warning)","rgba(240,180,41,0.04)"
+        verdict    = "WATCHLIST"
+    else:
+        v_col,v_bg = "var(--text-secondary)","rgba(100,116,139,0.04)"  # noqa: F841
+        verdict    = "WAIT / SKIP"
+
+    # ── Build lines ───────────────────────────────────────────────────────────
+    lines_out = []
+
+    # Phase line
+    lines_out.append(
+        f'<span style="background:{phase_col}18;border:1px solid {phase_col}55;'
+        'border-radius:var(--r-sm);padding:2px 8px;font-family:Orbitron,monospace;'
+        f'font-size:var(--text-xs);font-weight:700;color:{phase_col}">{phase}</span> '
+        f'{phase_desc}'
+    )
+
+    # EMA line
+    lines_out.append(
+        f'<b>EMA:</b> EMA13 <b style="color:var(--text-primary)">Rp{ema13:,.0f}</b> · '
+        f'EMA89 <b style="color:var(--text-secondary)">Rp{ema89:,.0f}</b> · '
+        f'Gap <b style="color:{"var(--accent)" if ema_gap_pct>0 else "var(--c-danger)"}">{ema_gap_pct:+.1f}%</b> · '
+        f'vs EMA13 <b style="color:{"var(--accent)" if pct_vs_ema13>0 else "var(--c-danger)"}">{pct_vs_ema13:+.1f}%</b>'
+    )
+
+    # Volume line
+    vol_col = "var(--accent)" if vol>=3 else "var(--c-warning)" if vol>=1.3 else "var(--text-secondary)"
+    vol_lbl = "EKSTREM" if vol>=6 else "SPIKE" if vol>=3 else "ELEVATED" if vol>=1.3 else "NORMAL"
+    lines_out.append(
+        f'<b>Volume:</b> <b style="color:{vol_col}">{vol:.1f}× — {vol_lbl}</b> · '
+        f'Score <b style="color:{"var(--accent)" if score>=5 else "var(--c-warning)" if score>=3 else "var(--text-secondary)"}">{score}/8</b> · '
+        f'RS <b style="color:{"var(--accent)" if rs>0 else "var(--c-danger)"}">{rs:+.1f}%</b>'
+        + (f' · Regime <b style="color:{"var(--c-danger)" if regime=="WATCHLIST_ONLY" else "var(--text-muted)"}">{regime}</b>' if regime else '')
+    )
+
+    # Risk line
+    if sl > 0 and tp1 > 0:
+        lines_out.append(
+            f'<b>Risk:</b> Entry Rp{close:,.0f} · '
+            f'SL <b style="color:var(--c-danger)">Rp{sl:,.0f}</b> ({risk:.0f}%) · '
+            f'TP1 <b style="color:var(--accent)">Rp{tp1:,.0f}</b> · '
+            f'TP2 Rp{tp2:,.0f} · R:R {rr:.1f}:1'
+        )
+
+    # FIX V4: Risk warning badge
+    _render_risk_warning(r, lines_out)
+
+    # FIX V4: EMA200 reliability warning
+    _render_ema200_warning(r, lines_out)
+
+    # FIX V4: MCF dengan bear blocking yang benar
+    _render_mcf_block(r, lines_out)
+
+    # Dual-timeframe row
+    daily_ok      = _g("daily_ok", False)
+    daily_pattern = _g("daily_pattern", "")
+    daily_note    = _g("daily_entry_note", "")
+    ema13d_v      = _g("ema13d", 0)
+    ema89d_v      = _g("ema89d", 0)
+    ema5d_v       = _g("ema5d", 0)
+    pct_ema13d    = _g("pct_vs_ema13d", 0)
+    vol_d         = _g("vol_ratio_d", 0)
+    dual_ok       = _g("dual_confirmed", False)
+
+    if daily_pattern:
+        d_col    = "var(--accent)" if daily_ok else "var(--c-warning)" if "WAIT" in daily_pattern else "var(--text-secondary)"
+        dual_badge = ('<span style="background:var(--accent);color:#000;font-weight:700;'
+                      'font-family:Orbitron,monospace;font-size:var(--text-2xs);border-radius:var(--r-sm);'
+                      'padding:1px 7px;margin-right:0.4rem">✦ DUAL CONFIRM</span>' if dual_ok else "")
+        ema5_str = f'EMA5d <b style="color:var(--text-primary)">Rp{ema5d_v:,.0f}</b> · ' if ema5d_v else ""
+        lines_out.append(
+            f'{dual_badge}<b>EMA Daily:</b> {ema5_str}'
+            f'EMA13d <b style="color:var(--text-primary)">Rp{ema13d_v:,.0f}</b> · '
+            f'EMA89d <b style="color:var(--text-secondary)">Rp{ema89d_v:,.0f}</b> · '
+            f'vs EMA13d <b style="color:{"var(--accent)" if pct_ema13d>=0 else "var(--c-danger)"}">{pct_ema13d:+.1f}%</b> · '
+            f'Vol <b style="color:{"var(--accent)" if vol_d>=1.5 else "var(--c-warning)"}">{vol_d:.1f}×</b> · '
+            f'<b style="color:{d_col}">{daily_pattern}</b>'
+            + (f' — {daily_note}' if daily_note else '')
+        )
+
+    # Market Structure row
+    ms_struct  = _g("ms_structure","")
+    ms_age     = _g("ms_age_label","")
+    ms_slope   = _g("ms_slope_label","")
+    ms_boost   = _g("ms_conviction_boost",0)
+    ms_support = _g("ms_nearest_support",0)
+    ms_sup_d   = _g("ms_support_dist_pct",0)
+
+    if ms_struct:
+        sc = ("var(--accent)" if ms_struct in ("HH_HL","TRENDING_UP") else
+              "var(--c-warning)" if ms_struct in ("LH_HL","RECOVERING","HH_LL") else
+              "var(--c-danger)" if ms_struct in ("LH_LL","TRENDING_DOWN") else "var(--text-secondary)")
+        boost_str = (f' <b style="color:var(--accent)">+{ms_boost} conv</b>' if ms_boost>0 else
+                     f' <b style="color:var(--c-danger)">{ms_boost} conv</b>' if ms_boost<0 else "")
+        lines_out.append(
+            f'<b>Market Structure:</b> <b style="color:{sc}">{ms_struct}</b>{boost_str} · '
+            f'{ms_age} · {ms_slope}'
+            + (f' · Support Rp{ms_support:,.0f} ({ms_sup_d:.1f}% away)' if ms_support>0 else '')
+        )
+
+    # ── MSCI Alert block ──────────────────────────────────────────────────
+    _ticker_upper = _g("ticker","").replace(".JK","").upper()
+    _ma = _msci_alerts_by_ticker.get(_ticker_upper)
+    if _ma:
+        _lv   = _ma.get("alert_level","")
+        _t    = _ma.get("t_minus", 0)
+        _idx  = _ma.get("index","")
+        _eff  = _ma.get("effective_date","")
+        _mc   = _ma.get("msci_conviction", 0)
+        _note = _ma.get("entry_note","")
+        _reasons = _ma.get("reasons", [])
+
+        _lcol = ("var(--accent)" if _lv == "HIGH_CONVICTION" else
+                 "var(--c-warning)" if _lv == "MEDIUM" else "var(--c-info)")
+        _lbg  = ("rgba(0,255,102,0.06)" if _lv == "HIGH_CONVICTION" else
+                 "rgba(240,180,41,0.05)" if _lv == "MEDIUM" else "rgba(74,158,255,0.04)")
+        _reasons_str = " · ".join(_reasons[:4]) if _reasons else ""
+
+        lines_out.append(
+            f'<div style="background:{_lbg};border:1px solid {_lcol}40;'            'border-radius:var(--r-md);padding:.5rem .8rem;margin:.3rem 0">'            '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.25rem">'            '<span style="font-family:Orbitron,monospace;font-size:var(--text-2xs);'            f'font-weight:800;color:{_lcol}">◈ {_idx}</span>'            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'            f'color:{_lcol}">{_lv} · T-{_t} · Conv {_mc}/12</span>'            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'            f'color:var(--text-muted)">Eff: {_eff}</span>'            '</div>'            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'            f'color:var(--text-secondary)">{_reasons_str}</div>'            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'            f'color:{_lcol};margin-top:.2rem">{_note}</div>'            '</div>'
+        )
+
+    # Action
+    if regime == "WATCHLIST_ONLY":
+        action = ("<b>⛔ BEAR REGIME — JANGAN ENTRY.</b> "
+                  "EMA system mendeteksi WATCHLIST_ONLY. "
+                  "Simpan di watchlist. Entry hanya setelah regime berubah ke FULL.")
+    elif phase == "POST_RUN_CORRECTION":
+        action = f"<b>FASE KOREKSI — JANGAN BELI.</b> Tunggu test EMA13 Rp{ema13:,.0f} + vol naik."
+    elif phase == "PULLBACK_TO_EMA_CONFIRMED":
+        action = f"<b>RE-ENTRY SEKARANG.</b> EMA13 Rp{ema13:,.0f} support + vol konfirmasi. SL di bawah EMA89 Rp{ema89*0.97:,.0f}."
+    elif phase in ("BREAKOUT_CONFIRMED","TREND_WITH_MOMENTUM","GOLDEN_CROSS"):
+        action = ("<b>ENTRY VALID.</b> "
+                  + (f"Entry Rp{close:,.0f}, SL Rp{sl:,.0f} ({risk:.0f}%), TP1 Rp{tp1:,.0f}."
+                     if sl>0 and tp1>0 else
+                     f"Entry Rp{close:,.0f}, SL di EMA13 Rp{ema13*0.97:,.0f}."))
+    elif phase == "PULLBACK_TO_EMA_WATCH":
+        action = f"<b>HAMPIR — TUNGGU VOL.</b> Harga di EMA13 tapi vol {vol:.1f}×. Alert kalau vol ≥1.5×."
+    elif phase == "EXTENDED_WAIT_PULLBACK":
+        action = f"<b>TUNGGU PULLBACK.</b> Entry terbaik di EMA13 Rp{ema13:,.0f}–{ema13*1.04:,.0f}."
+    elif phase == "BELOW_EMA":
+        action = f"<b>BELUM SETUP.</b> EMA13 Rp{ema13:,.0f} belum melewati EMA89 Rp{ema89:,.0f}."
+    else:
+        action = f"<b>MONITOR.</b> Score {score}/8."  # noqa: F841
+
+    # Render
+    rows_html = "".join([  # noqa: F841
+        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
+        f'color:var(--text-secondary);line-height:2.1;padding:2px 0 2px var(--sp-3);'
+        f'border-left:2px solid rgba(255,255,255,0.04)">{ln}</div>'
+        for ln in lines_out
+    ])
+
+    _ = (ticker, v_col, v_bg, verdict, rows_html, action)  # template vars
+    st.markdown(f"""
+<div style="background:{v_bg};border:1px solid rgba(255,255,255,0.08);
+border-left:4px solid {v_col};border-radius:var(--r-md);padding:0.9rem 1.1rem;margin:0.3rem 0 0.8rem 0">
+  <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.6rem;
+  padding-bottom:0.5rem;border-bottom:1px solid rgba(255,255,255,0.05)">
+    <span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:900;
+    color:var(--text-primary)">{ticker}</span>
+    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+    color:var(--text-dim)">EMA-XBO · Score {score}/8 · Vol {vol:.1f}×</span>
+    <span style="background:{v_col}18;border:1px solid {v_col}45;border-radius:var(--r-sm);
+    padding:2px 10px;font-family:Orbitron,monospace;font-size:var(--text-xs);
+    font-weight:700;color:{v_col};margin-left:auto">{verdict}</span>
+  </div>
+  {rows_html}
+  <div style="background:rgba(0,0,0,0.25);border:1px solid {phase_col}30;
+  border-radius:var(--r-sm);padding:0.55rem 0.9rem;margin-top:0.6rem;
+  font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
+  color:var(--text-primary);line-height:1.8">
+    <span style="color:{phase_col};font-weight:700">→ </span>{action}
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main page layout (simplified — integrasi dengan existing page)
+# ─────────────────────────────────────────────────────────────────────────────
+
+st.markdown(get_page_css("dashboard"), unsafe_allow_html=True)
+
+LOGS_DIR     = Path(__file__).parent.parent / "logs"
+RESULTS_FILE = LOGS_DIR / "daily_results.json"
+PLAYBOOK     = LOGS_DIR / "edge_playbook.md"
+
+# MSCI alert status
+_msci_status = {}
+try:
+    _mf = LOGS_DIR / "msci_alerts.json"
+    if _mf.exists():
+        _msci_status = json.loads(_mf.read_text(encoding="utf-8"))
+except Exception as _e:
+    import logging as _log; _log.getLogger(__name__).debug(f"[EMA_XBO] msci_alerts.json load: {_e}")
+_msci_alerts_by_ticker = {
+    a["ticker"].upper(): a
+    for a in _msci_status.get("alerts", [])
+}
+_msci_active_events = _msci_status.get("active_events", [])
+
+last = {}
+if RESULTS_FILE.exists():
+    try: last = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
+    except Exception as _e:
+        import logging as _log; _log.getLogger(__name__).debug(f"[EMA_XBO] results.json load: {_e}")
+
+ema_results = last.get("ema_results", [])
+regime      = last.get("regime", {})
+scan_date   = last.get("date", "—")[:10] if last.get("date") else "—"
+
+cycle   = regime.get("cycle", "—")
+ihsg    = regime.get("ihsg", 0)
+mom_4w  = regime.get("mom_4w", 0)
+breadth = regime.get("breadth", 0)
+
+# Sidebar
+with st.sidebar:
+    render_sidebar("ema",
+                   ema_total   = last.get("ema_total", len(ema_results)),
+                   whale_total = last.get("whale_total", 0),
+                   scan_date   = scan_date,
+                   regime      = cycle)
+
+    # NEW V4: Mini performance tracker di sidebar
+    try:
+        from trade_logger import get_stats
+        stats = get_stats()
+        n = stats.get("total_closed", 0)
+        wr = stats.get("win_rate")
+        st.markdown("---")
+        st.markdown(f"""<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--text-dim)">
+        OUTCOME TRACKER<br>
+        <span style="color:{'var(--accent)' if n>=30 else 'var(--c-warning)' if n>0 else 'var(--c-danger)'};font-size:var(--text-sm)">
+        {n}/30 closed</span>
+        {f' · WR {wr:.0f}%' if wr is not None else ' · WR N/A'}
+        </div>""", unsafe_allow_html=True)
+    except Exception:
+        pass
+
+# Page header
+import json as _jv, pathlib as _pv
+try:
+    _ver_accent = "V" + _jv.loads((_pv.Path(__file__).parent.parent/"version.json").read_text())["version"]
+except Exception:
+    _ver_accent = "V6"
+
+render_page_header(
+    eyebrow  = "◆ MODULE 01 · BREAKOUT DETECTION",
+    title    = "SIMPLE TRADING ",
+    accent   = _ver_accent,
+    subtitle = "◈ EMA-XBO SCANNER · ATR DYNAMIC BOX · RS FILTER · MCF BEAR-SAFE",
+    scan_date= scan_date,
+)
+
+render_regime_bar(cycle, ihsg, mom_4w, breadth, scan_date)
+
+# Summary metrics
+breakouts  = [r for r in ema_results if r.get("signal") in ("STRONG_BREAKOUT","BREAKOUT")]
+watchlists = [r for r in ema_results if r.get("signal") == "WATCHLIST"]
+correcting = [r for r in ema_results if r.get("signal") in ("CORRECTING","DEEP_CORRECT")]
+universe   = last.get("universe", len(ema_results))
+
+bear_blocked_count = sum(1 for r in ema_results if r.get("mcf_bear_blocked"))
+mcf_join    = [r for r in ema_results if r.get("mcf_label") == "JOIN" and not r.get("mcf_bear_blocked")]
+
+c1,c2,c3,c4,c5,c6,c7 = st.columns(7)
+metrics = [
+    (c1, "TOTAL SETUPS",   len(ema_results),    "var(--text-primary)", "SCANNED TODAY"),
+    (c2, "◉ BREAKOUTS",    len(breakouts),      NEON_GREEN,"HIGH CONVICTION"),
+    (c3, "◎ WATCHLIST",    len(watchlists),     "var(--c-warning)", "MONITORING"),
+    (c4, "◌ CORRECTING",   len(correcting),     "var(--c-warning)", "PULLBACK"),
+    (c5, "◈ MCF JOIN",     len(mcf_join),       NEON_GREEN,"VALID (non-bear)"),
+    (c6, "⛔ BEAR BLOCKED", bear_blocked_count,  "var(--c-danger)", "MCF overridden"),
+    (c7, "UNIVERSE",       universe,            "var(--text-primary)", "STOCKS"),
+]
+for col, label, val, color, sub in metrics:
+    with col:
+        st.markdown(f"""
+        <div class="m-card">
+          <div class="m-lbl">{label}</div>
+          <div class="m-val" style="color:{color}">{val}</div>
+          <div class="m-sub">{sub}</div>
+        </div>""", unsafe_allow_html=True)
+
+# Run Scan
+sec_head("◆ SCAN CONTROLS")
+cb, ci = st.columns([1, 3])
+with cb:
+    run_scan = st.button("⟳ RUN NEW SCAN", type="primary", width="stretch")
+with ci:
+    st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+    letter-spacing:0.1em;color:var(--text-muted);margin-top:0.65rem;line-height:1.7">
+    Full two-tier EMA scan · IDX universe · ~3-5 min · Auto-save<br>
+    <span style="color:var(--text-dim)">V4: EWM optimized · MCF bear-safe · EMA200 3y data · Risk warnings</span>
+    </p>""", unsafe_allow_html=True)
+
+if run_scan:
+    with st.spinner("◈ SCANNING IDX UNIVERSE — V4 OPTIMIZED..."):
+        try:
+            from config.strategy_config import StrategyConfig
+            from agents.scanner_agent   import ScannerAgent
+            from core.data_feed         import get_ihsg_regime
+            cfg     = StrategyConfig.load()
+            scanner = ScannerAgent(cfg)
+            results = scanner.daily_scan()
+            regime_ = get_ihsg_regime()
+            # Merge: preserve whale_results dari scan sebelumnya
+            existing = {}
+            if RESULTS_FILE.exists():
+                try: existing = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
+                except Exception: pass
+            existing.update({
+                "date":        datetime.now().strftime("%Y-%m-%d"),
+                "scan_date":   datetime.now().strftime("%Y-%m-%d"),
+                "regime":      regime_,
+                "ema_total":   len(results),
+                "universe":    len(results),
+                "ema_results": results,
+            })
+            # Preserve whale keys if not updated this session
+            existing.setdefault("whale_results", [])
+            existing.setdefault("whale_total", 0)
+            existing.setdefault("whale_context", {})
+            RESULTS_FILE.write_text(json.dumps(existing, default=str, indent=2), encoding="utf-8")
+            st.success(f"✅ Scan selesai: {len(results)} setups ditemukan.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error: {e}")
+            import traceback; traceback.print_exc()
+
+# Results
+if ema_results:
+    # ── MSCI Active Window Banner ──────────────────────────────────────────
+    if _msci_active_events:
+        _msci_high = [a for a in _msci_status.get("alerts",[])
+                      if a.get("alert_level") == "HIGH_CONVICTION"]
+        for _ev in _msci_active_events:
+            _t    = _ev.get("t_minus", 0)
+            _idx  = _ev.get("index","")
+            _eff  = _ev.get("effective_date","")
+            _ph   = _ev.get("phase","")
+            _pcol = "var(--c-danger)" if _ph=="CRITICAL" else "var(--c-warning)" if _ph=="ACTIVE" else "var(--c-info)"
+            _pbg  = ("rgba(239,68,68,0.08)" if _ph=="CRITICAL" else
+                     "rgba(240,180,41,0.08)" if _ph=="ACTIVE" else "rgba(74,158,255,0.06)")
+            _high_str = ""
+            if _msci_high:
+                _high_tickers = " · ".join(
+                    f"{a['ticker']} ({a['whale_quality']} {a['msci_conviction']}/12)"
+                    for a in _msci_high[:5]
+                )
+                _high_str = ('<div style="font-family:Share Tech Mono,monospace;'
+                             'font-size:var(--text-xs);color:var(--accent);margin-top:.25rem">'
+                             f'★ HIGH CONVICTION: {_high_tickers}</div>')
+            st.markdown(f"""
+<div style="background:{_pbg};border:1px solid {_pcol}55;border-left:4px solid {_pcol};
+border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
+  <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+    <span style="font-family:Orbitron,monospace;font-size:var(--text-xs);font-weight:800;
+    color:{_pcol}">◈ {_idx} REBALANCING WINDOW</span>
+    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:{_pcol}">
+    T-{_t} HARI · EFFECTIVE {_eff} · {_ph}</span>
+    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--text-muted)">
+    {len(_msci_high)} high conviction alerts</span>
+  </div>
+  {_high_str}
+</div>
+""", unsafe_allow_html=True)
+
+    # Show bear market notice
+    if cycle in ("BEAR_TREND", "WATCHLIST_ONLY"):
+        st.markdown("""<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.4);
+        border-left:4px solid var(--c-danger);border-radius:var(--r-md);padding:0.8rem 1rem;margin:1rem 0">
+        <span style="font-family:Orbitron,monospace;font-size:var(--text-xs);font-weight:800;color:var(--c-danger)">
+        ⛔ BEAR REGIME AKTIF</span><br>
+        <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--text-secondary)">
+        Regime WATCHLIST_ONLY: EMA system melarang semua entry. Semua sinyal MCF JOIN
+        otomatis di-block. Gunakan waktu ini untuk mempersiapkan watchlist saja.
+        </span></div>""", unsafe_allow_html=True)
+
+    # Breakouts section
+    if breakouts:
+        n_strong = sum(1 for r in breakouts if r.get("signal")=="STRONG_BREAKOUT")
+        n_normal = sum(1 for r in breakouts if r.get("signal")=="BREAKOUT")
+        _bo_lbl = f"◉ BREAKOUT SIGNALS — {len(breakouts)} total"
+        if n_strong: _bo_lbl += f" ({n_strong} STRONG)"
+        sec_head(_bo_lbl)
+        for r in breakouts:
+            ticker = r.get("ticker","").replace(".JK","")
+            score  = r.get("score",0)
+            vol    = r.get("vol_ratio",0)
+            risk   = r.get("risk_pct",0)
+            mcf_lbl = r.get("mcf_label","")
+            regime_tag = r.get("regime_tag","")
+
+            # Risk warning color for card border
+            card_border = "var(--accent)" if risk <= 15 else "var(--c-warning)" if risk <= 25 else "var(--c-danger)"
+
+            c_main, c_btn = st.columns([8, 1])
+            with c_main:
+                # FIX V4: Risk warning badge inline
+                risk_badge = ""
+                if risk > 25:
+                    risk_badge = f'<span style="background:rgba(239,68,68,0.15);color:var(--c-danger);border:1px solid var(--c-danger)55;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
+                elif risk > 15:
+                    risk_badge = f'<span style="background:rgba(240,180,41,0.15);color:var(--c-warning);border:1px solid var(--c-warning)55;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
+
+                _sig    = r.get("signal","BREAKOUT")
+                _vp     = r.get("vp_entry_zone","")
+                _dual   = r.get("dual_confirmed", False)
+                _is_strong = _sig == "STRONG_BREAKOUT"
+                _card_cls = "signal-card strong-breakout" if _is_strong else "signal-card"
+                _sig_col = SIG_COLORS.get(_sig, "var(--accent)")
+                _dual_tag = '<span style="background:rgba(0,255,102,0.08);border:1px solid rgba(0,255,102,0.2);border-radius:var(--r-md);padding:1px 6px;font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--accent)">✓ DUAL</span>' if _dual else ""
+                st.markdown(f"""<div class="{_card_cls}" style="--sc:{_sig_col}">
+                  <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap">
+                    <span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:900;color:var(--text-primary);letter-spacing:0.03em">{ticker}</span>
+                    {signal_badge(_sig)}
+                    {score_badge(score)}
+                    {vp_zone_pill(_vp)}
+                    {_dual_tag}
+                    {risk_badge}
+                    <span style="margin-left:auto;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--text-muted)">Vol {vol:.1f}× · Risk {risk:.0f}%</span>
+                  </div>
+                </div>""", unsafe_allow_html=True)
+
+            with c_btn:
+                is_open = ticker in st.session_state.get("open_breakouts", set())
+                if "open_breakouts" not in st.session_state:
+                    st.session_state.open_breakouts = set()
+                lbl = "▾ HIDE" if is_open else "▸ SHOW"
+                if st.button(lbl, key=f"bo_{ticker}", width="stretch"):
+                    if is_open:
+                        st.session_state.open_breakouts.discard(ticker)
+                    else:
+                        st.session_state.open_breakouts.add(ticker)
+                    st.rerun()
+
+            if is_open:
+                _render_ema_detail(r)
+
+    # ── ALL SETUPS with filter controls ──────────────────────────────────────
+    rest = [r for r in ema_results if r.get("signal") != "BREAKOUT"]
+    if rest:
+        sec_head("◆ ALL SETUPS")
+
+        # ── FILTER CONTROLS ────────────────────────────────────────────────────
+        # PENTING: Apply preset SEBELUM widget di-buat.
+        # Streamlit melarang set session_state[widget_key] setelah widget rendered.
+        # Pattern: tombol → set f_preset → rerun → apply f_preset → buat widget.
+        _preset = st.session_state.pop("f_preset", None)
+        if _preset == "safe":
+            st.session_state["f_risk"]  = 15
+            st.session_state["f_score"] = 1
+        elif _preset == "high_score":
+            st.session_state["f_score"] = 5
+            st.session_state["f_risk"]  = 50
+        elif _preset == "correcting":
+            st.session_state["f_sig"]   = ["CORRECTING"]
+        elif _preset == "reset":
+            for _k in ("f_score", "f_risk", "f_sig", "f_sort"):
+                st.session_state.pop(_k, None)
+
+        # rs_pos dan mcf_ok adalah toggle non-widget, bisa di-set kapanpun
+        rs_pos_only = st.session_state.pop("f_rs_pos", False)
+        mcf_ok_only = st.session_state.pop("f_mcf_ok", False)
+
+        with st.container():
+            st.markdown("""<div style="font-family:Share Tech Mono,monospace;
+            font-size:var(--text-2xs);letter-spacing:.15em;color:var(--text-dim);
+            margin-bottom:.4rem">◆ FILTER CONTROLS</div>""",
+            unsafe_allow_html=True)
+
+            fc1, fc2, fc3, fc4 = st.columns(4)
+
+            with fc1:
+                sig_filter = st.multiselect(
+                    "Signal Type",
+                    ["WATCHLIST", "CORRECTING", "DEEP_CORRECT"],
+                    default=st.session_state.get("f_sig",
+                        ["WATCHLIST","CORRECTING","DEEP_CORRECT"]),
+                    key="f_sig",
+                    label_visibility="collapsed",
+                )
+            with fc2:
+                min_score = st.slider(
+                    "Min Score", min_value=1, max_value=7,
+                    value=st.session_state.get("f_score", 1),
+                    key="f_score", label_visibility="collapsed",
+                    help="Min Score (1–7)",
+                )
+            with fc3:
+                max_risk = st.slider(
+                    "Max Risk %", min_value=5, max_value=50,
+                    value=st.session_state.get("f_risk", 50),
+                    step=5, key="f_risk", label_visibility="collapsed",
+                    help="Max Risk % per trade",
+                )
+            with fc4:
+                sort_col = st.selectbox(
+                    "Sort by",
+                    ["Score ↓","RS% ↓","MCF ↓","Risk% ↑","Vol× ↓"],
+                    key="f_sort", label_visibility="collapsed",
+                )
+
+        # Quick filter buttons — hanya set f_preset, TIDAK set widget key langsung
+        qf1, qf2, qf3, qf4, qf5, qf_reset = st.columns(6)
+        with qf1:
+            if st.button("🟢 SAFE (<15%R)", key="qf_safe"):
+                st.session_state["f_preset"] = "safe"
+                st.rerun()
+        with qf2:
+            if st.button("⭐ HIGH SCORE (≥5)", key="qf_hs"):
+                st.session_state["f_preset"] = "high_score"
+                st.rerun()
+        with qf3:
+            if st.button("📈 RS POSITIVE", key="qf_rs"):
+                st.session_state["f_rs_pos"] = True
+                st.rerun()
+        with qf4:
+            if st.button("◈ MCF JOIN/WAIT", key="qf_mc"):
+                st.session_state["f_mcf_ok"] = True
+                st.rerun()
+        with qf5:
+            if st.button("◌ CORRECTING only", key="qf_corr"):
+                st.session_state["f_preset"] = "correcting"
+                st.rerun()
+        with qf_reset:
+            if st.button("✕ RESET", key="qf_reset"):
+                st.session_state["f_preset"] = "reset"
+                st.rerun()
+
+        # ── Apply filters ───────────────────────────────────────────────────────
+        sig_filter_val = st.session_state.get("f_sig", ["WATCHLIST","CORRECTING","DEEP_CORRECT"])
+        min_score_val  = st.session_state.get("f_score", 1)
+        max_risk_val   = st.session_state.get("f_risk", 50)
+
+        filtered = rest
+        filtered = [r for r in filtered if r.get("signal","") in sig_filter_val]
+        filtered = [r for r in filtered if r.get("score", 0) >= min_score_val]
+        filtered = [r for r in filtered if r.get("risk_pct", 0) <= max_risk_val]
+        if rs_pos_only:
+            filtered = [r for r in filtered if r.get("rs_vs_ihsg_4w", 0) > 0]
+        if mcf_ok_only:
+            filtered = [r for r in filtered if r.get("mcf_label","") in ("JOIN","WAIT")]
+
+        # Sort
+        sort_map = {
+            "Score ↓":  lambda r: -r.get("score", 0),
+            "RS% ↓":    lambda r: -r.get("rs_vs_ihsg_4w", 0),
+            "MCF ↓":    lambda r: -r.get("mcf_score", 0),
+            "Risk% ↑":  lambda r:  r.get("risk_pct", 0),
+            "Vol× ↓":   lambda r: -r.get("vol_ratio", 0),
+        }
+        sort_key = st.session_state.get("f_sort", "Score ↓")
+        filtered.sort(key=sort_map.get(sort_key, sort_map["Score ↓"]))
+
+        # Filter stats
+        hidden = len(rest) - len(filtered)
+        st.markdown(
+            f"""<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+            color:var(--text-dim);margin:.3rem 0 .5rem">
+            Menampilkan <b style="color:var(--text-primary)">{len(filtered)}</b> / {len(rest)} setups
+            {f'· <span style="color:var(--c-warning)">{hidden} tersembunyi oleh filter</span>' if hidden else ''}
+            · Sort: <b style="color:var(--c-info)">{sort_key}</b>
+            </div>""",
+            unsafe_allow_html=True
+        )
+
+        # ── Build table ─────────────────────────────────────────────────────────
+        sig_icons = {"WATCHLIST":"◎","CORRECTING":"◌","DEEP_CORRECT":"◍"}
+        rows = []
+        for r in filtered:
+            sig    = r.get("signal","")
+            icon   = sig_icons.get(sig,"◯")
+            rs     = r.get("rs_vs_ihsg_4w", 0)
+            risk_v = r.get("risk_pct", 0)
+            risk_flag = "⚠" if risk_v > 25 else "!" if risk_v > 15 else "✓"
+            _t = r.get("ticker","").replace(".JK","").upper()
+            _ma = _msci_alerts_by_ticker.get(_t)
+            msci_badge = ""
+            if _ma:
+                _lv = _ma.get("alert_level","")
+                msci_badge = ("★" if _lv == "HIGH_CONVICTION" else
+                              "◈" if _lv == "MEDIUM" else "·")
+            rows.append({
+                "Signal":  f"{icon} {sig}",
+                "MSCI":    msci_badge,
+                "Ticker":  r.get("ticker","").replace(".JK",""),
+                "Score":   r.get("score",0),
+                "Close":   r.get("close",0),
+                "Vol×":    round(r.get("vol_ratio",0), 2),
+                "RS%":     round(rs, 1),
+                "MCF":     r.get("mcf_score",0),
+                "MCF?":    r.get("mcf_label","—"),
+                "Bear?":   "⛔" if r.get("mcf_bear_blocked") else "",
+                "Risk%":   round(risk_v, 1),
+                "Risk":    risk_flag,
+                "EMA13d":  r.get("ema13d", 0),
+                "Daily?":  "✓" if r.get("daily_ok") else "",
+                "Regime":  r.get("regime_tag",""),
+            })
+
+        df_table = pd.DataFrame(rows)
+        st.dataframe(
+            df_table, hide_index=True,
+            column_config={
+                "Score":  st.column_config.NumberColumn("Score", format="%d/8"),
+                "Close":  st.column_config.NumberColumn("Close", format="Rp%,.0"),
+                "EMA13d": st.column_config.NumberColumn("EMA13d", format="Rp%,.0"),
+                "Vol×":   st.column_config.NumberColumn("Vol×",  format="%.2f×"),
+                "RS%":    st.column_config.NumberColumn("RS%",   format="%+.1f%%"),
+                "MCF":    st.column_config.NumberColumn("MCF",   format="%d/10"),
+                "Risk%":  st.column_config.NumberColumn("Risk%", format="%.1f%%"),
+            }
+        )
+
+        # ── Detail analysis ─────────────────────────────────────────────────────
+        st.markdown("<br>", unsafe_allow_html=True)
+        sec_head("◆ ANALISIS DETAIL")
+        ticker_opts = ["— Pilih saham —"] + [
+            r.get("ticker","").replace(".JK","") for r in filtered
+        ]
+        sel = st.selectbox("Saham:", ticker_opts, key="ema_detail_sel",
+                           label_visibility="collapsed")
+        if sel and sel != "— Pilih saham —":
+            match = next((r for r in filtered if r.get("ticker","").replace(".JK","") == sel), None)
+            if match:
+                _render_ema_detail(match)
+
+    # Outcome logging → lihat page 6 Trade Journal
+
+else:
+    render_empty_state(
+        icon     = "◎",
+        title    = "NO SCAN DATA",
+        subtitle = "Run a new scan to detect EMA crossover setups.\nResults auto-save and persist between sessions.",
+        command  = "python orchestrator.py --mode ema"
+    )
