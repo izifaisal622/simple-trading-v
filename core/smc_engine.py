@@ -122,20 +122,30 @@ class SMCEngine:
         bullish_ob = 0.0
         bearish_ob = 0.0
 
-        # Scan last 30 bars backwards
-        scan_len = min(30, len(df) - 3)
-        for i in range(len(df) - 3, len(df) - 3 - scan_len, -1):
+        # [SMC-3 FIX] Lookahead diperluas dari 1-bar ke 3-bar window.
+        # Standard SMC: OB dikonfirmasi oleh impulsive move dalam beberapa bar
+        # setelah candle OB, bukan hanya 1 bar berikutnya.
+        # IDX sering butuh 2-3 bar untuk impulse terkonfirmasi (liquidity thin).
+        # Implementasi: ukur total move dari close[i+1] ke max(close[i+1..i+3])
+        # untuk bullish OB, dan min untuk bearish OB.
+        # scan_len dikurangi 3 (bukan 3) agar ada buffer untuk lookahead 3 bar.
+        scan_len = min(30, len(df) - 4)
+        for i in range(len(df) - 4, len(df) - 4 - scan_len, -1):
             if i < 0:
                 break
             try:
                 if bearish_candle.iloc[i] and bullish_ob == 0.0:
-                    # Next 2 bars' up move
-                    next_up = _f(close.iloc[i+2]) - _f(close.iloc[i+1])
+                    # Impulsive up move: max close dalam 3 bar setelah OB candle
+                    base_close = _f(close.iloc[i+1])
+                    max_close  = max(_f(close.iloc[i+1]), _f(close.iloc[i+2]), _f(close.iloc[i+3]))
+                    next_up    = max_close - base_close
                     if next_up > _f(threshold.iloc[i]):
                         bullish_ob = _f(low.iloc[i])
                 if bullish_candle.iloc[i] and bearish_ob == 0.0:
-                    # Next 2 bars' down move
-                    next_dn = _f(close.iloc[i+1]) - _f(close.iloc[i+2])
+                    # Impulsive down move: min close dalam 3 bar setelah OB candle
+                    base_close = _f(close.iloc[i+1])
+                    min_close  = min(_f(close.iloc[i+1]), _f(close.iloc[i+2]), _f(close.iloc[i+3]))
+                    next_dn    = base_close - min_close
                     if next_dn > _f(threshold.iloc[i]):
                         bearish_ob = _f(high.iloc[i])
                 if bullish_ob and bearish_ob:

@@ -305,7 +305,21 @@ def compute_volume_profile(
         # VP score vs current price
         last_close  = float(close_arr[-1])
         prev_close  = float(close_arr[-2]) if len(close_arr) >= 2 else last_close
-        atr_est     = float(np.nanmean(high_arr[-14:] - low_arr[-14:])) if len(high_arr) >= 14 else bucket_size
+
+        # [TE-1 FIX] ATR yang benar: max(H-L, |H-prevC|, |L-prevC|) per bar, bukan H-L saja.
+        # H-L saja underestimate ATR untuk saham IDX yang sering gap, menyebabkan
+        # threshold near_poc terlalu sempit → terlalu sedikit saham dapat +1 VP score.
+        if len(high_arr) >= 15:
+            _h   = high_arr[-14:]
+            _l   = low_arr[-14:]
+            _c   = close_arr[-15:-1]   # prev close untuk 14 bar terakhir
+            _tr  = np.maximum(
+                _h - _l,
+                np.maximum(np.abs(_h - _c), np.abs(_l - _c))
+            )
+            atr_est = float(np.nanmean(_tr))
+        else:
+            atr_est = bucket_size
 
         vp_score = 0
         if val <= last_close <= vah:
@@ -1187,8 +1201,14 @@ class DailyEMAEngine:
             volume = df_daily["Volume"]
             n_bars = len(df_daily)
 
-            ipo_mode     = n_bars < 60    # ~3 bulan daily
-            data_limited = n_bars < 180   # EMA89 daily butuh ~9 bulan
+            # [TE-2 FIX] Threshold yang benar untuk daily data:
+            # - ipo_mode  : < 30 bar (sama dengan weekly engine, ~1.5 bulan daily)
+            # - data_limited: < 89 bar — EMA89 butuh tepat 89 bar untuk konvergen,
+            #   bukan 180. 180 terlalu konservatif dan menyebabkan range 89-179 bar
+            #   tidak masuk ipo_mode maupun data_limited padahal EMA89 belum konvergen.
+            # - ema200_reliable tetap 250 bar (~1 tahun daily) — tidak berubah.
+            ipo_mode     = n_bars < 30    # < 30 bar: hanya EMA5/13, konsisten dengan weekly engine
+            data_limited = n_bars < 89    # EMA89 belum konvergen jika bar < 89
 
             # ── Standard EMAs (daily) ─────────────────────────────────────────
             ema5_s   = self._ema(close, 5)
