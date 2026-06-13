@@ -1,15 +1,16 @@
 {
-  "version": "8.2.3",
+  "version": "8.2.4",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-13",
   "changelog": [
-    "8.2.3 — CHORE: tambah .streamlit/secrets.toml.example sebagai template API key",
-    "8.2.2 — FIX: AI Challenge — ganti model ke gemini-2.0-flash, history expander diganti tabs",
-    "8.2.1 — FIX: AI Challenge — replace form dengan screenshot+thesis workflow, support multi-upload s/d 5 gambar",
-    "8.2.0 — FEAT: Trade Journal — tambah tab AI Challenge dengan Gemini 1.5 Flash, support upload chart/bid-offer screenshot",
-    "8.1.9 — FIX: gate.py — swap MODULE 03 dan 04: Money Flow naik ke posisi kanan atas (MODULE 03), Stock Pick turun ke MODULE 04",
-    "8.1.8 — FIX: orchestrator.py tambah mode flow",
-    "8.1.7 — FIX: 3_Money_Flow.py scan() param fix",
-    "8.1.0 — FEAT: DailyEMAEngine"
+    "8.2.4 \u2014 FIX: data_feed \u2014 [DF-2] breadth formula invalid di get_ihsg_regime, [NEW-2] DataFeed daily period 60d \u2192 1y agar EMA89 konvergen",
+    "8.2.3 \u2014 CHORE: tambah .streamlit/secrets.toml.example sebagai template API key",
+    "8.2.2 \u2014 FIX: AI Challenge \u2014 ganti model ke gemini-2.0-flash, history expander diganti tabs",
+    "8.2.1 \u2014 FIX: AI Challenge \u2014 replace form dengan screenshot+thesis workflow, support multi-upload s/d 5 gambar",
+    "8.2.0 \u2014 FEAT: Trade Journal \u2014 tambah tab AI Challenge dengan Gemini 1.5 Flash, support upload chart/bid-offer screenshot",
+    "8.1.9 \u2014 FIX: gate.py \u2014 swap MODULE 03 dan 04: Money Flow naik ke posisi kanan atas (MODULE 03), Stock Pick turun ke MODULE 04",
+    "8.1.8 \u2014 FIX: orchestrator.py tambah mode flow",
+    "8.1.7 \u2014 FIX: 3_Money_Flow.py scan() param fix",
+    "8.1.0 \u2014 FEAT: DailyEMAEngine"
   ]
 }

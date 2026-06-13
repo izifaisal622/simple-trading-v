@@ -470,7 +470,7 @@ class DataFeed:
         period: Optional[str] = None,
     ) -> None:
         self.timeframe = timeframe
-        self.period    = period or ("3y" if timeframe == "1wk" else "60d")
+        self.period    = period or ("3y" if timeframe == "1wk" else "1y")
 
     def fetch(
         self,
@@ -696,6 +696,11 @@ def get_ihsg_regime(period: str = "1y") -> dict:
 
     V5 added: BULL_STRONG tier — EMA13>EMA89 AND mom_4w > 3% AND breadth > 70%.
     Used by analyst_agent conviction engine for 1.25× sizing.
+
+    V6 fix (8.2.4):
+      • [DF-2] breadth: ganti formula invalid (hitung hari naik/turun) dengan
+        % bar IHSG di atas EMA13 dalam 20 bar terakhir — trend consistency proxy.
+      • [NEW-2] DataFeed default period daily: 60d → 1y agar EMA89 konvergen.
     """
     try:
         df = yf.download("^JKSE", period=period, interval="1wk",
@@ -715,10 +720,15 @@ def get_ihsg_regime(period: str = "1y") -> dict:
         ema_gap_pct = abs(last_ema13 - last_ema89) / last_ema89 * 100 if last_ema89 > 0 else 0.0
 
         mom_4w  = ((last_close / float(close.iloc[-5]) - 1) * 100) if len(close) >= 5 else 0.0
-        closes  = close.values
-        breadth = (sum(1 for i in range(1, min(11, len(closes)))
-                       if closes[-i] > closes[-i-1])
-                   / min(10, len(closes)-1) * 100)
+
+        # Trend consistency proxy: % bar di atas EMA13 dalam 20 bar terakhir.
+        # Lebih valid dari hitung hari naik/turun — mengukur apakah harga
+        # konsisten berada di atas trend line, bukan sekadar momentum sesaat.
+        # Catatan: ini bukan market breadth sejati (butuh per-saham data),
+        # tapi merupakan proxy terbaik yang tersedia dari single-index IHSG.
+        lookback_bars = min(20, len(close))
+        above_ema13   = int((close.tail(lookback_bars) > ema13.tail(lookback_bars)).sum())
+        breadth       = int(above_ema13 / lookback_bars * 100)
 
         if last_ema13 > last_ema89:
             if mom_4w > 3.0 and breadth > 70:
