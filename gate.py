@@ -312,10 +312,25 @@ st.markdown(f"""
       <a class="hero-cta" href="/Follow_Whale" target="_self">MASUK ›</a>
     </div>
   </div>
+  <div class="hero-panel" onclick="window.location.href='/Money_Flow'">
+    <div class="hero-bg" style="background-image:url('data:image/png;base64,{IMG_MONEYFLOW}')"></div>
+    <div class="hero-overlay"></div>
+    <div class="module-tag">◈ MODULE 03</div>
+    <div class="hero-content">
+      <div class="hero-eyebrow">MARKET MONEY FLOW</div>
+      <div class="hero-title">MONEY<span class="accent"> FLOW</span></div>
+      <div class="hero-desc">Whale ada → ikut whale.<br>Tidak ada → retail momentum.</div>
+      <div class="hero-stats">
+        <span class="stat-chip" style="color:#00ff66;border-color:rgba(0,255,102,.25)">WHALE / INST / RETAIL</span>
+        <span class="stat-chip" style="color:#f0b429;border-color:rgba(240,180,41,.2)">BROKER NET</span>
+      </div>
+      <a class="hero-cta" href="/Money_Flow" target="_self">MASUK ›</a>
+    </div>
+  </div>
   <div class="hero-panel" onclick="window.location.href='/Stock_Analysis'">
     <div class="hero-bg" style="background-image:url('data:image/png;base64,{IMG_PORTAL}')"></div>
     <div class="hero-overlay"></div>
-    <div class="module-tag">◈ MODULE 03</div>
+    <div class="module-tag">◈ MODULE 04</div>
     <div class="hero-content">
       <div class="hero-eyebrow">SINGLE STOCK ANALYSIS</div>
       <div class="hero-title">STOCK<span class="accent"> PICK</span></div>
@@ -326,21 +341,6 @@ st.markdown(f"""
         <span class="stat-chip" style="color:#6b7280;border-color:rgba(107,114,128,.2)">MSCI CONTEXT</span>
       </div>
       <a class="hero-cta" href="/Stock_Analysis" target="_self">MASUK ›</a>
-    </div>
-  </div>
-  <div class="hero-panel" onclick="window.location.href='/Money_Flow'">
-    <div class="hero-bg" style="background-image:url('data:image/png;base64,{IMG_MONEYFLOW}')"></div>
-    <div class="hero-overlay"></div>
-    <div class="module-tag">◈ MODULE 04</div>
-    <div class="hero-content">
-      <div class="hero-eyebrow">MARKET MONEY FLOW</div>
-      <div class="hero-title">MONEY<span class="accent"> FLOW</span></div>
-      <div class="hero-desc">Whale ada → ikut whale.<br>Tidak ada → retail momentum.</div>
-      <div class="hero-stats">
-        <span class="stat-chip" style="color:#00ff66;border-color:rgba(0,255,102,.25)">WHALE / INST / RETAIL</span>
-        <span class="stat-chip" style="color:#f0b429;border-color:rgba(240,180,41,.2)">BROKER NET</span>
-      </div>
-      <a class="hero-cta" href="/Money_Flow" target="_self">MASUK ›</a>
     </div>
   </div>
   <div class="hero-panel" onclick="window.location.href='/Alert_Watch'">

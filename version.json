@@ -1,12 +1,11 @@
 {
-  "version": "8.1.8",
+  "version": "8.1.9",
   "codename": "DAILY-ENGINE-V1",
   "date": "2026-06-13",
   "changelog": [
-    "8.1.8 — FIX: orchestrator.py — tambah mode flow ke choices dan dispatch block; jalankan python orchestrator.py --mode flow untuk populate flow_results di daily_results.json",
-    "8.1.7 — FIX: 3_Money_Flow.py scan() param max_tickers → tickers slice",
-    "8.1.6 — FIX: nested f-string filter stats dan sidebar WR",
-    "8.1.5 — FIX: card render fundamental st.columns HTML bleed",
+    "8.1.9 — FIX: gate.py — swap MODULE 03 dan 04: Money Flow naik ke posisi kanan atas (MODULE 03), Stock Pick turun ke MODULE 04",
+    "8.1.8 — FIX: orchestrator.py tambah mode flow",
+    "8.1.7 — FIX: 3_Money_Flow.py scan() param fix",
     "8.1.0 — FEAT: DailyEMAEngine"
   ]
 }
