@@ -482,7 +482,12 @@ with t_history:
 # TAB 6 — AI CHALLENGE
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _call_gemini(prompt: str, image_b64: str = None, image_mime: str = "image/png") -> str:
+def _call_gemini(
+    prompt: str,
+    images: list = None,          # list of {"b64": str, "mime": str}
+    image_b64: str = None,        # legacy single-image compat
+    image_mime: str = "image/png",
+) -> str:
     """Call Gemini 1.5 Flash API. Returns response text or error string."""
     try:
         api_key = st.secrets.get("GEMINI_API_KEY", "")
@@ -495,7 +500,17 @@ def _call_gemini(prompt: str, image_b64: str = None, image_mime: str = "image/pn
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
 
     parts = []
-    if image_b64:
+    # Multi-image (new path)
+    if images:
+        for img in images:
+            parts.append({
+                "inline_data": {
+                    "mime_type": img["mime"],
+                    "data": img["b64"],
+                }
+            })
+    # Legacy single-image compat
+    elif image_b64:
         parts.append({
             "inline_data": {
                 "mime_type": image_mime,
@@ -539,133 +554,111 @@ with t_ai:
     _sec("AI CHALLENGE — DEVIL'S ADVOCATE")
     st.markdown(
         _mono(
-            "Masukkan setup trade kamu. AI akan challenge asumsimu — bukan validasi.",
+            "Upload screenshot chart/bid-offer (maks 5), tulis pendapat kamu, lalu minta AI challenge.",
             TEXT_MUTED
         ),
         unsafe_allow_html=True,
     )
     st.markdown("")
 
-    # ── Input konteks trade ───────────────────────────────────────────────────
-    ai_c1, ai_c2 = st.columns([1, 1])
-    with ai_c1:
-        ai_ticker   = st.text_input("Ticker", placeholder="contoh: SGER", key="ai_ticker").upper().strip()
-        ai_entry    = st.number_input("Entry Price (Rp)", value=0.0, step=1.0, format="%.0f", key="ai_entry")
-        ai_sl       = st.number_input("Stop Loss (Rp)", value=0.0, step=1.0, format="%.0f", key="ai_sl")
-        ai_tp       = st.number_input("Target / TP1 (Rp)", value=0.0, step=1.0, format="%.0f", key="ai_tp")
-    with ai_c2:
-        ai_signal   = st.selectbox(
-            "Signal Type",
-            ["BREAKOUT","RECOVERY_EARLY","ACCUMULATION","WATCHLIST","VOL_SPIKE_UP","CORRECTING","CUSTOM"],
-            key="ai_signal"
-        )
-        ai_timeframe = st.selectbox("Timeframe", ["Daily","Weekly","Intraday 5m","Intraday 15m"], key="ai_tf")
-        ai_regime   = st.selectbox(
-            "Market Regime (persepsi kamu)",
-            ["BULL_STRONG","BULL_WEAK","SIDEWAYS","BEAR_WEAK","BEAR_TREND","UNKNOWN"],
-            key="ai_regime"
-        )
-        ai_conviction = st.slider("Conviction kamu (1-10)", 1, 10, 7, key="ai_conv")
-
-    ai_reasoning = st.text_area(
-        "Reasoning / Alasan Entry",
-        placeholder=(
-            "Contoh: Floor price Rp404, volume elevated 3h, ada lower wick, close atas range. "
-            "EMA trend bullish. Value area 332-436. R:R 14:1. Pengeringan aktif."
-        ),
-        key="ai_reasoning",
-        height=100,
-    )
-
-    # ── Upload chart / bid-offer screenshot ──────────────────────────────────
-    st.markdown("")
-    _sec("LAMPIRAN CHART / BID-OFFER (OPSIONAL)")
+    # ── Upload s/d 5 screenshot ───────────────────────────────────────────────
+    _sec("SCREENSHOT (MAKS 5 FILE)")
     st.markdown(
-        _mono("Upload screenshot TradingView, Stockbit, atau bid-offer untuk analisa visual.", TEXT_MUTED),
+        _mono("Drag & drop atau klik untuk pilih file. PNG / JPG / JPEG / WEBP.", TEXT_MUTED),
         unsafe_allow_html=True,
     )
-    uploaded_img = st.file_uploader(
-        "Upload chart/bid-offer",
+    uploaded_imgs = st.file_uploader(
+        "Upload screenshot",
         type=["png", "jpg", "jpeg", "webp"],
-        key="ai_chart_upload",
+        accept_multiple_files=True,
+        key="ai_multi_upload",
         label_visibility="collapsed",
     )
 
-    img_b64   = None
-    img_mime  = "image/png"
-    if uploaded_img is not None:
-        img_bytes = uploaded_img.read()
-        img_b64   = base64.b64encode(img_bytes).decode("utf-8")
-        img_mime  = uploaded_img.type or "image/png"
-        st.image(uploaded_img, caption="Preview chart yang diupload", use_column_width=True)
+    # Batasi maks 5 dan tampilkan preview
+    ai_images = []
+    if uploaded_imgs:
+        if len(uploaded_imgs) > 5:
+            st.warning("Maksimal 5 screenshot. Hanya 5 pertama yang dipakai.")
+            uploaded_imgs = uploaded_imgs[:5]
 
-    # ── Build prompt ──────────────────────────────────────────────────────────
+        img_count = len(uploaded_imgs)
+        img_count_str = str(img_count)
+        st.markdown(
+            _mono(img_count_str + " screenshot terpilih:", TEXT_MUTED),
+            unsafe_allow_html=True,
+        )
+
+        # Preview dalam grid kolom (maks 5)
+        preview_cols = st.columns(min(img_count, 5))
+        for i, f in enumerate(uploaded_imgs):
+            with preview_cols[i]:
+                st.image(f, use_column_width=True)
+            f.seek(0)
+            raw   = f.read()
+            b64   = base64.b64encode(raw).decode("utf-8")
+            mime  = f.type or "image/png"
+            ai_images.append({"b64": b64, "mime": mime})
+
+    # ── Pendapat / thesis ─────────────────────────────────────────────────────
     st.markdown("")
-    btn_challenge = st.button("⚡ CHALLENGE SETUP INI", key="ai_challenge_btn", use_container_width=True)
+    _sec("PENDAPAT / THESIS KAMU")
+    ai_thesis = st.text_area(
+        "Tulis pendapat kamu",
+        placeholder=(
+            "Contoh: Saya lihat SGER sudah 3 hari pengeringan di area 404, volume menyusut, "
+            "ada lower wick panjang di daily. Bid-offer terlihat ada akumulasi besar di 400-404. "
+            "Saya rasa ini setup breakout yang bagus dan mau masuk besok pagi."
+        ),
+        key="ai_thesis",
+        height=140,
+    )
+
+    # ── Tombol challenge ──────────────────────────────────────────────────────
+    st.markdown("")
+    btn_challenge = st.button("⚡ CHALLENGE INI", key="ai_challenge_btn", use_container_width=True)
 
     if btn_challenge:
-        if not ai_ticker:
-            st.error("Isi Ticker dulu.")
-        elif ai_entry <= 0 or ai_sl <= 0:
-            st.error("Entry Price dan Stop Loss harus diisi.")
+        thesis_clean = ai_thesis.strip() if ai_thesis else ""
+        if not thesis_clean:
+            st.error("Tulis pendapat / thesis kamu dulu sebelum di-challenge.")
         else:
-            # Pre-build semua variabel sebelum f-string — no nested f-string
-            risk_rp   = ai_entry - ai_sl
-            risk_pct  = (risk_rp / ai_entry * 100) if ai_entry > 0 else 0.0
-            rr_ratio  = ((ai_tp - ai_entry) / risk_rp) if (risk_rp > 0 and ai_tp > ai_entry) else 0.0
-            has_chart = "Ya (terlampir)" if img_b64 else "Tidak"
-            reasoning_text = ai_reasoning.strip() if ai_reasoning.strip() else "(tidak ada reasoning yang diberikan)"
+            has_img_str  = str(len(ai_images)) + " screenshot terlampir" if ai_images else "Tidak ada screenshot"
 
             prompt = (
-                f"SETUP TRADE YANG PERLU KAMU CHALLENGE:\n\n"
-                f"Ticker: {ai_ticker}\n"
-                f"Signal: {ai_signal}\n"
-                f"Timeframe: {ai_timeframe}\n"
-                f"Market Regime (persepsi trader): {ai_regime}\n"
-                f"Conviction: {ai_conviction}/10\n\n"
-                f"Entry Price: Rp{ai_entry:,.0f}\n"
-                f"Stop Loss: Rp{ai_sl:,.0f}\n"
-                f"Target TP1: Rp{ai_tp:,.0f}\n"
-                f"Risk: Rp{risk_rp:,.0f} ({risk_pct:.1f}%)\n"
-                f"R:R Ratio: {rr_ratio:.1f}:1\n\n"
-                f"Reasoning trader:\n{reasoning_text}\n\n"
-                f"Chart terlampir: {has_chart}\n\n"
-                f"Tugasmu: Challenge setup ini. Cari kelemahan, bias konfirmasi, "
-                f"dan risiko yang mungkin diabaikan. Jangan approve — paksa trader berpikir lebih keras."
+                "PENDAPAT / THESIS TRADER YANG PERLU KAMU CHALLENGE:\n\n"
+                + thesis_clean
+                + "\n\n"
+                + "Visual terlampir: " + has_img_str + "\n\n"
+                + "Tugasmu: Challenge thesis ini secara kritis. "
+                + "Cari asumsi yang tidak valid, konfirmasi yang belum ada, "
+                + "risiko yang diabaikan, dan bias konfirmasi. "
+                + "Jika ada screenshot, analisa visual dan hubungkan dengan thesis. "
+                + "Jangan approve — paksa trader berpikir lebih keras. "
+                + "Format: poin-poin pendek, bahasa Indonesia. "
+                + "Akhiri dengan SATU pertanyaan kritis yang wajib dijawab sebelum entry."
             )
 
-            with st.spinner("Gemini sedang menganalisa setup kamu..."):
-                ai_response = _call_gemini(prompt, img_b64, img_mime)
+            with st.spinner("Gemini sedang menganalisa..."):
+                ai_response = _call_gemini(prompt=prompt, images=ai_images if ai_images else None)
 
             # ── Render response ───────────────────────────────────────────────
             st.markdown("")
             _sec("RESPONSE AI CHALLENGER")
 
-            # Tentukan border color berdasarkan conviction
-            if ai_conviction >= 8:
-                border_col = C_WARNING
-            elif ai_conviction >= 6:
-                border_col = C_INFO
-            else:
-                border_col = C_DANGER
-
-            # Pre-build badge conviction
-            conv_badge = f"CONVICTION {ai_conviction}/10"
-
-            # Pre-build header HTML
+            # Pre-build header HTML — border merah (selalu devil's advocate)
             header_html = (
-                f'<div style="background:#0A0E14;border:1px solid rgba(255,255,255,.1);'
-                f'border-left:4px solid {border_col};border-radius:8px;'
-                f'padding:16px 20px;margin-bottom:12px">'
-                f'<div style="font-family:Share Tech Mono,monospace;font-size:11px;'
-                f'color:{TEXT_MUTED};letter-spacing:.1em;margin-bottom:8px">'
-                f'⚡ AI CHALLENGE · {ai_ticker} · {ai_signal} · {conv_badge}'
-                f'</div>'
-                f'</div>'
+                '<div style="background:#0A0E14;border:1px solid rgba(255,255,255,.1);'
+                'border-left:4px solid ' + C_DANGER + ';border-radius:8px;'
+                'padding:16px 20px;margin-bottom:12px">'
+                '<div style="font-family:Share Tech Mono,monospace;font-size:11px;'
+                'color:' + TEXT_MUTED + ';letter-spacing:.1em;margin-bottom:8px">'
+                '⚡ AI CHALLENGE · ' + has_img_str
+                + '</div>'
+                '</div>'
             )
             st.markdown(header_html, unsafe_allow_html=True)
 
-            # Response dalam st.container agar tidak bocor ke card lain
             with st.container():
                 st.markdown(ai_response)
 
@@ -674,16 +667,10 @@ with t_ai:
                 st.session_state["ai_challenge_history"] = []
 
             history_entry = {
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "ticker":    ai_ticker,
-                "signal":    ai_signal,
-                "entry":     ai_entry,
-                "sl":        ai_sl,
-                "tp":        ai_tp,
-                "conviction": ai_conviction,
-                "reasoning": reasoning_text,
-                "response":  ai_response,
-                "has_chart": bool(img_b64),
+                "timestamp":  datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "thesis":     thesis_clean,
+                "n_images":   len(ai_images),
+                "response":   ai_response,
             }
             st.session_state["ai_challenge_history"].insert(0, history_entry)
 
@@ -691,34 +678,30 @@ with t_ai:
     if st.session_state.get("ai_challenge_history"):
         st.markdown("")
         _sec("CHALLENGE HISTORY — SESI INI")
+
+        history_count = len(st.session_state["ai_challenge_history"])
+        history_count_str = str(history_count)
         st.markdown(
-            _mono(
-                f"{len(st.session_state['ai_challenge_history'])} challenge dalam sesi ini. "
-                "History hilang saat page di-refresh.",
-                TEXT_MUTED
-            ),
+            _mono(history_count_str + " challenge dalam sesi ini. History hilang saat page di-refresh.", TEXT_MUTED),
             unsafe_allow_html=True,
         )
         st.markdown("")
 
         for idx, h in enumerate(st.session_state["ai_challenge_history"]):
-            # Pre-build semua nilai sebelum f-string
-            h_ticker    = h.get("ticker", "?")
-            h_signal    = h.get("signal", "?")
-            h_conv      = h.get("conviction", 0)
-            h_ts        = h.get("timestamp", "")
-            h_entry     = h.get("entry", 0)
-            h_sl        = h.get("sl", 0)
-            h_tp        = h.get("tp", 0)
-            h_has_chart = "📎 chart" if h.get("has_chart") else ""
-            h_label     = f"#{idx+1} · {h_ticker} · {h_signal} · conv {h_conv}/10 · {h_ts}"
+            h_ts      = h.get("timestamp", "")
+            h_nimages = h.get("n_images", 0)
+            h_thesis  = h.get("thesis", "")
+            h_preview = h_thesis[:60] + "..." if len(h_thesis) > 60 else h_thesis
+            h_img_tag = "📎 " + str(h_nimages) + " img" if h_nimages else ""
+            h_label   = "#" + str(idx + 1) + " · " + h_ts + " · " + h_img_tag + " · " + h_preview
 
             with st.expander(h_label, expanded=False):
-                meta_html = (
-                    f'<div style="font-family:Share Tech Mono,monospace;font-size:11px;'
-                    f'color:{TEXT_MUTED};margin-bottom:8px">'
-                    f'Entry Rp{h_entry:,.0f} · SL Rp{h_sl:,.0f} · TP Rp{h_tp:,.0f} {h_has_chart}'
-                    f'</div>'
+                thesis_html = (
+                    '<div style="font-family:Share Tech Mono,monospace;font-size:11px;'
+                    'color:' + TEXT_MUTED + ';margin-bottom:12px;'
+                    'border-left:3px solid rgba(255,255,255,.15);padding-left:10px">'
+                    + h_thesis.replace("\n", "<br>")
+                    + '</div>'
                 )
-                st.markdown(meta_html, unsafe_allow_html=True)
+                st.markdown(thesis_html, unsafe_allow_html=True)
                 st.markdown(h.get("response", ""))
