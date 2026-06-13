@@ -721,45 +721,55 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
             # Risk warning color for card border
             card_border = "#00FF66" if risk <= 15 else "#F0B429" if risk <= 25 else "#EF4444"
 
-            c_main, c_btn = st.columns([8, 1])
-            with c_main:
-                # FIX V4: Risk warning badge inline
-                risk_badge = ""
-                if risk > 25:
-                    risk_badge = f'<span style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid #EF444455;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
-                elif risk > 15:
-                    risk_badge = f'<span style="background:rgba(240,180,41,0.15);color:#F0B429;border:1px solid #F0B42955;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
+            # Build all badge HTML as Python strings first — avoid inline injection in f-string
+            risk_badge = ""
+            if risk > 25:
+                risk_badge = f'<span style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid #EF444455;border-radius:4px;padding:1px 6px;font-size:11px;margin-left:0.4rem">&#9888; RISK {risk:.0f}%</span>'
+            elif risk > 15:
+                risk_badge = f'<span style="background:rgba(240,180,41,0.15);color:#F0B429;border:1px solid #F0B42955;border-radius:4px;padding:1px 6px;font-size:11px;margin-left:0.4rem">&#9888; RISK {risk:.0f}%</span>'
 
-                _sig    = r.get("signal","BREAKOUT")
-                _vp     = r.get("vp_entry_zone","")
-                _dual   = r.get("dual_confirmed", False)
-                _is_strong = _sig == "STRONG_BREAKOUT"
-                _card_cls = "signal-card strong-breakout" if _is_strong else "signal-card"
-                _sig_col = SIG_COLORS.get(_sig, "#00FF66")
-                _dual_tag = '<span style="background:rgba(0,255,102,0.08);border:1px solid rgba(0,255,102,0.2);border-radius:var(--r-md);padding:1px 6px;font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#00FF66">✓ DUAL</span>' if _dual else ""
-                st.markdown(f"""<div class="{_card_cls}" style="--sc:{_sig_col}">
-                  <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap">
-                    <span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:900;color:#E2E8F0;letter-spacing:0.03em">{ticker}</span>
-                    {signal_badge(_sig)}
-                    {score_badge(score)}
-                    {vp_zone_pill(_vp)}
-                    {_dual_tag}
-                    {risk_badge}
-                    <span style="margin-left:auto;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#64748B">Vol {vol:.1f}× · Risk {risk:.0f}%</span>
-                  </div>
-                </div>""", unsafe_allow_html=True)
+            _sig       = r.get("signal", "BREAKOUT")
+            _vp        = r.get("vp_entry_zone", "")
+            _dual      = r.get("dual_confirmed", False)
+            _is_strong = _sig == "STRONG_BREAKOUT"
+            _sig_col   = SIG_COLORS.get(_sig, "#00FF66")
+            _border_col = "#00FF66" if risk <= 15 else "#F0B429" if risk <= 25 else "#EF4444"
 
-            with c_btn:
-                is_open = ticker in st.session_state.get("open_breakouts", set())
-                if "open_breakouts" not in st.session_state:
-                    st.session_state.open_breakouts = set()
-                lbl = "▾ HIDE" if is_open else "▸ SHOW"
-                if st.button(lbl, key=f"bo_{ticker}", width="stretch"):
-                    if is_open:
-                        st.session_state.open_breakouts.discard(ticker)
-                    else:
-                        st.session_state.open_breakouts.add(ticker)
-                    st.rerun()
+            # Pre-build all badge strings
+            _sig_badge   = signal_badge(_sig)
+            _score_badge = score_badge(score)
+            _vp_badge    = vp_zone_pill(_vp)
+            _dual_tag    = '<span style="background:rgba(0,255,102,0.08);border:1px solid rgba(0,255,102,0.2);border-radius:4px;padding:1px 6px;font-family:Share Tech Mono,monospace;font-size:11px;color:#00FF66">&#10003; DUAL</span>' if _dual else ""
+
+            # Build complete card HTML as single string
+            _card_html = (
+                f'<div style="background:#0F1318;border:1px solid rgba(255,255,255,0.06);'
+                f'border-left:3px solid {_border_col};border-radius:8px;'
+                f'padding:0.6rem 0.8rem;margin-bottom:4px">'
+                f'<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap">'
+                f'<span style="font-family:Orbitron,monospace;font-size:18px;font-weight:900;color:#E2E8F0;letter-spacing:0.03em">{ticker}</span>'
+                f'{_sig_badge}'
+                f'{_score_badge}'
+                f'{_vp_badge}'
+                f'{_dual_tag}'
+                f'{risk_badge}'
+                f'<span style="margin-left:auto;font-family:Share Tech Mono,monospace;font-size:12px;color:#64748B">Vol {vol:.1f}&#215; &#183; Risk {risk:.0f}%</span>'
+                f'</div>'
+                f'</div>'
+            )
+
+            # Single column layout — button below card, no column split
+            st.markdown(_card_html, unsafe_allow_html=True)
+            if "open_breakouts" not in st.session_state:
+                st.session_state.open_breakouts = set()
+            is_open = ticker in st.session_state.open_breakouts
+            lbl = "▾ HIDE" if is_open else "▸ SHOW"
+            if st.button(lbl, key=f"bo_{ticker}"):
+                if is_open:
+                    st.session_state.open_breakouts.discard(ticker)
+                else:
+                    st.session_state.open_breakouts.add(ticker)
+                st.rerun()
 
             if is_open:
                 _render_ema_detail(r)
