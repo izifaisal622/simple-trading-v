@@ -1,9 +1,10 @@
 {
-  "version": "8.1.7",
+  "version": "8.1.8",
   "codename": "DAILY-ENGINE-V1",
   "date": "2026-06-13",
   "changelog": [
-    "8.1.7 — FIX: 3_Money_Flow.py — scanner.scan() tidak punya param max_tickers; ganti ke tickers=universe[:max_t] slice dari get_dynamic_universe()",
+    "8.1.8 — FIX: orchestrator.py — tambah mode flow ke choices dan dispatch block; jalankan python orchestrator.py --mode flow untuk populate flow_results di daily_results.json",
+    "8.1.7 — FIX: 3_Money_Flow.py scan() param max_tickers → tickers slice",
     "8.1.6 — FIX: nested f-string filter stats dan sidebar WR",
     "8.1.5 — FIX: card render fundamental st.columns HTML bleed",
     "8.1.0 — FEAT: DailyEMAEngine"

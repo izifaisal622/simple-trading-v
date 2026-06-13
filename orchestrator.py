@@ -329,7 +329,7 @@ def main():
     parser = argparse.ArgumentParser(description="Simple Trading V6 Orchestrator")
     parser.add_argument("--clear-cache", action="store_true", help="Hapus disk cache data sebelum scan")
     parser.add_argument("--mode",
-                        choices=["ema","whale","director","learning","weekly","all","stats","study"],
+                        choices=["ema","whale","flow","director","learning","weekly","all","stats","study"],
                         default="all", help="Which module to run")
     parser.add_argument("--ticker",    help="Single ticker deep-dive analysis (e.g. BBCA)")
     parser.add_argument("--no-llm",    action="store_true",
@@ -389,6 +389,43 @@ def main():
     # ── Web self-study mode ───────────────────────────────────────────────────
     if mode == "study":
         run_director(cfg, full=True)
+        return
+
+
+    # ── Flow scan mode ────────────────────────────────────────────────────────
+    if mode == "flow":
+        try:
+            from agents.flow_scanner import FlowScanner
+            from core.data_feed import get_dynamic_universe
+            from pathlib import Path as _Path
+            import json as _json
+            from datetime import datetime as _dt
+
+            print("\n[Flow] Starting Money Flow scan...")
+            scanner  = FlowScanner()
+            universe = [t + ".JK" for t in get_dynamic_universe()]
+            results  = scanner.scan(tickers=universe, max_workers=8)
+
+            logs_dir = _Path(__file__).parent / "logs"
+            logs_dir.mkdir(exist_ok=True)
+            results_file = logs_dir / "daily_results.json"
+            existing = {}
+            if results_file.exists():
+                try:
+                    existing = _json.loads(results_file.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+            existing["flow_results"] = results
+            existing["flow_total"]   = len(results)
+            existing["flow_date"]    = _dt.now().strftime("%Y-%m-%d")
+            results_file.write_text(_json.dumps(existing, indent=2, default=str), encoding="utf-8")
+
+            whale_signals = [r for r in results if r.get("signal") == "WHALE_ACCUMULATION"]
+            inst_signals  = [r for r in results if r.get("signal") == "INSTITUTIONAL_BUY"]
+            print(f"[Flow] Done: {len(results)} tickers | {len(whale_signals)} WHALE | {len(inst_signals)} INSTITUTIONAL")
+        except Exception as exc:
+            print(f"[Flow] ERROR: {exc}")
+            import traceback; traceback.print_exc()
         return
 
     if mode in ("all", "ema"):
