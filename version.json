@@ -1,9 +1,10 @@
 {
-  "version": "8.1.0",
+  "version": "8.1.1",
   "codename": "DAILY-ENGINE-V1",
   "date": "2026-06-13",
   "changelog": [
-    "8.1.0 — FEAT: DailyEMAEngine — EMA13/89/200, box, breakout, volume semua dari daily data sebagai primary; weekly hanya untuk cross context. Scan kini refresh setiap hari. scanner_agent._scan_ticker() switch ke DailyEMAEngine, fallback ke weekly engine jika daily data <30 bar. Market Structure juga pakai daily data.",
-    "8.0.0 — FEAT: Gate ilustrasi v8 baru — EMA_V8, Whale_v8, Stock_Pick_v8, Money_flow_v8, Watch_Alert_v8, Trading_Journal_v8 menggantikan ilustrasi v7"
+    "8.1.1 — FIX: assets_ui.py — semua var(--x) di Python constants diganti hex resolved; SIG_COLORS, VP_ZONE_COLORS, REGIME_COLORS, score_badge, signal_badge, sparkline — eliminasi raw HTML ter-render di EMA XBO cards",
+    "8.1.0 — FEAT: DailyEMAEngine — EMA13/89/200, box, breakout, volume semua dari daily data sebagai primary; weekly hanya untuk cross context. Scan kini refresh setiap hari.",
+    "8.0.0 — FEAT: Gate ilustrasi v8 baru"
   ]
 }

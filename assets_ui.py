@@ -25,9 +25,9 @@ BG_DEEP     = "#070A0D"
 BG_RAISED   = "#141A22"
 BG_OVERLAY  = "#161D26"
 
-NEON_GREEN  = "var(--accent)"
-NEON_BRIGHT = "var(--accent)"
-ACCENT      = "var(--accent)"
+NEON_GREEN  = "#00FF66"
+NEON_BRIGHT = "#00FF66"
+ACCENT      = "#00FF66"
 
 TEXT_MAIN   = "#E2E8F0"
 TEXT_MUTED  = "#64748B"
@@ -35,50 +35,50 @@ TEXT_DIM    = "#374151"
 LABEL_COLOR = "#94A3B8"
 
 # Semantic
-C_SUCCESS = "var(--accent)"
+C_SUCCESS = "#00FF66"
 C_WARNING = "#F0B429"
 C_DANGER  = "#EF4444"
 C_INFO    = "#60A5FA"
-C_ACCENT  = "var(--accent)"
+C_ACCENT  = "#00FF66"
 
 BORDER_NEON = "rgba(0,255,102,0.12)"
 BORDER_DIM  = "rgba(0,255,102,0.06)"
 
 REGIME_COLORS = {
-    "BULL_STRONG":       "var(--accent)",
-    "BULL_TREND":        "var(--accent)",
+    "BULL_STRONG":       "#00FF66",
+    "BULL_TREND":        "#00FF66",
     "BULL_CONSOLIDATION":"#A3E635",
-    "TRANSITION":        "var(--c-warning)",
+    "TRANSITION":        "#F0B429",
     "BEAR_CONSOLIDATION":"#FB8C00",
-    "BEAR_TREND":        "var(--c-danger)",
-    "UNKNOWN":           "var(--text-muted)",
+    "BEAR_TREND":        "#EF4444",
+    "UNKNOWN":           "#64748B",
 }
 
 SIG_COLORS = {
-    "STRONG_BREAKOUT":  "var(--accent)",
-    "BREAKOUT":         "var(--accent)",
-    "WATCHLIST":        "var(--c-warning)",
+    "STRONG_BREAKOUT":  "#00FF66",
+    "BREAKOUT":         "#00FF66",
+    "WATCHLIST":        "#F0B429",
     "CORRECTING":       "#FB8C00",
-    "DEEP_CORRECT":     "var(--c-danger)",
-    "ACCUMULATION":     "var(--accent)",
+    "DEEP_CORRECT":     "#EF4444",
+    "ACCUMULATION":     "#00FF66",
     "BLOCK_BUY":        "#60A5FA",
     "RECOVERY_EARLY":   "#FBBF24",
-    "VOL_SPIKE_UP":     "var(--c-warning)",
-    "DISTRIBUTION":       "var(--c-danger)",
-    "BLOCK_SELL":         "#FB8C00",
+    "VOL_SPIKE_UP":     "#F0B429",
+    "DISTRIBUTION":     "#EF4444",
+    "BLOCK_SELL":       "#FB8C00",
     # Money Flow signals
-    "WHALE_ACCUMULATION": "var(--accent)",
+    "WHALE_ACCUMULATION": "#00FF66",
     "INSTITUTIONAL_BUY":  "#60A5FA",
     "RETAIL_MOMENTUM":    "#FBBF24",
-    "NEUTRAL":            "var(--text-dim)",
+    "NEUTRAL":            "#64748B",
 }
 
 VP_ZONE_COLORS = {
-    "AT_POC":    "var(--accent)",
+    "AT_POC":    "#00FF66",
     "IN_VALUE":  "#A3E635",
     "ABOVE_VAH": "#60A5FA",
-    "BELOW_VAL": "var(--c-danger)",
-    "UNKNOWN":   "var(--text-dim)",
+    "BELOW_VAL": "#EF4444",
+    "UNKNOWN":   "#64748B",
 }
 
 
@@ -110,7 +110,7 @@ def fmt_conv(v: int) -> str:
 
 # ── Sparkline SVG ─────────────────────────────────────────────────────────────
 def sparkline_svg(prices: list, width: int = 80, height: int = 28,
-                  color: str = "var(--accent)") -> str:
+                  color: str = "#00FF66") -> str:
     if not prices or len(prices) < 2:
         return f'<svg width="{width}" height="{height}"></svg>'
     mn = min(prices); mx = max(prices)
@@ -121,7 +121,7 @@ def sparkline_svg(prices: list, width: int = 80, height: int = 28,
         y = height - ((p - mn) / rng * (height - 4)) - 2
         pts.append(f"{x:.1f},{y:.1f}")
     polyline = " ".join(pts)
-    trend_color = color if prices[-1] >= prices[0] else "var(--c-danger)"
+    trend_color = color if prices[-1] >= prices[0] else "#EF4444"
     return f"""<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}"
   style="display:inline-block;vertical-align:middle">
   <polyline points="{polyline}" fill="none" stroke="{trend_color}"
@@ -135,10 +135,10 @@ def sparkline_svg(prices: list, width: int = 80, height: int = 28,
 def score_badge(score: int, max_score: int = 8) -> str:
     """Prominent score badge with color-graded fill."""
     ratio = score / max_score if max_score > 0 else 0
-    if ratio >= 0.75:   col, bg = "var(--accent)", "rgba(0,255,102,0.12)"
+    if ratio >= 0.75:   col, bg = "#00FF66", "rgba(0,255,102,0.12)"
     elif ratio >= 0.5:  col, bg = "#A3E635", "rgba(163,230,53,0.10)"
-    elif ratio >= 0.37: col, bg = "var(--c-warning)", "rgba(240,180,41,0.10)"
-    else:               col, bg = "var(--c-danger)", "rgba(239,68,68,0.09)"
+    elif ratio >= 0.37: col, bg = "#F0B429", "rgba(240,180,41,0.10)"
+    else:               col, bg = "#EF4444", "rgba(239,68,68,0.09)"
     return (
         f'<span style="background:{bg};border:1px solid {col}40;border-radius:6px;'
         f'padding:2px 8px;font-family:\'Orbitron\',monospace;font-size:var(--text-sm);'
@@ -173,7 +173,7 @@ def signal_badge(signal: str) -> str:
         "CORRECTING": "○", "DEEP_CORRECT": "◌", "ACCUMULATION": "◈",
         "BLOCK_BUY": "▲", "DISTRIBUTION": "▼", "BLOCK_SELL": "◌",
     }
-    col = SIG_COLORS.get(signal, "var(--text-muted)")
+    col = SIG_COLORS.get(signal, "#64748B")
     icon = icons.get(signal, "—")
     label = signal.replace("_", " ")
     # STRONG_BREAKOUT gets special treatment
