@@ -71,16 +71,16 @@ def _render_mcf_block(r, lines_out: list) -> None:
             '<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.35);'
             'border-radius:var(--r-md);padding:0.55rem 0.8rem;margin:0.3rem 0">'
             '<div style="display:flex;align-items:center;gap:0.7rem">'
-            '<span style="background:var(--c-danger);color:#fff;font-weight:700;'
+            '<span style="background:#EF4444;color:#fff;font-weight:700;'
             'font-family:Orbitron,monospace;font-size:var(--text-xs);border-radius:var(--r-sm);'
             'padding:2px 8px">⛔ BEAR REGIME — JANGAN TRADE</span>'
             '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
-            f'color:var(--c-danger);font-weight:700">MCF {mcf_score}/10 (BLOCKED)</span>'
-            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-muted)">'
+            f'color:#EF4444;font-weight:700">MCF {mcf_score}/10 (BLOCKED)</span>'
+            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#64748B">'
             'EMA system: WATCHLIST_ONLY</span>'
             '</div>'
             '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
-            'color:var(--text-secondary);margin-top:0.3rem">'
+            'color:#94A3B8;margin-top:0.3rem">'
             f'MCF menghasilkan skor {mcf_score}/10 namun regime IHSG = WATCHLIST_ONLY. '
             'Sistem EMA melarang entry di kondisi ini. '
             'Sinyal momentum tidak valid saat pasar bearish. '
@@ -102,7 +102,7 @@ def _render_mcf_block(r, lines_out: list) -> None:
     def _pill(n, max_n=3, col="#00FF66"):
         filled = "█" * n
         empty  = "░" * (max_n - n)
-        return f'<b style="color:{col};font-family:monospace">{filled}</b><span style="color:var(--text-dim)">{empty}</span>'
+        return f'<b style="color:{col};font-family:monospace">{filled}</b><span style="color:#374151">{empty}</span>'
 
     mcf_col_m = "#00FF66" if mcf_mom == 3 else "#F0B429" if mcf_mom >= 2 else "#64748B"
     mcf_col_v = "#00FF66" if mcf_vol == 3 else "#F0B429" if mcf_vol >= 2 else "#64748B"
@@ -118,7 +118,7 @@ def _render_mcf_block(r, lines_out: list) -> None:
 
     # Badge JOIN hanya muncul jika entry_ok=True DAN bukan bear
     mcf_join_badge = (
-        '<span style="background:var(--accent);color:#000;font-weight:700;'
+        '<span style="background:#00FF66;color:#000;font-weight:700;'
         'font-family:Orbitron,monospace;font-size:var(--text-xs);border-radius:var(--r-sm);'
         'padding:2px 8px;margin-right:0.5rem">◈ JOIN NOW</span>'
         if mcf_ok else ""
@@ -132,27 +132,27 @@ def _render_mcf_block(r, lines_out: list) -> None:
         '<span style="font-family:Orbitron,monospace;font-size:var(--text-2xs);'
         f'letter-spacing:0.15em;color:{mcf_col};font-weight:700">'
         f'MCF {mcf_score}/10 — {mcf_label}</span>'
-        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">'
+        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#374151">'
         f'{mcf_mkt_str}</span>'
         '</div>'
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem">'
         '<div style="background:rgba(0,0,0,0.2);border-radius:var(--r-sm);padding:0.35rem 0.6rem">'
         '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
-        f'letter-spacing:0.15em;color:var(--text-dim);margin-bottom:2px">MOMENTUM {mcf_mom}/3</div>'
+        f'letter-spacing:0.15em;color:#374151;margin-bottom:2px">MOMENTUM {mcf_mom}/3</div>'
         f'<div>{_pill(mcf_mom, col=mcf_col_m)}</div>'
-        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-muted);margin-top:2px">{det_m}</div>'
+        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#64748B;margin-top:2px">{det_m}</div>'
         '</div>'
         '<div style="background:rgba(0,0,0,0.2);border-radius:var(--r-sm);padding:0.35rem 0.6rem">'
         '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
-        f'letter-spacing:0.15em;color:var(--text-dim);margin-bottom:2px">VOLUME {mcf_vol}/3</div>'
+        f'letter-spacing:0.15em;color:#374151;margin-bottom:2px">VOLUME {mcf_vol}/3</div>'
         f'<div>{_pill(mcf_vol, col=mcf_col_v)}</div>'
-        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-muted);margin-top:2px">{det_v}</div>'
+        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#64748B;margin-top:2px">{det_v}</div>'
         '</div>'
         '<div style="background:rgba(0,0,0,0.2);border-radius:var(--r-sm);padding:0.35rem 0.6rem">'
         '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
-        f'letter-spacing:0.15em;color:var(--text-dim);margin-bottom:2px">FOLLOW-UP {mcf_fu}/3</div>'
+        f'letter-spacing:0.15em;color:#374151;margin-bottom:2px">FOLLOW-UP {mcf_fu}/3</div>'
         f'<div>{_pill(mcf_fu, col=mcf_col_f)}</div>'
-        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-muted);margin-top:2px">{det_f}</div>'
+        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#64748B;margin-top:2px">{det_f}</div>'
         '</div>'
         '</div>'
         '</div>'
@@ -206,7 +206,7 @@ def _render_risk_warning(r, lines_out: list) -> None:
         'padding:0.4rem 0.8rem;margin:0.2rem 0">'
         '<span style="font-family:Orbitron,monospace;font-size:var(--text-2xs);'
         f'font-weight:700;color:{badge_col}">{badge_text}</span>'
-        ' <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-secondary)">'
+        ' <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">'
         f'{detail}</span>'
         '</div>'
     )
@@ -225,7 +225,7 @@ def _render_ema200_warning(r, lines_out: list) -> None:
         lines_out.append(
             '<div style="background:rgba(240,180,41,0.06);border:1px solid rgba(240,180,41,0.25);'
             'border-radius:var(--r-sm);padding:0.35rem 0.8rem;margin:0.2rem 0">'
-            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--c-warning)">'
+            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#F0B429">'
             '⚠ EMA200 tidak reliable — data weekly < 150 bars. '
             'Score point "Price > EMA200" mungkin tidak akurat. '
             'Direkomendasikan: fetch 3 tahun data untuk EMA200 yang stabil.'
@@ -340,8 +340,8 @@ def _render_ema_detail(r) -> None:
 
     # EMA line
     lines_out.append(
-        f'<b>EMA:</b> EMA13 <b style="color:var(--text-primary)">Rp{ema13:,.0f}</b> · '
-        f'EMA89 <b style="color:var(--text-secondary)">Rp{ema89:,.0f}</b> · '
+        f'<b>EMA:</b> EMA13 <b style="color:#E2E8F0">Rp{ema13:,.0f}</b> · '
+        f'EMA89 <b style="color:#94A3B8">Rp{ema89:,.0f}</b> · '
         f'Gap <b style="color:{"#00FF66" if ema_gap_pct>0 else "#EF4444"}">{ema_gap_pct:+.1f}%</b> · '
         f'vs EMA13 <b style="color:{"#00FF66" if pct_vs_ema13>0 else "#EF4444"}">{pct_vs_ema13:+.1f}%</b>'
     )
@@ -360,8 +360,8 @@ def _render_ema_detail(r) -> None:
     if sl > 0 and tp1 > 0:
         lines_out.append(
             f'<b>Risk:</b> Entry Rp{close:,.0f} · '
-            f'SL <b style="color:var(--c-danger)">Rp{sl:,.0f}</b> ({risk:.0f}%) · '
-            f'TP1 <b style="color:var(--accent)">Rp{tp1:,.0f}</b> · '
+            f'SL <b style="color:#EF4444">Rp{sl:,.0f}</b> ({risk:.0f}%) · '
+            f'TP1 <b style="color:#00FF66">Rp{tp1:,.0f}</b> · '
             f'TP2 Rp{tp2:,.0f} · R:R {rr:.1f}:1'
         )
 
@@ -387,14 +387,14 @@ def _render_ema_detail(r) -> None:
 
     if daily_pattern:
         d_col    = "#00FF66" if daily_ok else "#F0B429" if "WAIT" in daily_pattern else "#94A3B8"
-        dual_badge = ('<span style="background:var(--accent);color:#000;font-weight:700;'
+        dual_badge = ('<span style="background:#00FF66;color:#000;font-weight:700;'
                       'font-family:Orbitron,monospace;font-size:var(--text-2xs);border-radius:var(--r-sm);'
                       'padding:1px 7px;margin-right:0.4rem">✦ DUAL CONFIRM</span>' if dual_ok else "")
-        ema5_str = f'EMA5d <b style="color:var(--text-primary)">Rp{ema5d_v:,.0f}</b> · ' if ema5d_v else ""
+        ema5_str = f'EMA5d <b style="color:#E2E8F0">Rp{ema5d_v:,.0f}</b> · ' if ema5d_v else ""
         lines_out.append(
             f'{dual_badge}<b>EMA Daily:</b> {ema5_str}'
-            f'EMA13d <b style="color:var(--text-primary)">Rp{ema13d_v:,.0f}</b> · '
-            f'EMA89d <b style="color:var(--text-secondary)">Rp{ema89d_v:,.0f}</b> · '
+            f'EMA13d <b style="color:#E2E8F0">Rp{ema13d_v:,.0f}</b> · '
+            f'EMA89d <b style="color:#94A3B8">Rp{ema89d_v:,.0f}</b> · '
             f'vs EMA13d <b style="color:{"#00FF66" if pct_ema13d>=0 else "#EF4444"}">{pct_ema13d:+.1f}%</b> · '
             f'Vol <b style="color:{"#00FF66" if vol_d>=1.5 else "#F0B429"}">{vol_d:.1f}×</b> · '
             f'<b style="color:{d_col}">{daily_pattern}</b>'
@@ -413,8 +413,8 @@ def _render_ema_detail(r) -> None:
         sc = ("#00FF66" if ms_struct in ("HH_HL","TRENDING_UP") else
               "#F0B429" if ms_struct in ("LH_HL","RECOVERING","HH_LL") else
               "#EF4444" if ms_struct in ("LH_LL","TRENDING_DOWN") else "#94A3B8")
-        boost_str = (f' <b style="color:var(--accent)">+{ms_boost} conv</b>' if ms_boost>0 else
-                     f' <b style="color:var(--c-danger)">{ms_boost} conv</b>' if ms_boost<0 else "")
+        boost_str = (f' <b style="color:#00FF66">+{ms_boost} conv</b>' if ms_boost>0 else
+                     f' <b style="color:#EF4444">{ms_boost} conv</b>' if ms_boost<0 else "")
         lines_out.append(
             f'<b>Market Structure:</b> <b style="color:{sc}">{ms_struct}</b>{boost_str} · '
             f'{ms_age} · {ms_slope}'
@@ -440,7 +440,7 @@ def _render_ema_detail(r) -> None:
         _reasons_str = " · ".join(_reasons[:4]) if _reasons else ""
 
         lines_out.append(
-            f'<div style="background:{_lbg};border:1px solid {_lcol}40;'            'border-radius:var(--r-md);padding:.5rem .8rem;margin:.3rem 0">'            '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.25rem">'            '<span style="font-family:Orbitron,monospace;font-size:var(--text-2xs);'            f'font-weight:800;color:{_lcol}">◈ {_idx}</span>'            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'            f'color:{_lcol}">{_lv} · T-{_t} · Conv {_mc}/12</span>'            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'            f'color:var(--text-muted)">Eff: {_eff}</span>'            '</div>'            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'            f'color:var(--text-secondary)">{_reasons_str}</div>'            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'            f'color:{_lcol};margin-top:.2rem">{_note}</div>'            '</div>'
+            f'<div style="background:{_lbg};border:1px solid {_lcol}40;'            'border-radius:var(--r-md);padding:.5rem .8rem;margin:.3rem 0">'            '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.25rem">'            '<span style="font-family:Orbitron,monospace;font-size:var(--text-2xs);'            f'font-weight:800;color:{_lcol}">◈ {_idx}</span>'            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'            f'color:{_lcol}">{_lv} · T-{_t} · Conv {_mc}/12</span>'            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'            f'color:#64748B">Eff: {_eff}</span>'            '</div>'            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'            f'color:#94A3B8">{_reasons_str}</div>'            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'            f'color:{_lcol};margin-top:.2rem">{_note}</div>'            '</div>'
         )
 
     # Action
@@ -469,7 +469,7 @@ def _render_ema_detail(r) -> None:
     # Render
     rows_html = "".join([  # noqa: F841
         f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
-        f'color:var(--text-secondary);line-height:2.1;padding:2px 0 2px var(--sp-3);'
+        f'color:#94A3B8;line-height:2.1;padding:2px 0 2px var(--sp-3);'
         f'border-left:2px solid rgba(255,255,255,0.04)">{ln}</div>'
         for ln in lines_out
     ])
@@ -481,9 +481,9 @@ border-left:4px solid {v_col};border-radius:var(--r-md);padding:0.9rem 1.1rem;ma
   <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.6rem;
   padding-bottom:0.5rem;border-bottom:1px solid rgba(255,255,255,0.05)">
     <span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:900;
-    color:var(--text-primary)">{ticker}</span>
+    color:#E2E8F0">{ticker}</span>
     <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-    color:var(--text-dim)">EMA-XBO · Score {score}/8 · Vol {vol:.1f}×</span>
+    color:#374151">EMA-XBO · Score {score}/8 · Vol {vol:.1f}×</span>
     <span style="background:{v_col}18;border:1px solid {v_col}45;border-radius:var(--r-sm);
     padding:2px 10px;font-family:Orbitron,monospace;font-size:var(--text-xs);
     font-weight:700;color:{v_col};margin-left:auto">{verdict}</span>
@@ -492,7 +492,7 @@ border-left:4px solid {v_col};border-radius:var(--r-md);padding:0.9rem 1.1rem;ma
   <div style="background:rgba(0,0,0,0.25);border:1px solid {phase_col}30;
   border-radius:var(--r-sm);padding:0.55rem 0.9rem;margin-top:0.6rem;
   font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-  color:var(--text-primary);line-height:1.8">
+  color:#E2E8F0;line-height:1.8">
     <span style="color:{phase_col};font-weight:700">→ </span>{action}
   </div>
 </div>
@@ -554,7 +554,7 @@ with st.sidebar:
         n = stats.get("total_closed", 0)
         wr = stats.get("win_rate")
         st.markdown("---")
-        st.markdown(f"""<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--text-dim)">
+        st.markdown(f"""<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#374151">
         OUTCOME TRACKER<br>
         <span style="color:{'#00FF66' if n>=30 else '#F0B429' if n>0 else '#EF4444'};font-size:var(--text-sm)">
         {n}/30 closed</span>
@@ -615,9 +615,9 @@ with cb:
     run_scan = st.button("⟳ RUN NEW SCAN", type="primary", width="stretch")
 with ci:
     st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-    letter-spacing:0.1em;color:var(--text-muted);margin-top:0.65rem;line-height:1.7">
+    letter-spacing:0.1em;color:#64748B;margin-top:0.65rem;line-height:1.7">
     Full two-tier EMA scan · IDX universe · ~3-5 min · Auto-save<br>
-    <span style="color:var(--text-dim)">V4: EWM optimized · MCF bear-safe · EMA200 3y data · Risk warnings</span>
+    <span style="color:#374151">V4: EWM optimized · MCF bear-safe · EMA200 3y data · Risk warnings</span>
     </p>""", unsafe_allow_html=True)
 
 if run_scan:
@@ -675,7 +675,7 @@ if ema_results:
                     for a in _msci_high[:5]
                 )
                 _high_str = ('<div style="font-family:Share Tech Mono,monospace;'
-                             'font-size:var(--text-xs);color:var(--accent);margin-top:.25rem">'
+                             'font-size:var(--text-xs);color:#00FF66;margin-top:.25rem">'
                              f'★ HIGH CONVICTION: {_high_tickers}</div>')
             st.markdown(f"""
 <div style="background:{_pbg};border:1px solid {_pcol}55;border-left:4px solid {_pcol};
@@ -685,7 +685,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
     color:{_pcol}">◈ {_idx} REBALANCING WINDOW</span>
     <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:{_pcol}">
     T-{_t} HARI · EFFECTIVE {_eff} · {_ph}</span>
-    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--text-muted)">
+    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#64748B">
     {len(_msci_high)} high conviction alerts</span>
   </div>
   {_high_str}
@@ -695,10 +695,10 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
     # Show bear market notice
     if cycle in ("BEAR_TREND", "WATCHLIST_ONLY"):
         st.markdown("""<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.4);
-        border-left:4px solid var(--c-danger);border-radius:var(--r-md);padding:0.8rem 1rem;margin:1rem 0">
-        <span style="font-family:Orbitron,monospace;font-size:var(--text-xs);font-weight:800;color:var(--c-danger)">
+        border-left:4px solid #EF4444;border-radius:var(--r-md);padding:0.8rem 1rem;margin:1rem 0">
+        <span style="font-family:Orbitron,monospace;font-size:var(--text-xs);font-weight:800;color:#EF4444">
         ⛔ BEAR REGIME AKTIF</span><br>
-        <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--text-secondary)">
+        <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#94A3B8">
         Regime WATCHLIST_ONLY: EMA system melarang semua entry. Semua sinyal MCF JOIN
         otomatis di-block. Gunakan waktu ini untuk mempersiapkan watchlist saja.
         </span></div>""", unsafe_allow_html=True)
@@ -726,9 +726,9 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                 # FIX V4: Risk warning badge inline
                 risk_badge = ""
                 if risk > 25:
-                    risk_badge = f'<span style="background:rgba(239,68,68,0.15);color:var(--c-danger);border:1px solid #EF444455;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
+                    risk_badge = f'<span style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid #EF444455;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
                 elif risk > 15:
-                    risk_badge = f'<span style="background:rgba(240,180,41,0.15);color:var(--c-warning);border:1px solid #F0B42955;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
+                    risk_badge = f'<span style="background:rgba(240,180,41,0.15);color:#F0B429;border:1px solid #F0B42955;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
 
                 _sig    = r.get("signal","BREAKOUT")
                 _vp     = r.get("vp_entry_zone","")
@@ -736,16 +736,16 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                 _is_strong = _sig == "STRONG_BREAKOUT"
                 _card_cls = "signal-card strong-breakout" if _is_strong else "signal-card"
                 _sig_col = SIG_COLORS.get(_sig, "#00FF66")
-                _dual_tag = '<span style="background:rgba(0,255,102,0.08);border:1px solid rgba(0,255,102,0.2);border-radius:var(--r-md);padding:1px 6px;font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--accent)">✓ DUAL</span>' if _dual else ""
+                _dual_tag = '<span style="background:rgba(0,255,102,0.08);border:1px solid rgba(0,255,102,0.2);border-radius:var(--r-md);padding:1px 6px;font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#00FF66">✓ DUAL</span>' if _dual else ""
                 st.markdown(f"""<div class="{_card_cls}" style="--sc:{_sig_col}">
                   <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap">
-                    <span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:900;color:var(--text-primary);letter-spacing:0.03em">{ticker}</span>
+                    <span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:900;color:#E2E8F0;letter-spacing:0.03em">{ticker}</span>
                     {signal_badge(_sig)}
                     {score_badge(score)}
                     {vp_zone_pill(_vp)}
                     {_dual_tag}
                     {risk_badge}
-                    <span style="margin-left:auto;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--text-muted)">Vol {vol:.1f}× · Risk {risk:.0f}%</span>
+                    <span style="margin-left:auto;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#64748B">Vol {vol:.1f}× · Risk {risk:.0f}%</span>
                   </div>
                 </div>""", unsafe_allow_html=True)
 
@@ -792,7 +792,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
 
         with st.container():
             st.markdown("""<div style="font-family:Share Tech Mono,monospace;
-            font-size:var(--text-2xs);letter-spacing:.15em;color:var(--text-dim);
+            font-size:var(--text-2xs);letter-spacing:.15em;color:#374151;
             margin-bottom:.4rem">◆ FILTER CONTROLS</div>""",
             unsafe_allow_html=True)
 
@@ -884,10 +884,10 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
         hidden = len(rest) - len(filtered)
         st.markdown(
             f"""<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-            color:var(--text-dim);margin:.3rem 0 .5rem">
-            Menampilkan <b style="color:var(--text-primary)">{len(filtered)}</b> / {len(rest)} setups
-            {f'· <span style="color:var(--c-warning)">{hidden} tersembunyi oleh filter</span>' if hidden else ''}
-            · Sort: <b style="color:var(--c-info)">{sort_key}</b>
+            color:#374151;margin:.3rem 0 .5rem">
+            Menampilkan <b style="color:#E2E8F0">{len(filtered)}</b> / {len(rest)} setups
+            {f'· <span style="color:#F0B429">{hidden} tersembunyi oleh filter</span>' if hidden else ''}
+            · Sort: <b style="color:#60A5FA">{sort_key}</b>
             </div>""",
             unsafe_allow_html=True
         )
