@@ -99,7 +99,7 @@ def _render_mcf_block(r, lines_out: list) -> None:
                else "rgba(240,180,41,0.05)" if mcf_label == "WAIT"
                else "rgba(239,68,68,0.04)")
 
-    def _pill(n, max_n=3, col="var(--accent)"):
+    def _pill(n, max_n=3, col="#00FF66"):
         filled = "█" * n
         empty  = "░" * (max_n - n)
         return f'<b style="color:{col};font-family:monospace">{filled}</b><span style="color:var(--text-dim)">{empty}</span>'
@@ -342,8 +342,8 @@ def _render_ema_detail(r) -> None:
     lines_out.append(
         f'<b>EMA:</b> EMA13 <b style="color:var(--text-primary)">Rp{ema13:,.0f}</b> · '
         f'EMA89 <b style="color:var(--text-secondary)">Rp{ema89:,.0f}</b> · '
-        f'Gap <b style="color:{"var(--accent)" if ema_gap_pct>0 else "var(--c-danger)"}">{ema_gap_pct:+.1f}%</b> · '
-        f'vs EMA13 <b style="color:{"var(--accent)" if pct_vs_ema13>0 else "var(--c-danger)"}">{pct_vs_ema13:+.1f}%</b>'
+        f'Gap <b style="color:{"#00FF66" if ema_gap_pct>0 else "#EF4444"}">{ema_gap_pct:+.1f}%</b> · '
+        f'vs EMA13 <b style="color:{"#00FF66" if pct_vs_ema13>0 else "#EF4444"}">{pct_vs_ema13:+.1f}%</b>'
     )
 
     # Volume line
@@ -351,9 +351,9 @@ def _render_ema_detail(r) -> None:
     vol_lbl = "EKSTREM" if vol>=6 else "SPIKE" if vol>=3 else "ELEVATED" if vol>=1.3 else "NORMAL"
     lines_out.append(
         f'<b>Volume:</b> <b style="color:{vol_col}">{vol:.1f}× — {vol_lbl}</b> · '
-        f'Score <b style="color:{"var(--accent)" if score>=5 else "var(--c-warning)" if score>=3 else "var(--text-secondary)"}">{score}/8</b> · '
-        f'RS <b style="color:{"var(--accent)" if rs>0 else "var(--c-danger)"}">{rs:+.1f}%</b>'
-        + (f' · Regime <b style="color:{"var(--c-danger)" if regime=="WATCHLIST_ONLY" else "var(--text-muted)"}">{regime}</b>' if regime else '')
+        f'Score <b style="color:{"#00FF66" if score>=5 else "#F0B429" if score>=3 else "#94A3B8"}">{score}/8</b> · '
+        f'RS <b style="color:{"#00FF66" if rs>0 else "#EF4444"}">{rs:+.1f}%</b>'
+        + (f' · Regime <b style="color:{"#EF4444" if regime=="WATCHLIST_ONLY" else "#64748B"}">{regime}</b>' if regime else '')
     )
 
     # Risk line
@@ -395,8 +395,8 @@ def _render_ema_detail(r) -> None:
             f'{dual_badge}<b>EMA Daily:</b> {ema5_str}'
             f'EMA13d <b style="color:var(--text-primary)">Rp{ema13d_v:,.0f}</b> · '
             f'EMA89d <b style="color:var(--text-secondary)">Rp{ema89d_v:,.0f}</b> · '
-            f'vs EMA13d <b style="color:{"var(--accent)" if pct_ema13d>=0 else "var(--c-danger)"}">{pct_ema13d:+.1f}%</b> · '
-            f'Vol <b style="color:{"var(--accent)" if vol_d>=1.5 else "var(--c-warning)"}">{vol_d:.1f}×</b> · '
+            f'vs EMA13d <b style="color:{"#00FF66" if pct_ema13d>=0 else "#EF4444"}">{pct_ema13d:+.1f}%</b> · '
+            f'Vol <b style="color:{"#00FF66" if vol_d>=1.5 else "#F0B429"}">{vol_d:.1f}×</b> · '
             f'<b style="color:{d_col}">{daily_pattern}</b>'
             + (f' — {daily_note}' if daily_note else '')
         )
@@ -410,9 +410,9 @@ def _render_ema_detail(r) -> None:
     ms_sup_d   = _g("ms_support_dist_pct",0)
 
     if ms_struct:
-        sc = ("var(--accent)" if ms_struct in ("HH_HL","TRENDING_UP") else
-              "var(--c-warning)" if ms_struct in ("LH_HL","RECOVERING","HH_LL") else
-              "var(--c-danger)" if ms_struct in ("LH_LL","TRENDING_DOWN") else "var(--text-secondary)")
+        sc = ("#00FF66" if ms_struct in ("HH_HL","TRENDING_UP") else
+              "#F0B429" if ms_struct in ("LH_HL","RECOVERING","HH_LL") else
+              "#EF4444" if ms_struct in ("LH_LL","TRENDING_DOWN") else "#94A3B8")
         boost_str = (f' <b style="color:var(--accent)">+{ms_boost} conv</b>' if ms_boost>0 else
                      f' <b style="color:var(--c-danger)">{ms_boost} conv</b>' if ms_boost<0 else "")
         lines_out.append(
@@ -434,7 +434,7 @@ def _render_ema_detail(r) -> None:
         _reasons = _ma.get("reasons", [])
 
         _lcol = ("#00FF66" if _lv == "HIGH_CONVICTION" else
-                 "var(--c-warning)" if _lv == "MEDIUM" else "var(--c-info)")
+                 "#F0B429" if _lv == "MEDIUM" else "#60A5FA")
         _lbg  = ("rgba(0,255,102,0.06)" if _lv == "HIGH_CONVICTION" else
                  "rgba(240,180,41,0.05)" if _lv == "MEDIUM" else "rgba(74,158,255,0.04)")
         _reasons_str = " · ".join(_reasons[:4]) if _reasons else ""
@@ -556,7 +556,7 @@ with st.sidebar:
         st.markdown("---")
         st.markdown(f"""<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--text-dim)">
         OUTCOME TRACKER<br>
-        <span style="color:{'var(--accent)' if n>=30 else 'var(--c-warning)' if n>0 else 'var(--c-danger)'};font-size:var(--text-sm)">
+        <span style="color:{'#00FF66' if n>=30 else '#F0B429' if n>0 else '#EF4444'};font-size:var(--text-sm)">
         {n}/30 closed</span>
         {f' · WR {wr:.0f}%' if wr is not None else ' · WR N/A'}
         </div>""", unsafe_allow_html=True)
@@ -591,13 +591,13 @@ mcf_join    = [r for r in ema_results if r.get("mcf_label") == "JOIN" and not r.
 
 c1,c2,c3,c4,c5,c6,c7 = st.columns(7)
 metrics = [
-    (c1, "TOTAL SETUPS",   len(ema_results),    "var(--text-primary)", "SCANNED TODAY"),
+    (c1, "TOTAL SETUPS",   len(ema_results),    "#E2E8F0", "SCANNED TODAY"),
     (c2, "◉ BREAKOUTS",    len(breakouts),      NEON_GREEN,"HIGH CONVICTION"),
-    (c3, "◎ WATCHLIST",    len(watchlists),     "var(--c-warning)", "MONITORING"),
-    (c4, "◌ CORRECTING",   len(correcting),     "var(--c-warning)", "PULLBACK"),
+    (c3, "◎ WATCHLIST",    len(watchlists),     "#F0B429", "MONITORING"),
+    (c4, "◌ CORRECTING",   len(correcting),     "#F0B429", "PULLBACK"),
     (c5, "◈ MCF JOIN",     len(mcf_join),       NEON_GREEN,"VALID (non-bear)"),
-    (c6, "⛔ BEAR BLOCKED", bear_blocked_count,  "var(--c-danger)", "MCF overridden"),
-    (c7, "UNIVERSE",       universe,            "var(--text-primary)", "STOCKS"),
+    (c6, "⛔ BEAR BLOCKED", bear_blocked_count,  "#EF4444", "MCF overridden"),
+    (c7, "UNIVERSE",       universe,            "#E2E8F0", "STOCKS"),
 ]
 for col, label, val, color, sub in metrics:
     with col:
@@ -726,9 +726,9 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                 # FIX V4: Risk warning badge inline
                 risk_badge = ""
                 if risk > 25:
-                    risk_badge = f'<span style="background:rgba(239,68,68,0.15);color:var(--c-danger);border:1px solid var(--c-danger)55;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
+                    risk_badge = f'<span style="background:rgba(239,68,68,0.15);color:var(--c-danger);border:1px solid #EF444455;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
                 elif risk > 15:
-                    risk_badge = f'<span style="background:rgba(240,180,41,0.15);color:var(--c-warning);border:1px solid var(--c-warning)55;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
+                    risk_badge = f'<span style="background:rgba(240,180,41,0.15);color:var(--c-warning);border:1px solid #F0B42955;border-radius:var(--r-sm);padding:1px 6px;font-size:var(--text-2xs);margin-left:0.4rem">⚠ RISK {risk:.0f}%</span>'
 
                 _sig    = r.get("signal","BREAKOUT")
                 _vp     = r.get("vp_entry_zone","")

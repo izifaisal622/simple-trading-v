@@ -1,10 +1,11 @@
 {
-  "version": "8.1.2",
+  "version": "8.1.3",
   "codename": "DAILY-ENGINE-V1",
   "date": "2026-06-13",
   "changelog": [
-    "8.1.2 — FIX: 1_EMA_XBO.py — semua var(--x) di Python assignments (phase_col, mcf_col, card_border, _sig_col, badge_col, risk_badge) diganti hex resolved; eliminasi raw HTML di breakout card header",
-    "8.1.1 — FIX: assets_ui.py — SIG_COLORS, VP_ZONE_COLORS, REGIME_COLORS, score_badge, signal_badge semua var() → hex",
+    "8.1.3 — FIX: 1_EMA_XBO.py — full sweep var() replacement: opacity suffix concat (var(--x)55), ternary string values, risk_badge, all inline color Python values → hex resolved",
+    "8.1.2 — FIX: 1_EMA_XBO.py — partial var() fix Python assignments",
+    "8.1.1 — FIX: assets_ui.py — SIG_COLORS, VP_ZONE_COLORS, REGIME_COLORS → hex",
     "8.1.0 — FEAT: DailyEMAEngine — daily primary scan"
   ]
 }
