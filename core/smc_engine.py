@@ -6,8 +6,8 @@ UPGRADE V2:
 Changes from V1:
   • Typed accessors (_f) throughout — eliminates all Pylance implicit-Any
   • SMCResult extended: choch_type (MINOR/MAJOR), bos_strength, liquidity_zones
-  • _find_order_blocks: vectorized price comparison using pandas loc instead of
-    Python loop with try/except — ~60% faster on 500-ticker scan
+  • _find_order_blocks: OB confirmation window diperluas 1-bar → 3-bar (V3 fix)
+    untuk tangkap impulse IDX yang sering butuh 2-3 bar untuk terkonfirmasi
   • _find_fvgs: FVG filter added — only report FVGs with gap_pct >= 0.3%
     (eliminates micro-gaps that are meaningless in IDX context)
   • _check_liquidity_sweep: extended to detect both high sweeps AND low sweeps
@@ -98,14 +98,15 @@ class SMCEngine:
             return "LH_LL"
         return "MIXED"
 
-    # ── Order blocks — vectorized (V2) ────────────────────────────────────────
+    # ── Order blocks — 3-bar window (V3 fix) ───────────────────────────────────
 
     def _find_order_blocks(self, df: pd.DataFrame) -> tuple[float, float]:
         """
         Find last bullish OB (last bearish candle before strong up move)
         and last bearish OB (last bullish candle before strong down move).
 
-        V2: vectorized — no Python loop with try/except, ~60% faster.
+        V2 claimed vectorized tapi implementasinya masih loop (documentation debt).
+        V3 fix: lookahead diperluas dari 1-bar ke 3-bar window (SMC-3 fix).
         """
         close  = df["Close"]
         open_  = df["Open"]

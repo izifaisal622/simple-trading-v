@@ -1529,11 +1529,15 @@ class DailyEMAEngine:
                 "rs_signal":       rs_sig,
 
                 # ATR / exit
+                # [TE-6 FIX] holding_days_est: pakai dist_to_tp1 / ATR seperti
+                # EMABreakoutEngine, bukan formula 3/atr_pct yang tidak masuk akal.
+                # Formula lama: ATR 2% → 3/0.02 = 150 hari (terlalu besar).
+                # Formula baru: dist ke TP1 dibagi ATR per bar = estimasi hari wajar.
                 "atr14":           last_atr,
                 "trail_stop_1atr": entry_price - last_atr,
                 "trail_stop_2atr": entry_price - 2 * last_atr,
                 "exit_ema_break":  last_ema13,
-                "holding_days_est":int(3 / max(atr_pct / 100, 0.005)),
+                "holding_days_est":int((tp1_price - entry_price) / last_atr) if last_atr > 0 else 10,
 
                 # Risk
                 "entry_price":     entry_price,

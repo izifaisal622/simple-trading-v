@@ -1,8 +1,9 @@
 {
-  "version": "8.2.5",
+  "version": "8.2.6",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-13",
   "changelog": [
+    "8.2.6 \u2014 FIX: [DF-4] delisted 2x confirm, [DF-3] weekend stale check, [SA-1] MS penalty flag, [TE-6] holding_days_est formula, [SMC-4] docstring misleading",
     "8.2.5 \u2014 FIX: technical_engine + smc_engine \u2014 [TE-1] ATR formula di VP scoring, [TE-2] DailyEMAEngine threshold ipo/data_limited, [SMC-3] OB lookahead 1-bar \u2192 3-bar",
     "8.2.4 \u2014 FIX: data_feed \u2014 [DF-2] breadth formula invalid di get_ihsg_regime, [NEW-2] DataFeed daily period 60d \u2192 1y agar EMA89 konvergen",
     "8.2.3 \u2014 CHORE: tambah .streamlit/secrets.toml.example sebagai template API key",

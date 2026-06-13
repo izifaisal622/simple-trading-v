@@ -153,8 +153,26 @@ class ScannerAgent:
                 ema89_series = ema89_s,
             )
             r.update(ms)
-            boost    = ms.get("ms_conviction_boost", 0)
-            r["score"] = max(0, min(8, r.get("score", 0) + boost))
+            boost      = ms.get("ms_conviction_boost", 0)
+            score_pre  = r.get("score", 0)
+            score_post = max(0, min(8, score_pre + boost))
+            r["score"] = score_post
+
+            # [SA-1 FIX] Flag jika MS penalty drop signal yang sudah lolos filter.
+            # Tanpa flag ini, saham bisa hilang dari hasil scan secara silent —
+            # score turun di bawah 3 setelah filter score >= 3 sudah lewat.
+            # Solusi: jangan drop dari hasil, tapi flag agar user sadar.
+            if boost < 0 and score_post < 3:
+                flags = r.get("flags", [])
+                flags.append(
+                    f"⚠ MS penalty {boost:+d} → score {score_pre}→{score_post} "
+                    f"(struktur: {ms.get('ms_structure','?')})"
+                )
+                r["flags"] = flags
+                # Pertahankan signal tapi downgrade ke WATCHLIST
+                if r.get("signal") in ("BREAKOUT", "STRONG_BREAKOUT"):
+                    r["signal"] = "WATCHLIST"
+                    flags.append("MS downgrade → WATCHLIST")
         except Exception as exc:
             logger.debug(f"[Scanner] {ticker} MS boost: {exc}")
 

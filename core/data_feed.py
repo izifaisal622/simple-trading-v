@@ -168,21 +168,32 @@ def _is_cache_stale_trading(last_date: datetime) -> bool:
     Cache dianggap stale jika:
     - last_date adalah hari kerja sebelumnya DAN
     - sekarang sudah melewati jam 08:00 WIB hari kerja berikutnya
-    Ini memastikan scan hari ini selalu fetch bar terbaru,
-    bukan return cache kemarin yang gap-nya 0 hari secara calendar.
+
+    [DF-3 FIX] Weekend handling:
+    - Sabtu/Minggu bukan hari trading → cache Jumat tidak stale saat weekend
+    - last_trading_day dihitung mundur dari today, skip Sabtu(5) dan Minggu(6)
+    - Cache dianggap fresh jika last_date >= last_trading_day
     """
     import pytz
     wib = pytz.timezone("Asia/Jakarta")
-    now_wib = datetime.now(wib).replace(tzinfo=None)
-    now_date = now_wib.date()
+    now_wib      = datetime.now(wib).replace(tzinfo=None)
+    now_date     = now_wib.date()
     last_date_only = last_date.date()
 
-    # Kalau last_date sudah hari ini → masih fresh
-    if last_date_only >= now_date:
+    # Hitung last trading day (mundur dari today, skip weekend)
+    from datetime import date as _date
+    candidate = now_date
+    steps = 0
+    while candidate.weekday() >= 5:   # 5=Sabtu, 6=Minggu
+        candidate = candidate - timedelta(days=1)
+        steps += 1
+    last_trading_day = candidate
+
+    # Cache masih fresh jika last_date >= last_trading_day
+    if last_date_only >= last_trading_day:
         return False
 
-    # Kalau last_date adalah kemarin atau lebih lama
-    # dan sekarang sudah jam 08:00 WIB → stale, perlu fetch baru
+    # Cache adalah bar sebelum last_trading_day → stale jika jam >= 08:00 WIB
     if now_wib.hour >= 8:
         return True
 
@@ -883,13 +894,44 @@ def fetch_dynamic_movers(max_tickers: int = _MOVERS_MAX) -> list:
         movers.sort(key=lambda x: -x["score"])
         result = [m["ticker"] for m in movers[:max_tickers]]
 
-        # Auto-register newly delisted tickers — skip yang punya data valid
+        # [DF-4 FIX] Auto-register delisted — dengan threshold konfirmasi.
+        # Bug lama: ticker yang gagal fetch karena network error / Yahoo timeout
+        # langsung di-blacklist permanen. Untuk IDX dengan 300 ticker, intermittent
+        # error saat bulk download cukup umum → saham valid masuk blacklist.
+        #
+        # Fix: hanya blacklist jika newly_delisted muncul di >= 2 scan berturut-turut.
+        # Implementasi: simpan "candidate_delisted" di movers_cache.json (count),
+        # baru pindah ke DELISTED_TICKERS setelah count >= 2.
         active_tickers = {m["ticker"] for m in movers}
-        confirmed_delisted = newly_delisted - active_tickers
-        if confirmed_delisted:
-            DELISTED_TICKERS.update(confirmed_delisted)
-            _save_delisted(DELISTED_TICKERS)
-            logger.info(f"[Movers] Auto-delisted: {sorted(confirmed_delisted)} — skip future scans")
+        confirmed_delisted_raw = newly_delisted - active_tickers
+
+        if confirmed_delisted_raw:
+            # Load kandidat dari cache sebelumnya
+            try:
+                raw_cache = json.loads(_MOVERS_CACHE_PATH.read_text(encoding="utf-8")) if _MOVERS_CACHE_PATH.exists() else {}
+            except Exception:
+                raw_cache = {}
+            candidates: dict = raw_cache.get("delisted_candidates", {})
+
+            to_blacklist: set = set()
+            for t in confirmed_delisted_raw:
+                count = candidates.get(t, 0) + 1
+                if count >= 2:
+                    to_blacklist.add(t)
+                    candidates.pop(t, None)   # keluar dari kandidat, masuk blacklist
+                else:
+                    candidates[t] = count     # pertama kali gagal — tunggu konfirmasi
+
+            # Simpan kandidat yang belum confirmed ke cache (akan dibaca scan berikutnya)
+            raw_cache["delisted_candidates"] = candidates
+
+            if to_blacklist:
+                DELISTED_TICKERS.update(to_blacklist)
+                _save_delisted(DELISTED_TICKERS)
+                logger.info(f"[Movers] Confirmed delisted (2x): {sorted(to_blacklist)}")
+
+            if candidates:
+                logger.debug(f"[Movers] Delisted candidates (1x, pending): {sorted(candidates.keys())}")
 
         if result:
             _save_movers_cache(result)
