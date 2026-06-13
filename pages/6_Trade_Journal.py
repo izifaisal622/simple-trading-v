@@ -497,7 +497,7 @@ def _call_gemini(
     if not api_key:
         return "❌ GEMINI_API_KEY tidak ditemukan di .streamlit/secrets.toml"
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
 
     parts = []
     # Multi-image (new path)
@@ -679,23 +679,30 @@ with t_ai:
         st.markdown("")
         _sec("CHALLENGE HISTORY — SESI INI")
 
-        history_count = len(st.session_state["ai_challenge_history"])
-        history_count_str = str(history_count)
+        history_list  = st.session_state["ai_challenge_history"]
+        history_count = len(history_list)
         st.markdown(
-            _mono(history_count_str + " challenge dalam sesi ini. History hilang saat page di-refresh.", TEXT_MUTED),
+            _mono(str(history_count) + " challenge dalam sesi ini. History hilang saat page di-refresh.", TEXT_MUTED),
             unsafe_allow_html=True,
         )
         st.markdown("")
 
-        for idx, h in enumerate(st.session_state["ai_challenge_history"]):
+        # Build tab labels
+        tab_labels = []
+        for idx, h in enumerate(history_list):
             h_ts      = h.get("timestamp", "")
             h_nimages = h.get("n_images", 0)
-            h_thesis  = h.get("thesis", "")
-            h_preview = h_thesis[:60] + "..." if len(h_thesis) > 60 else h_thesis
-            h_img_tag = "📎 " + str(h_nimages) + " img" if h_nimages else ""
-            h_label   = "#" + str(idx + 1) + " · " + h_ts + " · " + h_img_tag + " · " + h_preview
+            h_img_tag = "📎" if h_nimages else ""
+            tab_labels.append("#" + str(idx + 1) + " · " + h_ts + " " + h_img_tag)
 
-            with st.expander(h_label, expanded=False):
+        history_tabs = st.tabs(tab_labels)
+
+        for tab, h in zip(history_tabs, history_list):
+            with tab:
+                h_thesis  = h.get("thesis", "")
+                h_nimages = h.get("n_images", 0)
+                img_info  = str(h_nimages) + " screenshot terlampir" if h_nimages else "Tanpa screenshot"
+
                 thesis_html = (
                     '<div style="font-family:Share Tech Mono,monospace;font-size:11px;'
                     'color:' + TEXT_MUTED + ';margin-bottom:12px;'
@@ -704,4 +711,9 @@ with t_ai:
                     + '</div>'
                 )
                 st.markdown(thesis_html, unsafe_allow_html=True)
+                st.markdown(
+                    _mono(img_info, TEXT_MUTED),
+                    unsafe_allow_html=True,
+                )
+                st.markdown("")
                 st.markdown(h.get("response", ""))
