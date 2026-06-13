@@ -1,8 +1,9 @@
 {
-  "version": "8.1.9",
-  "codename": "DAILY-ENGINE-V1",
+  "version": "8.2.0",
+  "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-13",
   "changelog": [
+    "8.2.0 — FEAT: Trade Journal — tambah tab AI Challenge dengan Gemini 1.5 Flash, support upload chart/bid-offer screenshot",
     "8.1.9 — FIX: gate.py — swap MODULE 03 dan 04: Money Flow naik ke posisi kanan atas (MODULE 03), Stock Pick turun ke MODULE 04",
     "8.1.8 — FIX: orchestrator.py tambah mode flow",
     "8.1.7 — FIX: 3_Money_Flow.py scan() param fix",
