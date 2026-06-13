@@ -107,6 +107,42 @@ def _fetch_with_backup(ticker: str, period: str, interval: str) -> Optional[pd.D
 _CACHE_DIR = Path(__file__).parent.parent / "logs" / "data_cache"
 _CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def cleanup_orphan_cache(dry_run: bool = False) -> int:
+    """
+    [FD-1] Hapus cache file yang dibuat dengan hash berbasis period (format lama).
+    Format lama: BBCA_1d_<hash-dari-ticker+period+interval>.pkl
+    Format baru: BBCA_1d_<hash-dari-ticker+interval>.pkl
+    Keduanya punya nama yang sama dari luar tapi hash berbeda.
+    Utility ini bisa dipanggil manual atau sekali saat startup.
+    Returns jumlah file yang dihapus (atau kandidat jika dry_run=True).
+    """
+    if not _CACHE_DIR.exists():
+        return 0
+    # Hitung hash baru (tanpa period) untuk semua file yang ada
+    # File yang hash-nya tidak match format baru = orphan dari format lama
+    deleted = 0
+    for pkl_file in _CACHE_DIR.glob("*.pkl"):
+        stem = pkl_file.stem   # e.g. "BBCA_1d_abc123def456"
+        parts = stem.rsplit("_", 2)
+        if len(parts) < 3:
+            continue
+        ticker_base, interval_part, old_hash = parts[0], parts[1], parts[2]
+        ticker_jk = f"{ticker_base}.JK"
+        expected_hash = hashlib.md5(f"{ticker_jk}_{interval_part}".encode()).hexdigest()[:12]
+        if old_hash != expected_hash:
+            if not dry_run:
+                try:
+                    pkl_file.unlink()
+                    logger.debug(f"[Cache] Removed orphan: {pkl_file.name}")
+                except Exception:
+                    pass
+            deleted += 1
+    if deleted:
+        action = "Found" if dry_run else "Removed"
+        logger.info(f"[Cache] {action} {deleted} orphan cache file(s)")
+    return deleted
+
 _CACHE_TTL   = {"1wk": 6 * 24 * 3600, "1d": 20 * 3600}   # backward compat
 _FRESH_DAYS  = {"1wk": 6,  "1d": 1}
 _MAX_INC_DAYS = {"1wk": 60, "1d": 14}
@@ -114,7 +150,12 @@ _INC_OVERLAP  = 5
 
 
 def _cache_path(ticker: str, period: str, interval: str) -> Path:
-    key = hashlib.md5(f"{ticker}_{period}_{interval}".encode()).hexdigest()[:12]
+    # [FD-1 FIX] Hash hanya pakai ticker+interval, bukan period.
+    # Sebelumnya: period masuk hash → period berubah (60d→1y) membuat
+    # file cache baru, cache lama tidak pernah dibaca/dihapus → orphan accumulation.
+    # Fix: cache key = ticker+interval saja. Period hanya menentukan seberapa
+    # jauh ke belakang saat full re-fetch, bukan identity file cache.
+    key = hashlib.md5(f"{ticker}_{interval}".encode()).hexdigest()[:12]
     return _CACHE_DIR / f"{ticker.replace('.JK','').replace(' ','_')}_{interval}_{key}.pkl"
 
 
@@ -225,11 +266,47 @@ def _fetch_delta(ticker: str, last_date: datetime, interval: str) -> Optional[pd
     return _fetch_stooq_backup(ticker, interval)
 
 
-def _merge_incremental(existing: pd.DataFrame, delta: pd.DataFrame) -> pd.DataFrame:
+def _merge_incremental(
+    existing: pd.DataFrame,
+    delta:    pd.DataFrame,
+    ticker:   str = "",
+) -> pd.DataFrame | None:
+    """
+    Merge existing cache dengan delta fetch.
+
+    [FD-3 FIX] Deteksi post-split cache corruption:
+    Masalah: auto_adjust=True di yfinance retroaktif adjust harga saat split.
+    Cache lama (pre-fetch) punya harga scale lama. Delta (post-split) punya
+    scale baru. Merge menghasilkan price jump >50% di junction point.
+
+    Solusi: setelah merge, cek apakah ada single-bar change >50% di 10 bar
+    sekitar junction (overlap zone antara existing dan delta).
+    Jika ya → return None → caller akan trigger full re-fetch.
+    Ini lebih safe daripada mencoba detect split secara eksplisit.
+    """
     try:
         merged = pd.concat([existing, delta])
         merged = merged[~merged.index.duplicated(keep="last")]
-        return merged.sort_index()
+        merged = merged.sort_index()
+
+        # Cek corruption di junction zone (10 bar terakhir existing ∩ delta)
+        if "Close" in merged.columns and len(merged) >= 4:
+            # Ambil zona overlap: 10 bar sebelum akhir existing
+            junction_end   = existing.index[-1]
+            junction_start = existing.index[-min(10, len(existing))]
+            zone = merged.loc[junction_start:junction_start + pd.Timedelta(days=20)]
+            if len(zone) >= 2:
+                close_zone = zone["Close"].dropna()
+                if len(close_zone) >= 2:
+                    pct_chg = close_zone.pct_change().abs().dropna()
+                    if (pct_chg > 0.50).any():
+                        logger.warning(
+                            f"[DataFeed] {ticker} merge junction outlier >50% detected "
+                            f"— possible post-split stale cache. Triggering full re-fetch."
+                        )
+                        return None  # Signal ke caller untuk full re-fetch
+
+        return merged
     except Exception:
         return existing
 
@@ -524,10 +601,16 @@ class DataFeed:
                     logger.debug(f"[DataFeed] {ticker} ↑ incremental (gap={gap}d)")
                     delta = _fetch_delta(ticker, last_date, _interval)
                     if delta is not None and len(delta) > 0:
-                        merged = _merge_incremental(cached, delta)
-                        _cache_save(cpath, merged)
-                        return merged
-                    return cached
+                        merged = _merge_incremental(cached, delta, ticker=ticker)
+                        if merged is None:
+                            # [FD-3] Junction outlier detected → force full re-fetch
+                            logger.debug(f"[DataFeed] {ticker} merge failed junction check → full re-fetch")
+                            pass   # fall through ke full re-fetch di bawah
+                        else:
+                            _cache_save(cpath, merged)
+                            return merged
+                    else:
+                        return cached
                 # stale=True ATAU gap > max_inc_days → full re-fetch wajib
                 logger.debug(f"[DataFeed] {ticker} stale={stale} gap={gap}d → full re-fetch")
 
@@ -675,9 +758,12 @@ class DataFeed:
                     missing = [t for t in needs_full if t not in batch_res]
 
             if missing:
-                logger.info(f"[DataFeed] batch round 3: {len(missing)} → individual 1y")
+                # [FD-2 FIX] Gunakan _period bukan hardcode "1y".
+                # Untuk weekly feed (_period="3y"), "1y" hanya ~52 bar —
+                # di bawah threshold konvergensi EMA89 weekly (89 bar ~1.7 tahun).
+                logger.info(f"[DataFeed] batch round 3: {len(missing)} → individual {_period}")
                 with ThreadPoolExecutor(max_workers=max_workers) as exe:
-                    fut_map = {exe.submit(self.fetch, t, "1y", _interval): t for t in missing}
+                    fut_map = {exe.submit(self.fetch, t, _period, _interval): t for t in missing}
                     for fut in as_completed(fut_map):
                         t = fut_map[fut]
                         try:
@@ -798,11 +884,20 @@ def _load_movers_cache() -> list:
         return []
 
 
-def _save_movers_cache(tickers: list) -> None:
+def _save_movers_cache(tickers: list, extra: dict | None = None) -> None:
+    """
+    Simpan movers cache ke disk.
+    extra: dict tambahan yang ikut disimpan (mis. delisted_candidates).
+    [FD-4 FIX] _save_movers_cache sebelumnya hanya simpan date+tickers,
+    sehingga delisted_candidates yang diupdate di memory tidak pernah persist.
+    """
     try:
         _MOVERS_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        payload: dict = {"date": datetime.now().strftime("%Y-%m-%d"), "tickers": tickers}
+        if extra:
+            payload.update(extra)
         _MOVERS_CACHE_PATH.write_text(
-            json.dumps({"date": datetime.now().strftime("%Y-%m-%d"), "tickers": tickers}, indent=2),
+            json.dumps(payload, indent=2),
             encoding="utf-8",
         )
     except Exception as exc:
@@ -922,8 +1017,17 @@ def fetch_dynamic_movers(max_tickers: int = _MOVERS_MAX) -> list:
                 else:
                     candidates[t] = count     # pertama kali gagal — tunggu konfirmasi
 
-            # Simpan kandidat yang belum confirmed ke cache (akan dibaca scan berikutnya)
+            # [FD-4 FIX] Simpan kandidat ke disk segera — jangan tunggu _save_movers_cache
+            # karena _save_movers_cache dipanggil kondisional (if result:) dan
+            # sebelumnya tidak membawa delisted_candidates sama sekali.
             raw_cache["delisted_candidates"] = candidates
+            try:
+                _MOVERS_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+                _MOVERS_CACHE_PATH.write_text(
+                    json.dumps(raw_cache, indent=2), encoding="utf-8"
+                )
+            except Exception as _e:
+                logger.debug(f"[Movers] candidates persist failed: {_e}")
 
             if to_blacklist:
                 DELISTED_TICKERS.update(to_blacklist)
@@ -933,8 +1037,18 @@ def fetch_dynamic_movers(max_tickers: int = _MOVERS_MAX) -> list:
             if candidates:
                 logger.debug(f"[Movers] Delisted candidates (1x, pending): {sorted(candidates.keys())}")
 
+        # [FD-4 FIX] Kumpulkan extra data (termasuk delisted_candidates) untuk disimpan bersama.
+        # raw_cache mungkin tidak ter-inisialisasi jika confirmed_delisted_raw kosong.
+        extra_payload: dict = {}
+        try:
+            _rc = json.loads(_MOVERS_CACHE_PATH.read_text(encoding="utf-8")) if _MOVERS_CACHE_PATH.exists() else {}
+            if "delisted_candidates" in _rc:
+                extra_payload["delisted_candidates"] = _rc["delisted_candidates"]
+        except Exception:
+            pass
+
         if result:
-            _save_movers_cache(result)
+            _save_movers_cache(result, extra=extra_payload if extra_payload else None)
             top5 = [(m["ticker"], f"{m['pct_chg']:+.1f}%", f"{m['vol_ratio']:.1f}x")
                     for m in movers[:5]]
             logger.info(f"[Movers] {len(result)} movers found — top5: {top5}")
