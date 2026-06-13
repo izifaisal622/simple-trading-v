@@ -145,9 +145,11 @@ if run_scan:
     with st.spinner("◈ SCANNING MONEY FLOW · BROKER DATA · VOLUME PROXY..."):
         try:
             from agents.flow_scanner import FlowScanner
-            scanner = FlowScanner()
-            max_t   = int(mf_top_n)
-            results = scanner.scan(max_workers=int(mf_max_work), max_tickers=max_t)
+            from core.data_feed import get_dynamic_universe
+            scanner  = FlowScanner()
+            max_t    = int(mf_top_n)
+            universe = [t + ".JK" for t in get_dynamic_universe()][:max_t]
+            results  = scanner.scan(tickers=universe, max_workers=int(mf_max_work))
 
             # Apply vol filter
             results = [r for r in results if (r.get("vol_ratio") or 1.0) >= mf_min_vol]

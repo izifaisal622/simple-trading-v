@@ -1,11 +1,11 @@
 {
-  "version": "8.1.6",
+  "version": "8.1.7",
   "codename": "DAILY-ENGINE-V1",
   "date": "2026-06-13",
   "changelog": [
-    "8.1.6 — FIX: 1_EMA_XBO.py — eliminasi semua nested f-string: filter stats (Sort label) dan sidebar WR tracker; pre-build HTML parts sebagai variabel terpisah",
-    "8.1.5 — FIX: card render fundamental — ganti st.columns menjadi single st.markdown",
-    "8.1.4 — FIX: full sweep bare var() HTML strings",
+    "8.1.7 — FIX: 3_Money_Flow.py — scanner.scan() tidak punya param max_tickers; ganti ke tickers=universe[:max_t] slice dari get_dynamic_universe()",
+    "8.1.6 — FIX: nested f-string filter stats dan sidebar WR",
+    "8.1.5 — FIX: card render fundamental st.columns HTML bleed",
     "8.1.0 — FEAT: DailyEMAEngine"
   ]
 }
