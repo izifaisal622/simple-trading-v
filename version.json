@@ -1,9 +1,10 @@
 {
-  "version": "8.1.5",
+  "version": "8.1.6",
   "codename": "DAILY-ENGINE-V1",
   "date": "2026-06-13",
   "changelog": [
-    "8.1.5 — FIX FUNDAMENTAL: card render breakout — ganti st.columns+st.markdown menjadi single st.markdown tanpa column split; badge HTML di-build sebagai Python string dulu sebelum di-inject; eliminasi HTML fragment bocor antar cards",
+    "8.1.6 — FIX: 1_EMA_XBO.py — eliminasi semua nested f-string: filter stats (Sort label) dan sidebar WR tracker; pre-build HTML parts sebagai variabel terpisah",
+    "8.1.5 — FIX: card render fundamental — ganti st.columns menjadi single st.markdown",
     "8.1.4 — FIX: full sweep bare var() HTML strings",
     "8.1.0 — FEAT: DailyEMAEngine"
   ]

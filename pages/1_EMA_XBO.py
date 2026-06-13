@@ -554,12 +554,15 @@ with st.sidebar:
         n = stats.get("total_closed", 0)
         wr = stats.get("win_rate")
         st.markdown("---")
-        st.markdown(f"""<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#374151">
-        OUTCOME TRACKER<br>
-        <span style="color:{'#00FF66' if n>=30 else '#F0B429' if n>0 else '#EF4444'};font-size:var(--text-sm)">
-        {n}/30 closed</span>
-        {f' · WR {wr:.0f}%' if wr is not None else ' · WR N/A'}
-        </div>""", unsafe_allow_html=True)
+        _span_col = '#00FF66' if n>=30 else '#F0B429' if n>0 else '#EF4444'
+        _wr_str   = f' &middot; WR {wr:.0f}%' if wr is not None else ' &middot; WR N/A'
+        st.markdown(
+            f'<div style="font-family:Share Tech Mono,monospace;font-size:12px;color:#374151">'
+            f'OUTCOME TRACKER<br>'
+            f'<span style="color:{_span_col};font-size:14px">{n}/30 closed</span>'
+            f'{_wr_str}</div>',
+            unsafe_allow_html=True
+        )
     except Exception:
         pass
 
@@ -892,15 +895,17 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
 
         # Filter stats
         hidden = len(rest) - len(filtered)
-        st.markdown(
-            f"""<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-            color:#374151;margin:.3rem 0 .5rem">
-            Menampilkan <b style="color:#E2E8F0">{len(filtered)}</b> / {len(rest)} setups
-            {f'· <span style="color:#F0B429">{hidden} tersembunyi oleh filter</span>' if hidden else ''}
-            · Sort: <b style="color:#60A5FA">{sort_key}</b>
-            </div>""",
-            unsafe_allow_html=True
+        _hidden_html = f'<span style="color:#F0B429">{hidden} tersembunyi oleh filter</span>' if hidden else ''
+        _sep = ' &middot; ' if hidden else ''
+        _stats_html = (
+            f'<div style="font-family:Share Tech Mono,monospace;font-size:12px;'
+            f'color:#374151;margin:.3rem 0 .5rem">'
+            f'Menampilkan <b style="color:#E2E8F0">{len(filtered)}</b> / {len(rest)} setups'
+            f'{_sep}{_hidden_html}'
+            f' &middot; Sort: <b style="color:#60A5FA">{sort_key}</b>'
+            f'</div>'
         )
+        st.markdown(_stats_html, unsafe_allow_html=True)
 
         # ── Build table ─────────────────────────────────────────────────────────
         sig_icons = {"WATCHLIST":"◎","CORRECTING":"◌","DEEP_CORRECT":"◍"}
