@@ -94,7 +94,7 @@ def _render_mcf_block(r, lines_out: list) -> None:
         return
 
     # ── Normal MCF display (non-bear) ────────────────────────────────────────
-    mcf_col = "var(--accent)" if mcf_label == "JOIN" else "var(--c-warning)" if mcf_label == "WAIT" else "var(--c-danger)"
+    mcf_col = "#00FF66" if mcf_label == "JOIN" else "#F0B429" if mcf_label == "WAIT" else "#EF4444"
     mcf_bg  = ("rgba(0,255,102,0.06)" if mcf_label == "JOIN"
                else "rgba(240,180,41,0.05)" if mcf_label == "WAIT"
                else "rgba(239,68,68,0.04)")
@@ -104,9 +104,9 @@ def _render_mcf_block(r, lines_out: list) -> None:
         empty  = "░" * (max_n - n)
         return f'<b style="color:{col};font-family:monospace">{filled}</b><span style="color:var(--text-dim)">{empty}</span>'
 
-    mcf_col_m = "var(--accent)" if mcf_mom == 3 else "var(--c-warning)" if mcf_mom >= 2 else "var(--text-muted)"
-    mcf_col_v = "var(--accent)" if mcf_vol == 3 else "var(--c-warning)" if mcf_vol >= 2 else "var(--text-muted)"
-    mcf_col_f = "var(--accent)" if mcf_fu == 3 else "var(--c-warning)" if mcf_fu >= 2 else "var(--text-muted)"
+    mcf_col_m = "#00FF66" if mcf_mom == 3 else "#F0B429" if mcf_mom >= 2 else "#64748B"
+    mcf_col_v = "#00FF66" if mcf_vol == 3 else "#F0B429" if mcf_vol >= 2 else "#64748B"
+    mcf_col_f = "#00FF66" if mcf_fu == 3 else "#F0B429" if mcf_fu >= 2 else "#64748B"
 
     det_m = (mcf_detail.get("momentum", "") if isinstance(mcf_detail, dict) else "")[:90]
     det_v = (mcf_detail.get("volume",   "") if isinstance(mcf_detail, dict) else "")[:90]
@@ -188,15 +188,15 @@ def _render_risk_warning(r, lines_out: list) -> None:
     max_lot_str     = f"{max_lembar:,} lembar (Rp{max_lembar * entry_price / 1_000_000:.1f}jt)" if max_lembar > 0 else "kalkulasi manual"
 
     if risk_pct > 35:
-        badge_col  = "var(--c-danger)"
+        badge_col  = "#EF4444"
         badge_text = f"⛔ RISK {risk_pct:.0f}% — HAMPIR TIDAK TRADEABLE"
         detail     = f"SL terlalu jauh ({risk_pct:.0f}% dari entry). Dengan money management 1%, max sizing Rp{modal_default/1e6:.0f}jt modal: {max_lot_str}."
     elif risk_pct > 25:
-        badge_col  = "var(--c-danger)"
+        badge_col  = "#EF4444"
         badge_text = f"⚠ RISK {risk_pct:.0f}% — SANGAT LEBAR"
         detail     = f"Risk > 25%. Sizing harus sangat kecil. Max 1% modal: {max_lot_str}."
     else:
-        badge_col  = "var(--c-warning)"
+        badge_col  = "#F0B429"
         badge_text = f"⚠ RISK {risk_pct:.0f}% — HATI-HATI SIZING"
         detail     = f"Risk melebihi 15%. Kurangi ukuran posisi. Max 1% modal Rp{modal_default/1e6:.0f}jt: {max_lot_str}."
 
@@ -264,67 +264,67 @@ def _render_ema_detail(r) -> None:
 
     # ── Market Structure Phase ────────────────────────────────────────────────
     if not ema_crossed:
-        phase,phase_col = "BELOW_EMA","var(--c-danger)"
+        phase,phase_col = "BELOW_EMA","#EF4444"
         phase_desc = f"EMA13 Rp{ema13:,.0f} belum melewati EMA89 Rp{ema89:,.0f}. Gap {ema_gap_pct:+.1f}%. Belum ada setup."
     elif cross == "CROSSING":
-        phase,phase_col = "GOLDEN_CROSS","var(--accent)"
+        phase,phase_col = "GOLDEN_CROSS","#00FF66"
         phase_desc = f"EMA13 baru melewati EMA89 (gap {ema_gap_pct:+.1f}%). Early entry — risiko lebih tinggi tapi potensi besar."
     elif abs(pct_vs_ema13) <= 3:
         if vol >= 1.3:
-            phase,phase_col = "PULLBACK_TO_EMA_CONFIRMED","var(--accent)"
+            phase,phase_col = "PULLBACK_TO_EMA_CONFIRMED","#00FF66"
             phase_desc = f"Harga di EMA13 support ({pct_vs_ema13:+.1f}%) + volume naik {vol:.1f}×. Re-entry terbaik dalam uptrend."
         else:
-            phase,phase_col = "PULLBACK_TO_EMA_WATCH","var(--c-warning)"
+            phase,phase_col = "PULLBACK_TO_EMA_WATCH","#F0B429"
             phase_desc = f"Harga di EMA13 ({pct_vs_ema13:+.1f}%) tapi volume belum konfirmasi ({vol:.1f}×). Tunggu volume ≥1.5×."
     elif 3 < pct_vs_ema13 <= 12:
         if vol >= 3.0:
-            phase,phase_col = "BREAKOUT_CONFIRMED","var(--accent)"
+            phase,phase_col = "BREAKOUT_CONFIRMED","#00FF66"
             phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13 + vol {vol:.1f}×. Breakout terkonfirmasi institusi."
         elif vol >= 1.3:
-            phase,phase_col = "TREND_WITH_MOMENTUM","var(--accent)"
+            phase,phase_col = "TREND_WITH_MOMENTUM","#00FF66"
             phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13, vol {vol:.1f}×. Uptrend sehat. Entry masih bisa, R/R lebih tipis."
         else:
-            phase,phase_col = "TREND_NORMAL","var(--c-warning)"
+            phase,phase_col = "TREND_NORMAL","#F0B429"
             phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13, vol normal. Tunggu pullback ke EMA13 Rp{ema13:,.0f}."
     elif 12 < pct_vs_ema13 <= 25:
         if vol >= 6.0:
-            phase,phase_col = "INSTITUTIONAL_SPIKE","var(--accent)"
+            phase,phase_col = "INSTITUTIONAL_SPIKE","#00FF66"
             phase_desc = f"Harga extended {pct_vs_ema13:+.1f}% + vol EKSTREM {vol:.1f}×. Institutional block buy."
         else:
-            phase,phase_col = "EXTENDED_WAIT_PULLBACK","var(--c-warning)"
+            phase,phase_col = "EXTENDED_WAIT_PULLBACK","#F0B429"
             phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13 — mulai stretched. Tunggu pullback ke EMA13 Rp{ema13:,.0f}."
     elif pct_vs_ema13 > 25:
         if vol >= 6.0:
-            phase,phase_col = "BLOWOFF_VOLUME","var(--c-warning)"
+            phase,phase_col = "BLOWOFF_VOLUME","#F0B429"
             phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13 + vol {vol:.1f}×. Potensi climax. Hati-hati."
         else:
-            phase,phase_col = "POST_RUN_CORRECTION","var(--text-secondary)"
+            phase,phase_col = "POST_RUN_CORRECTION","#94A3B8"
             phase_desc = f"Harga {pct_vs_ema13:+.1f}% di atas EMA13. Fase koreksi. Jangan kejar."
     elif pct_vs_ema13 < -3:
         if pct_vs_ema89 > 0:
-            phase,phase_col = "DEEP_PULLBACK_EMA_INTACT","var(--c-warning)"
+            phase,phase_col = "DEEP_PULLBACK_EMA_INTACT","#F0B429"
             phase_desc = f"Di bawah EMA13 ({pct_vs_ema13:+.1f}%) tapi masih di atas EMA89 ({pct_vs_ema89:+.1f}%). Trend besar masih valid."
         else:
-            phase,phase_col = "TREND_BREAK","var(--c-danger)"
+            phase,phase_col = "TREND_BREAK","#EF4444"
             phase_desc = "Di bawah EMA13 DAN EMA89. Trend bullish terancam."
     else:
-        phase,phase_col = "WATCH","var(--text-muted)"
+        phase,phase_col = "WATCH","#64748B"
         phase_desc = "Monitor."
 
     # ── Verdict ───────────────────────────────────────────────────────────────
     # FIX V4: WATCHLIST_ONLY → verdict override ke BEAR WATCH
     if regime == "WATCHLIST_ONLY":
-        v_col,v_bg = "var(--c-danger)","rgba(239,68,68,0.04)"
+        v_col,v_bg = "#EF4444","rgba(239,68,68,0.04)"
         verdict    = "⛔ BEAR — WATCH ONLY"
     elif signal == "BREAKOUT" or phase in {"GOLDEN_CROSS","PULLBACK_TO_EMA_CONFIRMED",
                                             "BREAKOUT_CONFIRMED","TREND_WITH_MOMENTUM","INSTITUTIONAL_SPIKE"}:
-        v_col,v_bg = "var(--accent)","rgba(0,255,102,0.06)"
+        v_col,v_bg = "#00FF66","rgba(0,255,102,0.06)"
         verdict    = "ENTRY VALID"
     elif phase in {"PULLBACK_TO_EMA_WATCH","TREND_NORMAL","EXTENDED_WAIT_PULLBACK","DEEP_PULLBACK_EMA_INTACT"}:
-        v_col,v_bg = "var(--c-warning)","rgba(240,180,41,0.04)"
+        v_col,v_bg = "#F0B429","rgba(240,180,41,0.04)"
         verdict    = "WATCHLIST"
     else:
-        v_col,v_bg = "var(--text-secondary)","rgba(100,116,139,0.04)"  # noqa: F841
+        v_col,v_bg = "#94A3B8","rgba(100,116,139,0.04)"  # noqa: F841
         verdict    = "WAIT / SKIP"
 
     # ── Build lines ───────────────────────────────────────────────────────────
@@ -347,7 +347,7 @@ def _render_ema_detail(r) -> None:
     )
 
     # Volume line
-    vol_col = "var(--accent)" if vol>=3 else "var(--c-warning)" if vol>=1.3 else "var(--text-secondary)"
+    vol_col = "#00FF66" if vol>=3 else "#F0B429" if vol>=1.3 else "#94A3B8"
     vol_lbl = "EKSTREM" if vol>=6 else "SPIKE" if vol>=3 else "ELEVATED" if vol>=1.3 else "NORMAL"
     lines_out.append(
         f'<b>Volume:</b> <b style="color:{vol_col}">{vol:.1f}× — {vol_lbl}</b> · '
@@ -386,7 +386,7 @@ def _render_ema_detail(r) -> None:
     dual_ok       = _g("dual_confirmed", False)
 
     if daily_pattern:
-        d_col    = "var(--accent)" if daily_ok else "var(--c-warning)" if "WAIT" in daily_pattern else "var(--text-secondary)"
+        d_col    = "#00FF66" if daily_ok else "#F0B429" if "WAIT" in daily_pattern else "#94A3B8"
         dual_badge = ('<span style="background:var(--accent);color:#000;font-weight:700;'
                       'font-family:Orbitron,monospace;font-size:var(--text-2xs);border-radius:var(--r-sm);'
                       'padding:1px 7px;margin-right:0.4rem">✦ DUAL CONFIRM</span>' if dual_ok else "")
@@ -433,7 +433,7 @@ def _render_ema_detail(r) -> None:
         _note = _ma.get("entry_note","")
         _reasons = _ma.get("reasons", [])
 
-        _lcol = ("var(--accent)" if _lv == "HIGH_CONVICTION" else
+        _lcol = ("#00FF66" if _lv == "HIGH_CONVICTION" else
                  "var(--c-warning)" if _lv == "MEDIUM" else "var(--c-info)")
         _lbg  = ("rgba(0,255,102,0.06)" if _lv == "HIGH_CONVICTION" else
                  "rgba(240,180,41,0.05)" if _lv == "MEDIUM" else "rgba(74,158,255,0.04)")
@@ -665,7 +665,7 @@ if ema_results:
             _idx  = _ev.get("index","")
             _eff  = _ev.get("effective_date","")
             _ph   = _ev.get("phase","")
-            _pcol = "var(--c-danger)" if _ph=="CRITICAL" else "var(--c-warning)" if _ph=="ACTIVE" else "var(--c-info)"
+            _pcol = "#EF4444" if _ph=="CRITICAL" else "#F0B429" if _ph=="ACTIVE" else "#60A5FA"
             _pbg  = ("rgba(239,68,68,0.08)" if _ph=="CRITICAL" else
                      "rgba(240,180,41,0.08)" if _ph=="ACTIVE" else "rgba(74,158,255,0.06)")
             _high_str = ""
@@ -719,7 +719,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
             regime_tag = r.get("regime_tag","")
 
             # Risk warning color for card border
-            card_border = "var(--accent)" if risk <= 15 else "var(--c-warning)" if risk <= 25 else "var(--c-danger)"
+            card_border = "#00FF66" if risk <= 15 else "#F0B429" if risk <= 25 else "#EF4444"
 
             c_main, c_btn = st.columns([8, 1])
             with c_main:
@@ -735,7 +735,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                 _dual   = r.get("dual_confirmed", False)
                 _is_strong = _sig == "STRONG_BREAKOUT"
                 _card_cls = "signal-card strong-breakout" if _is_strong else "signal-card"
-                _sig_col = SIG_COLORS.get(_sig, "var(--accent)")
+                _sig_col = SIG_COLORS.get(_sig, "#00FF66")
                 _dual_tag = '<span style="background:rgba(0,255,102,0.08);border:1px solid rgba(0,255,102,0.2);border-radius:var(--r-md);padding:1px 6px;font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--accent)">✓ DUAL</span>' if _dual else ""
                 st.markdown(f"""<div class="{_card_cls}" style="--sc:{_sig_col}">
                   <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap">
