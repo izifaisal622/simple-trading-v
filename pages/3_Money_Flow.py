@@ -73,11 +73,12 @@ if run_scan:
     with st.spinner("◈ SCANNING DAILY MOVERS · VOLUME · PRICE MOMENTUM..."):
         try:
             from agents.whale_scanner import WhaleScanner
-            from core.data_feed import get_dynamic_universe
+            from core.data_feed import get_catalyst_universe
 
-            scanner          = WhaleScanner()
-            scanner.min_value_bn = float(min_val)
-            universe         = [t + ".JK" for t in get_dynamic_universe()]
+            # MF-2 fix: pass lewat constructor agar tidak di-overwrite adapt_to_market()
+            # MF-3 fix: get_catalyst_universe() sudah include .JK — konsisten dengan Page 02
+            scanner  = WhaleScanner(min_value_bn=float(min_val))
+            universe = get_catalyst_universe()
 
             raw_results, ctx = scanner.scan(
                 tickers     = universe,
@@ -140,10 +141,9 @@ def _build_card(r: dict) -> str:
     vol_ratio = r.get("vol_ratio") or 1.0
     value_bn  = r.get("value_bn") or 0.0
     floor_pct = r.get("pct_above_floor")
-    pct_52w   = r.get("pct_52w_high") or r.get("pct_above_floor")
+    pct_52w   = r.get("pct_from_52w_high")  # MF-1 fix: key benar dari whale_scanner output
     momentum  = r.get("momentum", "")
     note      = r.get("pengeringan_desc") or r.get("note", "")
-    vol_ma    = r.get("vol_ma20") or 0
 
     sig_color  = SIG_COLORS.get(signal, "#6b7280")
     price_str  = fmt_rp(close) if close else "—"
