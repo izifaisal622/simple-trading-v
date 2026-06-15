@@ -1,8 +1,9 @@
 {
-  "version": "8.4.4",
+  "version": "8.4.5",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-15",
   "changelog": [
+    "8.4.5 — FEAT: 5_Alert_Watch — prioritize posisi aktif: [AW-1] posisi banner di atas page (saham yang di-hold + status ⚡/👁/·); [AW-2] alert posisi aktif tampil di tier teratas dengan badge entry+P&L+%toSL; [AW-3] tab label tunjukkan jumlah posisi aktif yang alert/watch; [AW-4] split: POSISI AKTIF → ALERTS UNIVERSE → WATCHLIST",
     "8.4.4 — FEAT: Loss Attribution Post-Mortem — [PM-1] get_loss_attribution() di trade_logger: per-trade breakdown (regime/score/risk/MCF) + pattern match dari historical losses + rule suggestion; [PM-2] Tab POST-MORTEM di Page 06: auto-show setelah close trade, per-trade card + aggregate win rate by regime/score/risk",
     "8.4.3 — REWRITE: 3_Money_Flow.py → War Room (Position Command Center) — [WR-1] Pre-Market Briefing: regime verdict + regional market data (IHSG/Nikkei/HSI/S&P/DXY); [WR-2] Position Health Monitor: traffic light 3-5 posisi, fetch harga real-time, % ke SL/TP1, EMA check; [WR-3] Exit Signal Watch: surface exit_engine.py ke UI — SL_HIT/EMA_BREAK/TRAIL_HIT/TIME_STOP/VOL_COLLAPSE/TP_HIT; [WR-4] Performance Tracker footer: closed trades stats, win rate, expectancy",
     "8.4.2 — UPGRADE: Page 01 + 02 — [P01-A] min score + max risk filter di breakout section + copy tickers; [P01-B] inline log trade per breakout card (tidak perlu pindah ke Page 06); [P02-A/B/C] sort toggle di tab Pengeringan/AT Floor/Recovery; [P02-D] Tab 7 onboarding card step-by-step cara dapat Stockbit token",

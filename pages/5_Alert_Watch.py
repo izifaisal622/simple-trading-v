@@ -30,6 +30,16 @@ from assets_ui import (
 )
 from agents.alert_watcher import check_alerts
 
+# Load open positions untuk prioritized alerting
+_open_positions = []
+_open_tickers   = set()
+try:
+    from trade_logger import get_open_trades as _get_open_trades
+    _open_positions = _get_open_trades()
+    _open_tickers   = {t.get("ticker","").upper().replace(".JK","") for t in _open_positions}
+except Exception:
+    pass
+
 _ = (TEXT_MUTED, TEXT_DIM, score_badge, vp_zone_pill, signal_badge, SIG_COLORS)  # template vars
 st.set_page_config(
     page_title="Alert Watch — STV6",
@@ -513,20 +523,113 @@ def _card(a: dict, is_alert: bool) -> str:
   </div>
   {reason_html}
 </div>"""
-alert_lbl = f"⚡  Alerts  {'(' + str(len(alerts)) + ')' if alerts else '(0)'}"
-watch_lbl = f"👁  Watchlist  {'(' + str(len(watchlist)) + ')' if watchlist else '(0)'}"
+# ── Split alerts berdasarkan posisi aktif ────────────────────────────────────
+# Tier 1: alert untuk saham yang sedang di-hold (paling kritis)
+# Tier 2: alert biasa (universe)
+# Tier 3: watchlist
+_all_alert_tickers = {a.get("ticker","").replace(".JK","").upper() for a in alerts}
+_pos_alerts  = [a for a in alerts    if a.get("ticker","").replace(".JK","").upper() in _open_tickers]
+_other_alerts= [a for a in alerts    if a.get("ticker","").replace(".JK","").upper() not in _open_tickers]
+_pos_watch   = [a for a in watchlist if a.get("ticker","").replace(".JK","").upper() in _open_tickers]
+_other_watch = [a for a in watchlist if a.get("ticker","").replace(".JK","").upper() not in _open_tickers]
+
+# ── Posisi Aktif Banner (selalu tampil jika ada open positions) ───────────────
+if _open_positions:
+    _pos_ticker_strs = []
+    for _pt in _open_positions:
+        _ptn  = _pt.get("ticker","").upper()
+        _flag = "⚡" if _ptn in _all_alert_tickers else ("👁" if _ptn in {a.get("ticker","").replace(".JK","").upper() for a in watchlist} else "·")
+        _col  = RED if _flag == "⚡" else YELLOW if _flag == "👁" else LABEL
+        _pos_ticker_strs.append(f'<span style="color:{_col};font-weight:700">{_flag} {_ptn}</span>')
+
+    _pos_html = " &nbsp;·&nbsp; ".join(_pos_ticker_strs)
+    st.markdown(
+        f'<div style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.25);'
+        f'border-left:4px solid #60A5FA;border-radius:var(--r-md);'
+        f'padding:0.55rem 1rem;margin:0.4rem 0;'
+        f'font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+        f'display:flex;align-items:center;gap:1rem;flex-wrap:wrap">'
+        f'<span style="color:#60A5FA;font-weight:700;letter-spacing:0.1em">🎯 POSISI AKTIF</span>'
+        f'<span style="color:var(--text-dim)">({len(_open_positions)} saham)</span>'
+        f'{_pos_html}'
+        f'<span style="margin-left:auto;color:var(--text-dim);font-size:var(--text-2xs)">'
+        f'⚡=alert · 👁=watch · ·=aman</span>'
+        f'</div>',
+        unsafe_allow_html=True)
+
+# ── Card renderer khusus posisi aktif (border lebih tebal + badge POSISI) ─────
+def _card_position(a: dict, is_alert: bool, trade_data: dict) -> str:
+    """Card dengan badge POSISI AKTIF dan konteks trade (entry, P&L)."""
+    base_card = _card(a, is_alert)
+    entry_p   = trade_data.get("entry_price", 0) or 0
+    sl_p      = trade_data.get("sl_price", 0) or 0
+    cur_p     = a.get("close", 0) or 0
+    pnl_pct   = ((cur_p - entry_p) / entry_p * 100) if entry_p > 0 and cur_p > 0 else 0
+    pct_to_sl = ((cur_p - sl_p) / cur_p * 100) if cur_p > 0 and sl_p > 0 else 0
+    _pnl_col  = GREEN if pnl_pct >= 0 else RED
+    _sl_col   = RED if pct_to_sl <= 5 else YELLOW if pct_to_sl <= 10 else LABEL
+
+    _pos_badge = (
+        f'<div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);'
+        f'border-radius:var(--r-sm);padding:0.35rem 0.8rem;margin-bottom:0.3rem;'
+        f'font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+        f'display:flex;gap:1rem;align-items:center">'
+        f'<span style="color:#60A5FA;font-weight:700">📍 POSISI AKTIF</span>'
+        f'<span style="color:var(--text-dim)">Entry <b style="color:#E2E8F0">Rp{entry_p:,.0f}</b></span>'
+        f'<span style="color:{_pnl_col};font-weight:700">P&L {pnl_pct:+.1f}%</span>'
+        + (f'<span style="color:{_sl_col}">→ SL {pct_to_sl:.1f}%</span>' if sl_p > 0 else "")
+        + f'</div>'
+    )
+    # Insert badge setelah opening div tag dari base_card
+    insert_after = '<div style="background:'
+    idx = base_card.find(insert_after)
+    if idx >= 0:
+        # Find closing > of first div
+        close_idx = base_card.find('>', idx) + 1
+        return base_card[:close_idx] + _pos_badge + base_card[close_idx:]
+    return _pos_badge + base_card
+
+# Build posisi lookup dict untuk card renderer
+_pos_lookup = {t.get("ticker","").upper().replace(".JK",""): t for t in _open_positions}
+
+# ── Tabs ─────────────────────────────────────────────────────────────────────
+_n_pos_alert = len(_pos_alerts)
+_n_pos_watch = len(_pos_watch)
+alert_lbl = f"⚡  Alerts  ({len(alerts)})" + (f" 🎯{_n_pos_alert}" if _n_pos_alert else "")
+watch_lbl = f"👁  Watchlist  ({len(watchlist)})" + (f" 🎯{_n_pos_watch}" if _n_pos_watch else "")
 
 tab_alerts, tab_watch = st.tabs([alert_lbl, watch_lbl])
 
 with tab_alerts:
-    if alerts:
+    # Posisi aktif yang alert — tampil paling atas dengan styling berbeda
+    if _pos_alerts:
         st.markdown(
-            '<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);letter-spacing:.18em;'
-            'color:' + RED + ';margin:.5rem 0 .25rem">⚡ ALERTS — KEDUA KONDISI TERPENUHI (' + str(len(alerts)) + ')</p>',
+            f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+            f'letter-spacing:.18em;color:#60A5FA;margin:.5rem 0 .25rem">'
+            f'🎯 POSISI AKTIF — PERLU PERHATIAN ({len(_pos_alerts)})</p>',
             unsafe_allow_html=True)
-        for a in sorted(alerts, key=lambda x: (x.get('urgency',0), x.get('conviction',0)), reverse=True):
-            st.markdown(_card(a, True), unsafe_allow_html=True)
-    else:
+        for a in sorted(_pos_alerts, key=lambda x: (-x.get("conviction",0),)):
+            _ticker_key = a.get("ticker","").replace(".JK","").upper()
+            st.markdown(_card_position(a, True, _pos_lookup.get(_ticker_key, {})),
+                        unsafe_allow_html=True)
+        if _other_alerts:
+            st.markdown(
+                f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+                f'letter-spacing:.18em;color:{RED};margin:.8rem 0 .25rem">'
+                f'⚡ ALERTS — UNIVERSE ({len(_other_alerts)})</p>',
+                unsafe_allow_html=True)
+
+    elif alerts:
+        st.markdown(
+            f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+            f'letter-spacing:.18em;color:{RED};margin:.5rem 0 .25rem">'
+            f'⚡ ALERTS — KEDUA KONDISI TERPENUHI ({len(alerts)})</p>',
+            unsafe_allow_html=True)
+
+    for a in sorted(_other_alerts, key=lambda x: (x.get("urgency",0), x.get("conviction",0)), reverse=True):
+        st.markdown(_card(a, True), unsafe_allow_html=True)
+
+    if not alerts:
         st.markdown(
             '<div style="background:rgba(60,207,122,.03);border:1px solid rgba(60,207,122,.1);'
             'border-radius:6px;padding:.75rem 1.1rem;margin:.5rem 0;text-align:center">'
@@ -536,14 +639,36 @@ with tab_alerts:
             unsafe_allow_html=True)
 
 with tab_watch:
-    if watchlist:
+    # Posisi aktif yang di watchlist — tampil dulu
+    if _pos_watch:
         st.markdown(
-            '<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);letter-spacing:.18em;'
-            'color:' + YELLOW + ';margin:.5rem 0 .25rem">👁 WATCHLIST — SATU KONDISI TERPENUHI (' + str(len(watchlist)) + ')</p>',
+            f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+            f'letter-spacing:.18em;color:#60A5FA;margin:.5rem 0 .25rem">'
+            f'🎯 POSISI AKTIF — MONITOR ({len(_pos_watch)})</p>',
             unsafe_allow_html=True)
-        for a in sorted(watchlist, key=lambda x: (x.get('urgency',0), x.get('ema_score',0), -x.get('floor_dist_pct',999)), reverse=True)[:20]:
-            st.markdown(_card(a, False), unsafe_allow_html=True)
-    else:
+        for a in sorted(_pos_watch, key=lambda x: -x.get("conviction",0)):
+            _ticker_key = a.get("ticker","").replace(".JK","").upper()
+            st.markdown(_card_position(a, False, _pos_lookup.get(_ticker_key, {})),
+                        unsafe_allow_html=True)
+        if _other_watch:
+            st.markdown(
+                f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+                f'letter-spacing:.18em;color:{YELLOW};margin:.8rem 0 .25rem">'
+                f'👁 WATCHLIST — UNIVERSE ({len(_other_watch)})</p>',
+                unsafe_allow_html=True)
+
+    elif watchlist:
+        st.markdown(
+            f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+            f'letter-spacing:.18em;color:{YELLOW};margin:.5rem 0 .25rem">'
+            f'👁 WATCHLIST — SATU KONDISI TERPENUHI ({len(watchlist)})</p>',
+            unsafe_allow_html=True)
+
+    for a in sorted(_other_watch, key=lambda x: (x.get("urgency",0), x.get("ema_score",0),
+                                                    -x.get("floor_dist_pct",999)), reverse=True)[:20]:
+        st.markdown(_card(a, False), unsafe_allow_html=True)
+
+    if not watchlist:
         st.markdown(
             '<div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);'
             'border-radius:6px;padding:.75rem 1.1rem;margin:.5rem 0;text-align:center">'
