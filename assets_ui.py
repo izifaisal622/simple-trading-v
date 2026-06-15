@@ -141,9 +141,9 @@ def score_badge(score: int, max_score: int = 8) -> str:
     else:               col, bg = "#EF4444", "rgba(239,68,68,0.09)"
     return (
         f'<span style="background:{bg};border:1px solid {col}40;border-radius:6px;'
-        f'padding:2px 8px;font-family:\'Orbitron\',monospace;font-size:var(--text-sm);'
+        f'padding:2px 8px;font-family:\'Orbitron\',monospace;font-size:0.75rem;'
         f'font-weight:700;color:{col};letter-spacing:0.05em;white-space:nowrap">'
-        f'{score}<span style="color:{col}60;font-size:var(--text-xs)">/{max_score}</span></span>'
+        f'{score}<span style="color:{col}60;font-size:0.65rem">/{max_score}</span></span>'
     )
 
 
@@ -161,7 +161,7 @@ def vp_zone_pill(zone: str) -> str:
     if zone == "UNKNOWN": return ""
     return (
         f'<span style="background:{col}14;border:1px solid {col}40;border-radius:4px;'
-        f'padding:1px 7px;font-family:\'Share Tech Mono\',monospace;font-size:var(--text-2xs);'
+        f'padding:1px 7px;font-family:\'Share Tech Mono\',monospace;font-size:0.55rem;'
         f'letter-spacing:0.08em;color:{col};white-space:nowrap">{label}</span>'
     )
 
@@ -181,13 +181,13 @@ def signal_badge(signal: str) -> str:
         return (
             f'<span style="background:rgba(0,255,102,0.10);border:1px solid rgba(0,255,102,0.4);'
             f'border-radius:6px;padding:3px 10px;font-family:\'Orbitron\',monospace;'
-            f'font-size:var(--text-xs);font-weight:800;color:{NEON_GREEN};letter-spacing:0.1em;'
+            f'font-size:0.65rem;font-weight:800;color:{NEON_GREEN};letter-spacing:0.1em;'
             f'text-shadow:0 0 10px rgba(0,255,102,0.4)">'
             f'{icon} {label}</span>'
         )
     return (
         f'<span style="background:{col}12;border:1px solid {col}35;border-radius:6px;'
-        f'padding:2px 8px;font-family:\'Share Tech Mono\',monospace;font-size:var(--text-xs);'
+        f'padding:2px 8px;font-family:\'Share Tech Mono\',monospace;font-size:0.65rem;'
         f'letter-spacing:0.08em;color:{col}">{icon} {label}</span>'
     )
 
