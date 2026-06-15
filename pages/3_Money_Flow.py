@@ -122,8 +122,9 @@ _mf_context = st.session_state.get("mf_context", {})
 _mf_time    = st.session_state.get("mf_scan_time", None)
 
 # Filter controls (below scan button, shown only when results exist)
-filter_signal = ["WHALE_ACCUMULATION", "INSTITUTIONAL_BUY", "RETAIL_MOMENTUM"]
-filter_source = ["stockbit", "proxy_ohlcv"]
+filter_signal   = ["WHALE_ACCUMULATION", "INSTITUTIONAL_BUY", "RETAIL_MOMENTUM"]
+filter_source   = ["stockbit", "proxy_ohlcv"]
+filter_min_vol  = 1.0  # default — overridden by slider kalau results sudah ada
 if _mf_results:
     fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 1])
     with fc1:

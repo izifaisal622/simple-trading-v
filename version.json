@@ -1,8 +1,9 @@
 {
-  "version": "8.2.8",
+  "version": "8.2.9",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-15",
   "changelog": [
+    "8.2.9 — FIX: 3_Money_Flow.py — filter_min_vol NameError saat results pertama kali muncul setelah scan",
     "8.2.8 — FIX: 3_Money_Flow.py — enrich_top_results() dipanggil setelah scan agar Stockbit token benar-benar dipakai untuk broker data",
     "8.2.7 — FIX: data_feed — [FD-1] orphan cache hash, [FD-2] batch round3 period, [FD-3] post-split merge corruption, [FD-4] delisted_candidates tidak persist",
     "8.2.6 — FIX: [DF-4] delisted 2x confirm, [DF-3] weekend stale check, [SA-1] MS penalty flag, [TE-6] holding_days_est formula, [SMC-4] docstring misleading",
