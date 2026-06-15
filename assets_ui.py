@@ -176,12 +176,12 @@ def signal_badge(signal: str) -> str:
     col = SIG_COLORS.get(signal, "#64748B")
     icon = icons.get(signal, "—")
     label = signal.replace("_", " ")
-    # STRONG_BREAKOUT gets special treatment
+    # STRONG_BREAKOUT gets special treatment — hex resolved, no var(--accent)
     if signal == "STRONG_BREAKOUT":
         return (
             f'<span style="background:rgba(0,255,102,0.10);border:1px solid rgba(0,255,102,0.4);'
             f'border-radius:6px;padding:3px 10px;font-family:\'Orbitron\',monospace;'
-            f'font-size:var(--text-xs);font-weight:800;color:var(--accent);letter-spacing:0.1em;'
+            f'font-size:var(--text-xs);font-weight:800;color:{NEON_GREEN};letter-spacing:0.1em;'
             f'text-shadow:0 0 10px rgba(0,255,102,0.4)">'
             f'{icon} {label}</span>'
         )
