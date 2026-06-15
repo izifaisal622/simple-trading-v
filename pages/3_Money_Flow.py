@@ -1,11 +1,20 @@
-"""Simple Trading V8 — Page 03: Money Flow · Daily Top Mover Scanner"""
-import json
+"""
+Simple Trading V8 — Page 03: War Room
+Position Monitor · Pre-Market Briefing · Exit Signal Engine
+
+Menggantikan Money Flow Scanner (top gainer) yang duplikat fungsi broker app.
+War Room = command center untuk posisi yang sudah ada:
+  1. Pre-Market Briefing  — regime + regional sentiment sebelum market buka
+  2. Position Health      — traffic light per posisi (3-5 saham)
+  3. Exit Signal Watch    — surface exit_engine.py yang sudah ada ke UI
+"""
 import sys
-from datetime import datetime
+import json
+from datetime import datetime, date
 from pathlib import Path
-from collections import Counter
 
 import streamlit as st
+import pandas as pd
 
 ROOT         = Path(__file__).parent.parent
 LOGS_DIR     = ROOT / "logs"
@@ -14,311 +23,566 @@ sys.path.insert(0, str(ROOT))
 
 from assets_ui import (
     get_page_css, render_sidebar, render_page_header,
-    render_empty_state, sec_head,
-    signal_badge, fmt_rp,
-    SIG_COLORS, NEON_GREEN, TEXT_MAIN, TEXT_MUTED, TEXT_DIM,
+    sec_head, fmt_rp,
+    NEON_GREEN, TEXT_MUTED, TEXT_DIM, TEXT_MAIN,
 )
 
-# ─── page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Money Flow · STV",
-    page_icon="💸",
+    page_title="War Room · STV",
+    page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 st.markdown(get_page_css("dashboard"), unsafe_allow_html=True)
 
-# ─── version ──────────────────────────────────────────────────────────────────
+# ── Version ───────────────────────────────────────────────────────────────────
 try:
-    _vdata      = json.loads((ROOT / "version.json").read_text(encoding="utf-8"))
-    _ver_accent = "V" + _vdata.get("version", "?")
+    _ver_accent = "V" + json.loads((ROOT / "version.json").read_text(encoding="utf-8"))["version"]
 except Exception:
     _ver_accent = "V?"
 
-# ─── load context (sidebar regime) ────────────────────────────────────────────
+# ── Load regime context ───────────────────────────────────────────────────────
 scan_date = "—"
 regime    = "UNKNOWN"
+cycle     = "UNKNOWN"
+ihsg      = 0
+mom_4w    = 0
 try:
     if RESULTS_FILE.exists():
-        _d        = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
-        ctx       = _d.get("whale_context", {})
+        _d      = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
+        ctx     = _d.get("whale_context", {})
+        regime  = ctx.get("cycle", _d.get("regime", {}).get("cycle", "UNKNOWN"))
+        cycle   = regime
+        ihsg    = ctx.get("ihsg", _d.get("regime", {}).get("ihsg", 0))
+        mom_4w  = ctx.get("mom_4w", _d.get("regime", {}).get("mom_4w", 0))
         scan_date = (_d.get("date", "")[:10] or "—")
-        regime    = ctx.get("cycle", "UNKNOWN")
 except Exception:
     pass
 
-render_sidebar("money_flow", scan_date=scan_date, regime=regime)
+render_sidebar("war_room", scan_date=scan_date, regime=regime)
 
-# ─── page header ──────────────────────────────────────────────────────────────
 render_page_header(
-    eyebrow  = "◆ MODULE 03 · MONEY FLOW SCANNER",
+    eyebrow  = "◆ MODULE 03 · POSITION COMMAND CENTER",
     title    = "SIMPLE TRADING ",
     accent   = _ver_accent,
-    subtitle = "◈ DAILY TOP MOVER · VOLUME SPIKE · PRICE MOMENTUM · IDX UNIVERSE",
+    subtitle = "◈ WAR ROOM · PRE-MARKET BRIEFING · POSITION HEALTH · EXIT SIGNAL WATCH",
     scan_date= scan_date,
 )
 
-# ─── scan controls ────────────────────────────────────────────────────────────
-sec_head("◆ SCAN CONTROLS")
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 1 — PRE-MARKET BRIEFING
+# ══════════════════════════════════════════════════════════════════════════════
+sec_head("◆ PRE-MARKET BRIEFING")
 
-c1, c2, c3, c4, c5 = st.columns([1.6, 1, 1, 1.2, 1])
-with c1: run_scan    = st.button("⟳ RUN MONEY FLOW SCAN", type="primary", use_container_width=True)
-with c2: top_n       = st.number_input("TOP N", 10, 100, 30, 5, key="mf_topn")
-with c3: min_vol     = st.number_input("MIN VOL RATIO", 0.5, 10.0, 1.5, 0.5, key="mf_minvol")
-with c4: min_val     = st.number_input("MIN VALUE (Bn)", 1.0, 50.0, 5.0, 1.0, key="mf_minval")
-with c5: max_workers = st.number_input("WORKERS", 5, 50, 20, 5, key="mf_workers")
-
-# ─── run scan ─────────────────────────────────────────────────────────────────
-if run_scan:
-    with st.spinner("◈ SCANNING DAILY MOVERS · VOLUME · PRICE MOMENTUM..."):
+def _fetch_regional() -> dict:
+    """Fetch regional market closing prices sebagai proxy market sentiment."""
+    import yfinance as yf
+    tickers = {
+        "IHSG":   "^JKSE",
+        "Nikkei": "^N225",
+        "HSI":    "^HSI",
+        "S&P500": "^GSPC",
+        "DXY":    "DX-Y.NYB",
+    }
+    result = {}
+    for name, sym in tickers.items():
         try:
-            from agents.whale_scanner import WhaleScanner
-            from core.data_feed import get_catalyst_universe
+            df = yf.download(sym, period="5d", interval="1d", progress=False, auto_adjust=True)
+            if df is not None and len(df) >= 2:
+                last  = float(df["Close"].iloc[-1])
+                prev  = float(df["Close"].iloc[-2])
+                chg   = (last - prev) / prev * 100
+                result[name] = {"last": last, "chg": round(chg, 2)}
+        except Exception:
+            result[name] = {"last": 0, "chg": 0}
+    return result
 
-            # MF-2 fix: pass lewat constructor agar tidak di-overwrite adapt_to_market()
-            # MF-3 fix: get_catalyst_universe() sudah include .JK — konsisten dengan Page 02
-            scanner  = WhaleScanner(min_value_bn=float(min_val))
-            universe = get_catalyst_universe()
+# Regime verdict
+_REGIME_VERDICT = {
+    "BULL_TREND":        ("AGRESIF", "#00FF66",  "Full size. Breakout layak dikejar."),
+    "BULL_CONSOLIDATION":("SELEKTIF", "#4ADE80",  "75% size. Rotasi sektor."),
+    "TRANSITION":        ("HATI-HATI","#F0B429",  "50% size. Setup conviction tinggi saja."),
+    "BEAR_CONSOLIDATION":("DEFENSIVE","#FB923C",  "25% size. Bangun watchlist saja."),
+    "BEAR_TREND":        ("STOP TRADE","#EF4444", "FULL CASH. Tunggu regime berubah."),
+    "UNKNOWN":           ("UNKNOWN",  "#64748B",  "Update data IHSG dulu."),
+}
+_vdict = _REGIME_VERDICT.get(cycle, _REGIME_VERDICT["UNKNOWN"])
+_verdict_lbl, _verdict_col, _verdict_desc = _vdict
 
-            raw_results, ctx = scanner.scan(
-                tickers     = universe,
-                top_n       = 200,
-                max_workers = int(max_workers),
-            )
-
-            # Filter by vol ratio
-            results = [r for r in raw_results if (r.get("vol_ratio") or 0) >= float(min_vol)]
-
-            # Sort by chg_pct descending — top gainer first
-            results.sort(key=lambda x: -(x.get("chg_pct") or 0))
-
-            # Cap to top_n
-            results = results[:int(top_n)]
-
-            # Build sector breakdown
-            sector_counts = Counter(r.get("sector", "OTHER") for r in results)
-
-            mf_ctx = {
-                "total":          len(results),
-                "scan_time":      datetime.now().strftime("%H:%M:%S"),
-                "sector_counts":  dict(sector_counts),
-                "top_gainer_pct": results[0].get("chg_pct", 0) if results else 0,
-                "avg_vol_ratio":  round(
-                    sum(r.get("vol_ratio", 1) for r in results) / max(len(results), 1), 1
-                ),
-            }
-
-            st.session_state["mf_results"] = results
-            st.session_state["mf_context"] = mf_ctx
-
-            # Save to daily_results.json
-            existing = {}
-            if RESULTS_FILE.exists():
-                try: existing = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
-                except Exception: pass
-            existing.update({
-                "mf_results": results,
-                "mf_context": mf_ctx,
-                "mf_date":    datetime.now().isoformat(),
-            })
-            RESULTS_FILE.write_text(json.dumps(existing, indent=2, default=str), encoding="utf-8")
-
-            st.success(f"◈ DONE — {len(results)} movers | top gainer +{mf_ctx['top_gainer_pct']:.1f}% | avg vol {mf_ctx['avg_vol_ratio']:.1f}×")
-
-        except Exception as e:
-            import traceback
-            st.error(f"ERROR: {e}")
-            st.code(traceback.format_exc())
-
-
-# ─── card builder ─────────────────────────────────────────────────────────────
-def _build_card(r: dict) -> str:
-    ticker    = r.get("ticker", "?").replace(".JK", "")
-    signal    = r.get("signal", "NEUTRAL")
-    sector    = r.get("sector", "OTHER")
-    close     = r.get("close")
-    chg_pct   = r.get("chg_pct") or 0.0
-    vol_ratio = r.get("vol_ratio") or 1.0
-    value_bn  = r.get("value_bn") or 0.0
-    floor_pct = r.get("pct_above_floor")
-    pct_52w   = r.get("pct_from_52w_high")  # MF-1 fix: key benar dari whale_scanner output
-    momentum  = r.get("momentum", "")
-    note      = r.get("pengeringan_desc") or r.get("note", "")
-
-    sig_color  = SIG_COLORS.get(signal, "#6b7280")
-    price_str  = fmt_rp(close) if close else "—"
-    chg_color  = NEON_GREEN if chg_pct >= 0 else "var(--c-danger)"
-    chg_str    = f"+{chg_pct:.2f}%" if chg_pct >= 0 else f"{chg_pct:.2f}%"
-    vol_color  = NEON_GREEN if vol_ratio >= 2 else "var(--c-warning)" if vol_ratio >= 1.5 else TEXT_MUTED
-
-    # Conviction bar
-    filled = min(int(vol_ratio / 5.0 * 12), 12)
-    empty  = 12 - filled
-    bar    = (f'<span style="font-family:monospace;color:{vol_color};letter-spacing:-1px">'
-              f'{"█"*filled}'
-              f'<span style="color:var(--bg-raised)">{"█"*empty}</span></span>')
-
-    # Signal badge pre-built
-    sig_badge = signal_badge(signal)
-
-    # Sector pill
-    sec_pill = (f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
-                f'color:var(--text-muted);border:1px solid rgba(255,255,255,.1);'
-                f'padding:1px 6px;border-radius:3px">{sector}</span>')
-
-    # Momentum tag
-    mom_color = {"ACCELERATING": NEON_GREEN, "REVERSING": "var(--c-warning)",
-                 "DECLINING": "var(--c-danger)", "FLAT": TEXT_DIM}.get(momentum, TEXT_DIM)
-    mom_tag = (f'<span style="font-size:var(--text-2xs);color:{mom_color};'
-               f'font-family:Share Tech Mono,monospace">{momentum}</span>') if momentum else ""
-
-    # 52w position
-    pct52_html = ""
-    if pct_52w is not None:
-        c52 = ("var(--c-success)" if pct_52w >= -10 else
-               "var(--c-warning)" if pct_52w >= -30 else "var(--c-danger)")
-        pct52_html = (f'<span style="font-size:var(--text-2xs);color:{c52};'
-                      f'font-family:Share Tech Mono,monospace">52W {pct_52w:+.1f}%</span>')
-
-    return f"""
-<div style="background:var(--bg-card);border:1px solid rgba(255,255,255,.07);
-  border-left:3px solid {sig_color};border-radius:var(--r-md);
-  padding:var(--sp-4);margin-bottom:var(--sp-3)">
-
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xl);
-        color:#e2e8f0;font-weight:700;letter-spacing:.04em">{ticker}</span>
-      {sec_pill}
-      {mom_tag}
-    </div>
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-      {sig_badge}
-    </div>
+# Pre-market row: regime verdict + refresh button
+_pm1, _pm2 = st.columns([4, 1])
+with _pm1:
+    _mom_col = "#00FF66" if mom_4w > 0 else "#EF4444"
+    st.markdown(f"""
+<div style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.07);
+border-left:4px solid {_verdict_col};border-radius:var(--r-md);
+padding:0.8rem 1.2rem;margin-bottom:0.5rem;
+display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
+  <div>
+    <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
+    color:var(--text-dim);letter-spacing:0.15em">MARKET REGIME</div>
+    <div style="font-family:Orbitron,monospace;font-size:var(--text-xl);
+    font-weight:900;color:{_verdict_col}">{_verdict_lbl}</div>
   </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:8px">
-    <div style="padding:7px;background:rgba(255,255,255,.03);border-radius:5px;text-align:center">
-      <div style="font-size:var(--text-2xs);color:var(--text-muted);font-family:Share Tech Mono,monospace">HARGA</div>
-      <div style="font-size:var(--text-sm);color:#e2e8f0;font-family:Share Tech Mono,monospace">{price_str}</div>
-    </div>
-    <div style="padding:7px;background:rgba(255,255,255,.03);border-radius:5px;text-align:center">
-      <div style="font-size:var(--text-2xs);color:var(--text-muted);font-family:Share Tech Mono,monospace">CHG 1D</div>
-      <div style="font-size:var(--text-sm);color:{chg_color};font-family:Share Tech Mono,monospace;font-weight:700">{chg_str}</div>
-    </div>
-    <div style="padding:7px;background:rgba(255,255,255,.03);border-radius:5px;text-align:center">
-      <div style="font-size:var(--text-2xs);color:var(--text-muted);font-family:Share Tech Mono,monospace">VOL RATIO</div>
-      <div style="font-size:var(--text-sm);color:{vol_color};font-family:Share Tech Mono,monospace">{vol_ratio:.1f}×</div>
-    </div>
-    <div style="padding:7px;background:rgba(255,255,255,.03);border-radius:5px;text-align:center">
-      <div style="font-size:var(--text-2xs);color:var(--text-muted);font-family:Share Tech Mono,monospace">VALUE</div>
-      <div style="font-size:var(--text-sm);color:var(--text-secondary);font-family:Share Tech Mono,monospace">Rp{value_bn:.1f}Bn</div>
-    </div>
+  <div style="border-left:1px solid rgba(255,255,255,0.08);padding-left:1.5rem">
+    <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+    color:var(--text-muted)">{cycle}</div>
+    <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+    color:#94A3B8;margin-top:2px">{_verdict_desc}</div>
   </div>
-
-  <div style="margin-bottom:6px">
-    <div style="font-size:var(--text-2xs);color:var(--text-muted);font-family:Share Tech Mono,monospace;margin-bottom:2px">
-      VOL CONVICTION {pct52_html}
-    </div>
-    {bar} <span style="font-size:var(--text-2xs);color:var(--text-muted);margin-left:6px;font-family:Share Tech Mono,monospace">{vol_ratio:.1f}× avg</span>
+  <div style="border-left:1px solid rgba(255,255,255,0.08);padding-left:1.5rem">
+    <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
+    color:var(--text-dim)">IHSG</div>
+    <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-base);
+    color:#E2E8F0;font-weight:700">{ihsg:,.0f}</div>
   </div>
-
-  <div style="font-size:var(--text-xs);color:var(--text-muted);font-family:Share Tech Mono,monospace;
-    border-top:1px solid rgba(255,255,255,.05);padding-top:6px;margin-top:4px;line-height:1.5">{note}</div>
+  <div style="border-left:1px solid rgba(255,255,255,0.08);padding-left:1.5rem">
+    <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
+    color:var(--text-dim)">MOM 4W</div>
+    <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-base);
+    color:{_mom_col};font-weight:700">{mom_4w:+.1f}%</div>
+  </div>
 </div>
-"""
+""", unsafe_allow_html=True)
 
-# ─── read results fresh ────────────────────────────────────────────────────────
-_results = st.session_state.get("mf_results", [])
-_ctx     = st.session_state.get("mf_context", {})
+with _pm2:
+    _fetch_regional_btn = st.button("⟳ FETCH REGIONAL", key="btn_fetch_regional",
+                                     use_container_width=True)
 
-# ─── display ──────────────────────────────────────────────────────────────────
-if not _results:
-    render_empty_state(
-        icon     = "💸",
-        title    = "NO FLOW DATA",
-        subtitle = "Klik RUN MONEY FLOW SCAN untuk mulai.\nScan universe IDX → sort by % gain harian + volume spike.",
-        command  = "python orchestrator.py --mode flow",
-    )
-else:
-    # ── Summary bar ───────────────────────────────────────────────────────────
-    _scan_time  = _ctx.get("scan_time", "—")
-    _total      = _ctx.get("total", len(_results))
-    _top_gain   = _ctx.get("top_gainer_pct", 0)
-    _avg_vol    = _ctx.get("avg_vol_ratio", 0)
-    _sec_counts = _ctx.get("sector_counts", {})
+# Regional market data
+if _fetch_regional_btn or "regional_data" not in st.session_state:
+    if _fetch_regional_btn:
+        with st.spinner("Fetching regional data..."):
+            st.session_state["regional_data"] = _fetch_regional()
 
-    cols5 = st.columns(5)
-    _summary = [
-        ("TOTAL MOVERS", _total,              TEXT_MAIN),
-        ("TOP GAINER",   f"+{_top_gain:.1f}%", NEON_GREEN),
-        ("AVG VOL RATIO", f"{_avg_vol:.1f}×",  NEON_GREEN),
-        ("SECTORS",       len(_sec_counts),    TEXT_MUTED),
-        ("⏱ SCAN",        _scan_time,          TEXT_MUTED),
-    ]
-    for col, (lbl, val, clr) in zip(cols5, _summary):
-        with col:
-            st.markdown(
-                f'<div class="m-card" style="padding:0.55rem 0.7rem">'
-                f'<div class="m-lbl" style="font-size:var(--text-2xs)">{lbl}</div>'
-                f'<div class="m-val" style="color:{clr};font-size:var(--text-xl)">{val}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+_regional = st.session_state.get("regional_data", {})
+if _regional:
+    _rcols = st.columns(len(_regional))
+    for (_rname, _rdata), _rcol in zip(_regional.items(), _rcols):
+        _rchg = _rdata.get("chg", 0)
+        _rlast = _rdata.get("last", 0)
+        _rcol_color = "#00FF66" if _rchg >= 0 else "#EF4444"
+        with _rcol:
+            st.markdown(f"""
+<div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);
+border-radius:var(--r-sm);padding:0.5rem 0.7rem;text-align:center">
+  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
+  color:var(--text-dim);letter-spacing:0.1em">{_rname}</div>
+  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
+  color:#E2E8F0;font-weight:700">{_rlast:,.0f}</div>
+  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+  color:{_rcol_color};font-weight:700">{_rchg:+.2f}%</div>
+</div>
+""", unsafe_allow_html=True)
 
-    # ── Filters ───────────────────────────────────────────────────────────────
-    all_sectors = sorted(set(r.get("sector", "OTHER") for r in _results))
-    fc1, fc2, fc3 = st.columns([2, 2, 1])
-    with fc1:
-        sel_sectors = st.multiselect(
-            "FILTER SEKTOR", all_sectors, default=all_sectors,
-            key="mf_sectors", label_visibility="collapsed",
-        )
-    with fc2:
-        sort_by = st.selectbox(
-            "SORT BY", ["% Gain", "Vol Ratio", "Value (Bn)"],
-            key="mf_sort", label_visibility="collapsed",
-        )
-    with fc3:
-        min_chg = st.number_input("MIN CHG %", -10.0, 20.0, 0.0, 0.5, key="mf_minchg")
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 2 — POSITION HEALTH
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("<br>", unsafe_allow_html=True)
+sec_head("◆ POSITION HEALTH MONITOR")
 
-    # ── Apply filters ─────────────────────────────────────────────────────────
-    filtered = [
-        r for r in _results
-        if r.get("sector", "OTHER") in sel_sectors
-        and (r.get("chg_pct") or 0) >= min_chg
-    ]
+# Load open trades dari trade_logger
+_open_trades = []
+try:
+    from trade_logger import get_open_trades
+    _open_trades = get_open_trades()
+except Exception:
+    pass
 
-    sort_key = {
-        "% Gain":      lambda x: -(x.get("chg_pct") or 0),
-        "Vol Ratio":   lambda x: -(x.get("vol_ratio") or 0),
-        "Value (Bn)":  lambda x: -(x.get("value_bn") or 0),
-    }.get(sort_by, lambda x: -(x.get("chg_pct") or 0))
-    filtered.sort(key=sort_key)
-
-    st.markdown(
-        f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
-        f'color:var(--text-muted)">SHOWING {len(filtered)} OF {len(_results)}</p>',
-        unsafe_allow_html=True,
-    )
-
-    # ── Copy tickers ──────────────────────────────────────────────────────────
-    if filtered:
-        if st.button(f"📋 COPY {len(filtered)} TICKERS", key="mf_copy"):
-            tickers_str = ", ".join(r.get("ticker", "").replace(".JK", "") for r in filtered)
-            st.code(tickers_str)
-
-    # ── Cards ─────────────────────────────────────────────────────────────────
-    if filtered:
-        lc, rc = st.columns(2)
-        for i, r in enumerate(filtered):
-            card_html = _build_card(r)
-            (lc if i % 2 == 0 else rc).markdown(card_html, unsafe_allow_html=True)
+def _health_color(pct_to_sl: float, pct_to_tp1: float) -> tuple:
+    """Traffic light berdasarkan jarak ke SL dan TP1."""
+    if pct_to_sl <= 3:
+        return "#EF4444", "🔴 NEAR SL"
+    elif pct_to_sl <= 8:
+        return "#F0B429", "🟡 WATCH"
+    elif pct_to_tp1 <= 5:
+        return "#4ADE80", "🟢 NEAR TP1"
     else:
-        st.markdown(
-            '<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
-            'color:var(--text-muted)">Tidak ada data untuk filter ini.</p>',
-            unsafe_allow_html=True,
+        return "#00FF66", "🟢 HEALTHY"
+
+def _fetch_position_data(ticker: str) -> dict:
+    """Fetch current price + EMA data untuk satu posisi."""
+    import yfinance as yf
+    try:
+        sym = ticker if ticker.endswith(".JK") else ticker + ".JK"
+        df  = yf.download(sym, period="60d", interval="1d", progress=False, auto_adjust=True)
+        if df is None or len(df) < 5:
+            return {}
+        if hasattr(df.columns, "get_level_values"):
+            df.columns = df.columns.get_level_values(0)
+        close  = df["Close"]
+        volume = df["Volume"]
+        last   = float(close.iloc[-1])
+        ema13  = float(close.ewm(span=13, adjust=False).mean().iloc[-1])
+        ema89  = float(close.ewm(span=89, adjust=False).mean().iloc[-1])
+        vol_ma = float(volume.rolling(20).mean().iloc[-1])
+        last_v = float(volume.iloc[-1])
+        atr14  = float((df["High"] - df["Low"]).rolling(14).mean().iloc[-1])
+        return {
+            "last": last, "ema13": ema13, "ema89": ema89,
+            "vol_ratio": round(last_v / vol_ma, 2) if vol_ma > 0 else 0,
+            "atr14": atr14, "df": df,
+        }
+    except Exception:
+        return {}
+
+# Manual position input
+with st.expander("➕ TAMBAH POSISI MANUAL", expanded=not _open_trades):
+    _ma1, _ma2, _ma3, _ma4, _ma5 = st.columns(5)
+    with _ma1: _man_ticker = st.text_input("Ticker", placeholder="BBCA", key="man_ticker").upper()
+    with _ma2: _man_entry  = st.number_input("Entry (Rp)", 0.0, step=10.0, key="man_entry")
+    with _ma3: _man_sl     = st.number_input("SL (Rp)", 0.0, step=10.0, key="man_sl")
+    with _ma4: _man_tp1    = st.number_input("TP1 (Rp)", 0.0, step=10.0, key="man_tp1")
+    with _ma5: _man_tp2    = st.number_input("TP2 (Rp)", 0.0, step=10.0, key="man_tp2")
+    if st.button("💾 SIMPAN & TRACK", key="btn_save_pos"):
+        if _man_ticker and _man_entry > 0 and _man_sl > 0:
+            try:
+                from trade_logger import log_trade
+                _tid = log_trade(
+                    ticker      = _man_ticker,
+                    entry_price = _man_entry,
+                    sl_price    = _man_sl,
+                    tp1_price   = _man_tp1,
+                    notes       = f"tp2={_man_tp2}" if _man_tp2 > 0 else "",
+                )
+                st.success(f"✅ {_man_ticker} tersimpan (ID #{_tid})")
+                st.rerun()
+            except Exception as _e:
+                st.error(f"Error: {_e}")
+        else:
+            st.warning("Isi Ticker, Entry, dan SL dulu.")
+
+# Render position cards
+if not _open_trades:
+    st.markdown("""
+<div style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);
+border-radius:var(--r-md);padding:1.5rem;text-align:center">
+  <div style="font-family:Orbitron,monospace;font-size:var(--text-base);
+  color:var(--text-dim);letter-spacing:0.15em">NO OPEN POSITIONS</div>
+  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+  color:var(--text-dim);margin-top:0.4rem">
+  Tambah posisi via form di atas atau log trade dari Page 01 EMA XBO
+  </div>
+</div>
+""", unsafe_allow_html=True)
+else:
+    _fetch_all = st.button("⟳ REFRESH SEMUA HARGA", key="btn_refresh_all",
+                            use_container_width=False)
+
+    _pos_cols = st.columns(min(len(_open_trades), 3))
+    for _idx, _trade in enumerate(_open_trades):
+        _t      = _trade.get("ticker", "").upper()
+        _entry  = _trade.get("entry_price", 0) or 0
+        _sl     = _trade.get("sl_price", 0) or 0
+        _notes  = _trade.get("notes", "") or ""
+        _tid    = _trade.get("id", 0)
+
+        # Parse TP dari notes jika ada
+        _tp1 = _trade.get("tp1_price", 0) or 0
+        _tp2 = 0
+        try:
+            for _part in _notes.split("|"):
+                _part = _part.strip()
+                if _part.startswith("tp2="):
+                    _tp2 = float(_part.replace("tp2=", "").strip())
+                if _part.startswith("tp1="):
+                    _tp1 = float(_part.replace("tp1=", "").strip())
+        except Exception:
+            pass
+        # TP1 fallback: entry + 2× risk
+        if _tp1 == 0 and _entry > 0 and _sl > 0:
+            _tp1 = _entry + 2 * (_entry - _sl)
+
+        # Fetch atau ambil dari cache
+        _cache_key = f"pos_data_{_t}"
+        if _fetch_all or _cache_key not in st.session_state:
+            with st.spinner(f"Fetching {_t}..."):
+                st.session_state[_cache_key] = _fetch_position_data(_t)
+        _pdata = st.session_state.get(_cache_key, {})
+
+        _last    = _pdata.get("last", 0)
+        _ema13   = _pdata.get("ema13", 0)
+        _vol_r   = _pdata.get("vol_ratio", 0)
+
+        # Kalkulasi posisi
+        _pnl_pct    = ((_last - _entry) / _entry * 100) if _entry > 0 and _last > 0 else 0
+        _pct_to_sl  = ((_last - _sl) / _last * 100) if _last > 0 and _sl > 0 else 999
+        _pct_to_tp1 = ((_tp1 - _last) / _last * 100) if _last > 0 and _tp1 > 0 else 999
+        _ema_ok     = _last > _ema13 * 0.98 if _ema13 > 0 else True
+
+        _health_c, _health_lbl = _health_color(_pct_to_sl, _pct_to_tp1)
+        _pnl_col = "#00FF66" if _pnl_pct >= 0 else "#EF4444"
+        _ema_badge = (
+            '<span style="color:#00FF66;font-size:var(--text-2xs)">EMA ✓</span>'
+            if _ema_ok else
+            '<span style="color:#EF4444;font-size:var(--text-2xs)">EMA ⚠</span>'
         )
+        _vol_col = "#00FF66" if _vol_r >= 1.5 else "#F0B429" if _vol_r >= 0.8 else "#EF4444"
 
+        with _pos_cols[_idx % 3]:
+            st.markdown(f"""
+<div style="background:rgba(0,0,0,0.3);border:1px solid {_health_c}40;
+border-left:4px solid {_health_c};border-radius:var(--r-md);
+padding:0.8rem 1rem;margin-bottom:0.6rem">
+  <div style="display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:0.5rem;padding-bottom:0.4rem;border-bottom:1px solid rgba(255,255,255,0.06)">
+    <span style="font-family:Orbitron,monospace;font-size:var(--text-xl);
+    font-weight:900;color:#E2E8F0">{_t}</span>
+    <span style="font-family:Orbitron,monospace;font-size:var(--text-xs);
+    font-weight:700;color:{_health_c}">{_health_lbl}</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;margin-bottom:0.5rem">
+    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">HARGA</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#E2E8F0;font-weight:700">
+        {f"Rp{_last:,.0f}" if _last else "—"}
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">P&L</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:{_pnl_col};font-weight:700">
+        {f"{_pnl_pct:+.1f}%" if _last else "—"}
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">→ SL</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
+      color:{"#EF4444" if _pct_to_sl <= 5 else "#F0B429" if _pct_to_sl <= 10 else "#94A3B8"}">
+        {f"{_pct_to_sl:.1f}%" if _last else "—"}
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">→ TP1</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
+      color:{"#00FF66" if _pct_to_tp1 <= 5 else "#94A3B8"}">
+        {f"{_pct_to_tp1:.1f}%" if _last and _tp1 else "—"}
+      </div>
+    </div>
+  </div>
+  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
+  color:var(--text-dim);display:flex;gap:0.8rem;align-items:center">
+    <span>Entry <b style="color:#E2E8F0">Rp{_entry:,.0f}</b></span>
+    <span>SL <b style="color:#EF4444">Rp{_sl:,.0f}</b></span>
+    <span>Vol <b style="color:{_vol_col}">{_vol_r:.1f}×</b></span>
+    {_ema_badge}
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
+            # Close trade button
+            if st.button(f"✓ CLOSE #{_tid}", key=f"close_{_tid}_{_t}",
+                         use_container_width=True):
+                st.session_state[f"closing_{_tid}"] = True
+
+            if st.session_state.get(f"closing_{_tid}"):
+                _cx1, _cx2, _cx3 = st.columns(3)
+                with _cx1:
+                    _close_price = st.number_input("Exit Price",
+                                                    value=float(_last) if _last else 0.0,
+                                                    step=10.0, key=f"cp_{_tid}")
+                with _cx2:
+                    _close_out = st.selectbox("Outcome",
+                                               ["WIN", "LOSS", "BREAKEVEN"],
+                                               key=f"co_{_tid}")
+                with _cx3:
+                    if st.button("💾 CONFIRM", key=f"cf_{_tid}"):
+                        try:
+                            from trade_logger import close_trade
+                            _res = close_trade(_tid, _close_price, _close_out)
+                            if _res.get("success"):
+                                st.success(f"✅ {_t} closed — {_close_out} · {_res.get('pnl_r', 0):+.2f}R")
+                                st.session_state.pop(f"closing_{_tid}", None)
+                                st.session_state.pop(f"pos_data_{_t}", None)
+                                st.rerun()
+                        except Exception as _ce:
+                            st.error(f"Error: {_ce}")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 3 — EXIT SIGNAL WATCH
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("<br>", unsafe_allow_html=True)
+sec_head("◆ EXIT SIGNAL WATCH")
+
+_URGENCY_COLOR = {
+    "CRITICAL": "#EF4444",
+    "WARNING":  "#F0B429",
+    "INFO":     "#4ADE80",
+}
+_ACTION_COLOR = {
+    "EXIT_NOW":   "#EF4444",
+    "TIGHTEN_SL": "#F0B429",
+    "MOVE_TO_BE": "#4ADE80",
+    "MONITOR":    "#64748B",
+}
+_EXIT_ICON = {
+    "SL_HIT":      "🔴",
+    "EMA_BREAK":   "🔴",
+    "TRAIL_HIT":   "🔴",
+    "TIME_STOP":   "🟡",
+    "VOL_COLLAPSE":"🟡",
+    "TP_HIT":      "🟢",
+}
+
+if not _open_trades:
+    st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+    color:var(--text-dim)">Tidak ada posisi open. Tambah posisi di atas untuk mulai monitoring.</p>""",
+    unsafe_allow_html=True)
+else:
+    _run_exit = st.button("⟳ EVALUASI EXIT SIGNALS", key="btn_exit_eval",
+                           type="primary", use_container_width=False)
+    if _run_exit:
+        from core.exit_engine import ExitEngine
+        _engine  = ExitEngine()
+        _all_sig = []
+
+        with st.spinner("Evaluating exit signals..."):
+            for _trade in _open_trades:
+                _t     = _trade.get("ticker", "").upper()
+                _entry = float(_trade.get("entry_price", 0) or 0)
+                _sl    = float(_trade.get("sl_price", 0) or 0)
+                _edate = _trade.get("entry_date", "") or ""
+                _notes = _trade.get("notes", "") or ""
+
+                # Parse TP
+                _tp1, _tp2 = 0.0, 0.0
+                try:
+                    for _part in _notes.split("|"):
+                        _p = _part.strip()
+                        if _p.startswith("tp1="): _tp1 = float(_p[4:])
+                        if _p.startswith("tp2="): _tp2 = float(_p[4:])
+                except Exception:
+                    pass
+                if _tp1 == 0 and _entry > 0 and _sl > 0:
+                    _tp1 = _entry + 2 * (_entry - _sl)
+                if _tp2 == 0:
+                    _tp2 = _tp1 * 1.05
+
+                # Ambil df dari cache jika ada, fetch jika tidak
+                _pdata = st.session_state.get(f"pos_data_{_t}", {})
+                if not _pdata:
+                    _pdata = _fetch_position_data(_t)
+                    st.session_state[f"pos_data_{_t}"] = _pdata
+
+                _df   = _pdata.get("df")
+                _atr  = _pdata.get("atr14", 0)
+
+                if _df is not None and _entry > 0 and _sl > 0:
+                    sigs = _engine.evaluate(
+                        ticker           = _t,
+                        entry_price      = _entry,
+                        entry_date       = _edate,
+                        sl_price         = _sl,
+                        tp1_price        = _tp1,
+                        tp2_price        = _tp2,
+                        df               = _df,
+                        atr14            = _atr,
+                        holding_days_est = 10,
+                    )
+                    _all_sig.extend(sigs)
+
+        st.session_state["exit_signals"] = _all_sig
+
+    _exit_signals = st.session_state.get("exit_signals", [])
+
+    if not _exit_signals and "exit_signals" in st.session_state:
+        st.markdown("""
+<div style="background:rgba(0,255,102,0.04);border:1px solid rgba(0,255,102,0.15);
+border-radius:var(--r-md);padding:0.8rem 1.2rem">
+  <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
+  color:#00FF66">✅ Tidak ada exit signal — semua posisi masih dalam kondisi aman.</span>
+</div>
+""", unsafe_allow_html=True)
+
+    elif _exit_signals:
+        # Sort: CRITICAL dulu, lalu WARNING, lalu INFO
+        _urg_order = {"CRITICAL": 0, "WARNING": 1, "INFO": 2}
+        _exit_signals.sort(key=lambda s: _urg_order.get(s.urgency, 3))
+
+        _n_critical = sum(1 for s in _exit_signals if s.urgency == "CRITICAL")
+        _n_warning  = sum(1 for s in _exit_signals if s.urgency == "WARNING")
+        _n_info     = sum(1 for s in _exit_signals if s.urgency == "INFO")
+
+        # Summary bar
+        st.markdown(f"""
+<div style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);
+border-radius:var(--r-sm);padding:0.5rem 1rem;margin-bottom:0.8rem;
+font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+display:flex;gap:1.5rem;align-items:center">
+  <span style="color:var(--text-dim)">EXIT SIGNALS</span>
+  <span style="color:#EF4444;font-weight:700">🔴 CRITICAL: {_n_critical}</span>
+  <span style="color:#F0B429;font-weight:700">🟡 WARNING: {_n_warning}</span>
+  <span style="color:#4ADE80;font-weight:700">🟢 INFO: {_n_info}</span>
+</div>
+""", unsafe_allow_html=True)
+
+        for _sig in _exit_signals:
+            _uc  = _URGENCY_COLOR.get(_sig.urgency, "#64748B")
+            _ac  = _ACTION_COLOR.get(_sig.action, "#64748B")
+            _ico = _EXIT_ICON.get(_sig.exit_type, "●")
+            _rgb_map = {"#EF4444": "239,68,68", "#F0B429": "240,180,41", "#4ADE80": "74,222,128"}
+            _bg  = f"rgba({_rgb_map.get(_uc, '100,116,139')},0.05)"
+
+            st.markdown(f"""
+<div style="background:rgba(0,0,0,0.25);border:1px solid {_uc}35;
+border-left:4px solid {_uc};border-radius:var(--r-md);
+padding:0.65rem 1rem;margin-bottom:0.5rem">
+  <div style="display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.3rem">
+    <span style="font-family:Orbitron,monospace;font-size:var(--text-base);
+    font-weight:900;color:#E2E8F0">{_sig.ticker}</span>
+    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+    color:{_uc};font-weight:700">{_ico} {_sig.exit_type}</span>
+    <span style="background:{_ac}20;border:1px solid {_ac}50;border-radius:3px;
+    padding:1px 8px;font-family:Orbitron,monospace;font-size:var(--text-2xs);
+    font-weight:700;color:{_ac}">{_sig.action}</span>
+    <span style="margin-left:auto;font-family:Share Tech Mono,monospace;
+    font-size:var(--text-xs);color:var(--text-dim)">
+    Harga Rp{_sig.current_price:,.0f} · Trigger Rp{_sig.trigger_price:,.0f}
+    </span>
+  </div>
+  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
+  color:#94A3B8;line-height:1.6">{_sig.message}</div>
+</div>
+""", unsafe_allow_html=True)
+    else:
+        st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+        color:var(--text-dim)">Klik "EVALUASI EXIT SIGNALS" untuk run exit engine.</p>""",
+        unsafe_allow_html=True)
+
+# ── Performance summary footer ────────────────────────────────────────────────
+st.markdown("<br>", unsafe_allow_html=True)
+sec_head("◆ PERFORMANCE TRACKER")
+try:
+    from trade_logger import get_stats
+    _stats = get_stats()
+    _n     = _stats.get("total_closed", 0)
+    _wr    = _stats.get("win_rate")
+    _exp   = _stats.get("expectancy")
+    _avg_r = _stats.get("avg_r")
+    _note  = _stats.get("note", "")
+
+    _stat_color = "#00FF66" if _n >= 30 else "#F0B429" if _n > 0 else "#64748B"
+    _wr_str     = f"{_wr:.1f}%" if _wr is not None else "N/A"
+    _exp_str    = f"{_exp:+.3f}R" if _exp is not None else "N/A"
+    _avgr_str   = f"{_avg_r:+.2f}R" if _avg_r is not None else "N/A"
+
+    _sc = st.columns(5)
+    for _col, (_lbl, _val, _clr) in zip(_sc, [
+        ("CLOSED TRADES", f"{_n}/30",  _stat_color),
+        ("OPEN TRADES",   _stats.get("total_open", 0), TEXT_MAIN),
+        ("WIN RATE",      _wr_str,     "#00FF66" if (_wr or 0) >= 50 else "#F0B429"),
+        ("EXPECTANCY",    _exp_str,    "#00FF66" if (_exp or 0) > 0 else "#EF4444"),
+        ("AVG R/TRADE",   _avgr_str,   "#00FF66" if (_avg_r or 0) > 0 else "#EF4444"),
+    ]):
+        with _col:
+            st.markdown(f"""
+<div class="m-card" style="padding:0.55rem 0.7rem">
+  <div class="m-lbl" style="font-size:var(--text-2xs)">{_lbl}</div>
+  <div class="m-val" style="color:{_clr};font-size:var(--text-xl)">{_val}</div>
+</div>""", unsafe_allow_html=True)
+
+    if _note:
+        st.markdown(f"""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+        color:var(--text-muted);margin-top:0.3rem">{_note}</p>""", unsafe_allow_html=True)
+except Exception:
+    st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+    color:var(--text-dim)">Trade logger tidak tersedia.</p>""", unsafe_allow_html=True)
