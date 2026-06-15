@@ -79,6 +79,7 @@ try:
     from trade_logger import (
         init_db, log_trade, log_trade_manual, close_trade,
         delete_trade, get_open_trades, get_closed_trades, get_stats,
+        get_loss_attribution,
     )
     init_db()
     _HAS_DB = True
@@ -104,12 +105,13 @@ except Exception:
     pass
 
 # ─── TABS ─────────────────────────────────────────────────────────────────────
-t_log, t_open, t_perf, t_manual, t_history = st.tabs([
+t_log, t_open, t_perf, t_manual, t_history, t_postmortem = st.tabs([
     "📥 Log Trade",
     "📋 Open Trades",
     "📊 Performance",
     "✏️ Input Manual",
     "🗂 History",
+    "🔬 Post-Mortem",
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -241,6 +243,9 @@ with t_open:
                         if result.get("success"):
                             pnl = result.get("pnl_r", 0) or 0
                             st.success(f"Closed: {outcome_sel} {pnl:+.2f}R")
+                            # Auto-trigger post-mortem untuk trade yang baru ditutup
+                            st.session_state["pm_trade_id"] = tid
+                            st.session_state["pm_auto_show"] = True
                             st.rerun()
                         else:
                             st.error(result.get("error","Error"))
@@ -476,4 +481,241 @@ with t_history:
             csv_data = header + "\n" + "\n".join(rows)
             st.download_button("⬇ Download trade_history.csv", csv_data,
                                file_name="trade_history.csv", mime="text/csv")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 6 — POST-MORTEM
+# ══════════════════════════════════════════════════════════════════════════════
+with t_postmortem:
+    _sec("POST-MORTEM ANALYSIS")
+
+    GREEN_PM = NEON_GREEN
+    RED_PM   = C_DANGER
+    YEL_PM   = C_WARNING
+
+    # ── Auto-show banner jika baru saja close trade ───────────────────────────
+    _auto_pm  = st.session_state.pop("pm_auto_show", False)
+    _auto_tid = st.session_state.get("pm_trade_id")
+
+    if _auto_pm and _auto_tid:
+        st.markdown(f"""
+<div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);
+border-left:4px solid #60A5FA;border-radius:var(--r-md);
+padding:0.7rem 1.1rem;margin-bottom:0.8rem;
+font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#60A5FA">
+🔬 Trade #{_auto_tid} baru ditutup — Post-mortem otomatis dimuat di bawah.
+</div>""", unsafe_allow_html=True)
+
+    # ── Selector: per-trade atau aggregate ────────────────────────────────────
+    closed_trades = get_closed_trades(limit=50)
+    _pm_mode_opts = ["📊 Aggregate (semua trades)", "🔍 Per Trade (pilih trade)"]
+    _pm_mode = st.radio("Mode", _pm_mode_opts, horizontal=True, key="pm_mode",
+                         label_visibility="collapsed")
+
+    # ── HELPER: render single post-mortem card ─────────────────────────────
+    def _render_pm_card(pm: dict) -> None:
+        if not pm.get("available"):
+            st.warning(pm.get("reason", "Data tidak tersedia"))
+            return
+
+        outcome  = pm.get("outcome", "")
+        ticker   = pm.get("ticker", "?")
+        pnl_r    = pm.get("pnl_r", 0) or 0
+        dims     = pm.get("dims", [])
+        primary  = pm.get("primary_cause", "")
+        top_rule = pm.get("top_rule", "")
+        patterns = pm.get("pattern_hits", [])
+        n_sim    = pm.get("similar_losses", 0)
+        n_tot    = pm.get("total_losses", 0)
+        n_crit   = pm.get("critical_count", 0)
+        n_warn   = pm.get("warning_count", 0)
+
+        _oc  = GREEN_PM if outcome == "WIN" else RED_PM if outcome == "LOSS" else YEL_PM
+        _obg = "rgba(0,255,102,0.05)" if outcome == "WIN" else "rgba(239,68,68,0.05)" if outcome == "LOSS" else "rgba(240,180,41,0.05)"
+
+        # Header
+        st.markdown(f"""
+<div style="background:{_obg};border:1px solid {_oc}35;
+border-left:4px solid {_oc};border-radius:var(--r-md);
+padding:0.8rem 1.1rem;margin-bottom:0.6rem">
+  <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.4rem">
+    <span style="font-family:Orbitron,monospace;font-size:var(--text-xl);
+    font-weight:900;color:#E2E8F0">{ticker}</span>
+    <span style="font-family:Orbitron,monospace;font-size:var(--text-sm);
+    font-weight:700;color:{_oc}">{outcome}</span>
+    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
+    color:{_oc};font-weight:700">{pnl_r:+.2f}R</span>
+    <span style="margin-left:auto;font-family:Share Tech Mono,monospace;
+    font-size:var(--text-2xs);color:var(--text-dim)">
+    {n_crit} CRITICAL · {n_warn} WARNING
+    </span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+        # Dimension breakdown
+        _FLAG_COL = {"CRITICAL": RED_PM, "WARNING": YEL_PM, "OK": GREEN_PM}
+        _FLAG_ICO = {"CRITICAL": "✗", "WARNING": "⚠", "OK": "✓"}
+
+        dim_html = ""
+        for d in dims:
+            _fc  = _FLAG_COL.get(d["flag"], "var(--text-muted)")
+            _ico = _FLAG_ICO.get(d["flag"], "·")
+            _bg  = (f"rgba(239,68,68,0.06)" if d["flag"] == "CRITICAL"
+                    else "rgba(240,180,41,0.04)" if d["flag"] == "WARNING"
+                    else "rgba(0,255,102,0.03)")
+            dim_html += (
+                f'<div style="background:{_bg};border:1px solid {_fc}25;'
+                f'border-radius:var(--r-sm);padding:0.4rem 0.8rem;margin-bottom:0.3rem;'
+                f'display:flex;gap:0.7rem;align-items:flex-start">'
+                f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+                f'color:{_fc};font-weight:700;min-width:90px">{_ico} {d["dim"]}</span>'
+                f'<div style="flex:1">'
+                f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+                f'color:var(--text-muted)">{d["value"]}</span>'
+                f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+                f'color:#94A3B8;margin-left:0.5rem">— {d["finding"]}</span>'
+                f'</div>'
+                f'</div>'
+            )
+
+        st.markdown(f"""
+<div style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);
+border-radius:var(--r-md);padding:0.7rem 0.9rem;margin-bottom:0.6rem">
+  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
+  color:var(--text-dim);letter-spacing:0.12em;margin-bottom:0.5rem">DIMENSI ANALISIS</div>
+  {dim_html}
+</div>
+""", unsafe_allow_html=True)
+
+        # Primary cause + rule
+        _prim_col = RED_PM if n_crit > 0 else YEL_PM if n_warn > 0 else GREEN_PM
+        st.markdown(f"""
+<div style="background:rgba(0,0,0,0.25);border:1px solid {_prim_col}30;
+border-left:3px solid {_prim_col};border-radius:var(--r-sm);
+padding:0.6rem 0.9rem;margin-bottom:0.4rem">
+  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+  color:var(--text-dim);margin-bottom:0.2rem">PENYEBAB UTAMA</div>
+  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
+  color:#E2E8F0;line-height:1.6">{primary}</div>
+  {f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:{_prim_col};margin-top:0.4rem;font-weight:700">{top_rule}</div>' if top_rule else ""}
+</div>
+""", unsafe_allow_html=True)
+
+        # Pattern match
+        if patterns and outcome == "LOSS":
+            _pat_str = patterns[0]
+            st.markdown(f"""
+<div style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.2);
+border-radius:var(--r-sm);padding:0.5rem 0.9rem">
+  <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+  color:{RED_PM};font-weight:700">⚠ PATTERN BERULANG: </span>
+  <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+  color:#94A3B8">{_pat_str}</span>
+</div>
+""", unsafe_allow_html=True)
+        elif outcome == "WIN":
+            st.markdown(f"""
+<div style="background:rgba(0,255,102,0.04);border:1px solid rgba(0,255,102,0.15);
+border-radius:var(--r-sm);padding:0.5rem 0.9rem">
+  <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+  color:{GREEN_PM}">✓ Trade ini WIN — catat kondisi yang membuatnya berhasil sebagai template.</span>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── MODE 1: Per Trade ─────────────────────────────────────────────────────
+    if "Per Trade" in _pm_mode:
+        if not closed_trades:
+            st.markdown(_mono("Belum ada closed trades.", "var(--text-muted)"),
+                        unsafe_allow_html=True)
+        else:
+            # Default ke trade yang baru ditutup jika ada
+            _trade_options = {
+                f"#{t['id']} {t['ticker']} — {t.get('outcome','?')} "
+                f"({(t.get('pnl_r') or 0):+.2f}R) · {(t.get('exit_date') or '')[:10]}": t["id"]
+                for t in closed_trades
+            }
+            _default_label = None
+            if _auto_tid:
+                for lbl, tid_val in _trade_options.items():
+                    if tid_val == _auto_tid:
+                        _default_label = lbl
+                        break
+
+            _opts_list = list(_trade_options.keys())
+            _def_idx   = _opts_list.index(_default_label) if _default_label in _opts_list else 0
+
+            sel_label = st.selectbox("Pilih trade", _opts_list,
+                                      index=_def_idx, key="pm_sel_trade")
+            sel_tid   = _trade_options.get(sel_label)
+
+            if sel_tid and st.button("🔬 ANALISIS TRADE INI", key="pm_run_single",
+                                      type="primary"):
+                st.session_state["pm_result"] = get_loss_attribution(sel_tid)
+                st.session_state["pm_trade_id"] = sel_tid
+
+            # Auto-run jika dari close trigger
+            if _auto_pm and _auto_tid and "pm_result" not in st.session_state:
+                st.session_state["pm_result"] = get_loss_attribution(_auto_tid)
+
+            pm_result = st.session_state.get("pm_result")
+            if pm_result and pm_result.get("trade_id") == st.session_state.get("pm_trade_id"):
+                _render_pm_card(pm_result)
+
+    # ── MODE 2: Aggregate ─────────────────────────────────────────────────────
+    else:
+        if not closed_trades:
+            st.markdown(_mono("Belum ada closed trades untuk dianalisis.", "var(--text-muted)"),
+                        unsafe_allow_html=True)
+        else:
+            if st.button("📊 GENERATE AGGREGATE REPORT", key="pm_run_agg", type="primary"):
+                st.session_state["pm_agg"] = get_loss_attribution()
+
+            agg = st.session_state.get("pm_agg")
+            if agg and agg.get("available"):
+                _n_l = agg.get("total_losses", 0)
+                _n_w = agg.get("total_wins", 0)
+                _n_c = agg.get("total_closed", 0)
+
+                st.markdown(f"""
+<div style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.07);
+border-radius:var(--r-md);padding:0.7rem 1rem;margin-bottom:0.8rem;
+font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+display:flex;gap:2rem;align-items:center;flex-wrap:wrap">
+  <span style="color:var(--text-dim)">ANALISIS {_n_c} CLOSED TRADES</span>
+  <span style="color:{GREEN_PM}">WIN: {_n_w}</span>
+  <span style="color:{RED_PM}">LOSS: {_n_l}</span>
+  <span style="color:var(--text-muted)">Top loss regime: <b style="color:{RED_PM}">{agg.get("top_loss_regime","—")}</b></span>
+  <span style="color:var(--text-muted)">Top loss score bucket: <b style="color:{RED_PM}">{agg.get("top_loss_score","—")}</b></span>
+</div>
+""", unsafe_allow_html=True)
+
+                # Win rate tables
+                def _wr_table(title: str, rows: list) -> None:
+                    if not rows:
+                        return
+                    st.markdown(f"""<div style="font-family:Share Tech Mono,monospace;
+font-size:var(--text-2xs);color:var(--text-dim);letter-spacing:0.12em;
+margin:0.8rem 0 0.3rem">{title}</div>""", unsafe_allow_html=True)
+                    html = '<div style="display:flex;flex-direction:column;gap:0.25rem">'
+                    for row in rows:
+                        wr   = row["win_rate"]
+                        _bc  = GREEN_PM if wr >= 55 else YEL_PM if wr >= 40 else RED_PM
+                        _bar = f'<div style="width:{wr}%;background:{_bc};height:100%;border-radius:2px"></div>'
+                        html += (
+                            f'<div style="display:flex;align-items:center;gap:0.6rem">'
+                            f'<span style="font-family:Share Tech Mono,monospace;'
+                            f'font-size:var(--text-xs);color:#94A3B8;min-width:130px">{row["label"]}</span>'
+                            f'<div style="flex:1;background:rgba(255,255,255,0.06);'
+                            f'border-radius:2px;height:6px">{_bar}</div>'
+                            f'<span style="font-family:Share Tech Mono,monospace;'
+                            f'font-size:var(--text-xs);color:{_bc};min-width:80px">'
+                            f'{wr:.0f}% ({row["total"]} trades)</span>'
+                            f'</div>'
+                        )
+                    html += "</div>"
+                    st.markdown(html, unsafe_allow_html=True)
+
+                _wr_table("WIN RATE BY REGIME", agg.get("regime_wr", []))
+                _wr_table("WIN RATE BY SIGNAL SCORE", agg.get("score_wr", []))
+                _wr_table("WIN RATE BY RISK %", agg.get("risk_wr", []))
 

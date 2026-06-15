@@ -417,3 +417,281 @@ def log_trade_manual(
     conn.commit()
     conn.close()
     return trade_id
+
+
+def get_loss_attribution(trade_id: int = None) -> dict:
+    """
+    Post-mortem attribution untuk satu trade atau semua closed trades.
+
+    Untuk satu trade (trade_id diberikan):
+      - Breakdown per dimensi: regime, signal_score, risk_pct, mcf_score
+      - Pattern match: apakah kondisi ini sama dengan loss sebelumnya?
+      - Rule suggestion: aturan spesifik yang seharusnya mencegah loss ini
+
+    Untuk semua trades (trade_id = None):
+      - Agregat: dimensi mana yang paling sering muncul di loss
+      - Win rate per bucket (regime, score range, risk range)
+    """
+    init_db()
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+
+    all_closed = [dict(r) for r in conn.execute("""
+        SELECT * FROM manual_trades
+        WHERE outcome IN ('WIN','LOSS','BREAKEVEN')
+        ORDER BY exit_date DESC
+    """).fetchall()]
+
+    if not all_closed:
+        conn.close()
+        return {"available": False, "reason": "Belum ada closed trades"}
+
+    losses = [t for t in all_closed if t.get("outcome") == "LOSS"]
+    wins   = [t for t in all_closed if t.get("outcome") == "WIN"]
+
+    # ── Single trade post-mortem ──────────────────────────────────────────────
+    if trade_id is not None:
+        trade = conn.execute(
+            "SELECT * FROM manual_trades WHERE id=?", (trade_id,)
+        ).fetchone()
+        conn.close()
+
+        if not trade:
+            return {"available": False, "reason": f"Trade #{trade_id} tidak ditemukan"}
+
+        trade = dict(trade)
+        outcome     = trade.get("outcome", "")
+        sig_score   = trade.get("signal_score") or 0
+        regime      = trade.get("regime_tag") or "UNKNOWN"
+        risk_pct    = ((trade.get("entry_price",0) - trade.get("sl_price",0))
+                       / max(trade.get("entry_price",0), 1) * 100) if trade.get("sl_price") else 0
+        mcf_score   = trade.get("mcf_score") or 0
+        sig_type    = trade.get("signal_type") or "UNKNOWN"
+        pnl_r       = trade.get("pnl_r") or 0
+
+        # Dimensi check — tiap dimensi: apakah ada warning flag?
+        dims = []
+
+        # 1. Regime
+        _bear_regimes = {"BEAR_TREND", "WATCHLIST_ONLY", "BEAR_CONSOLIDATION", "BEAR_WEAK"}
+        _risky_regimes = {"TRANSITION", "SIDEWAYS"}
+        if regime in _bear_regimes:
+            dims.append({
+                "dim": "REGIME",
+                "flag": "CRITICAL",
+                "value": regime,
+                "finding": f"Regime {regime} = bear/watchlist. Seharusnya tidak entry.",
+                "rule": "RULE: Jangan entry saat regime BEAR/WATCHLIST_ONLY.",
+            })
+        elif regime in _risky_regimes:
+            dims.append({
+                "dim": "REGIME",
+                "flag": "WARNING",
+                "value": regime,
+                "finding": f"Regime {regime} = transisi/sideways. Sizing seharusnya 50%.",
+                "rule": "RULE: Sizing 50% saat regime TRANSITION/SIDEWAYS.",
+            })
+        else:
+            dims.append({
+                "dim": "REGIME",
+                "flag": "OK",
+                "value": regime,
+                "finding": f"Regime {regime} = bullish. Bukan faktor loss.",
+                "rule": "",
+            })
+
+        # 2. Signal score
+        if sig_score < 3:
+            dims.append({
+                "dim": "SIGNAL SCORE",
+                "flag": "CRITICAL",
+                "value": f"{sig_score}/10",
+                "finding": f"Score {sig_score} terlalu rendah. Setup belum matang.",
+                "rule": "RULE: Jangan entry jika score < 4.",
+            })
+        elif sig_score < 5:
+            dims.append({
+                "dim": "SIGNAL SCORE",
+                "flag": "WARNING",
+                "value": f"{sig_score}/10",
+                "finding": f"Score {sig_score} medium. Harusnya sizing lebih kecil.",
+                "rule": "RULE: Sizing 50% jika score 4–5. Full size hanya score ≥ 6.",
+            })
+        else:
+            dims.append({
+                "dim": "SIGNAL SCORE",
+                "flag": "OK",
+                "value": f"{sig_score}/10",
+                "finding": f"Score {sig_score} acceptable. Bukan faktor utama loss.",
+                "rule": "",
+            })
+
+        # 3. Risk %
+        if risk_pct > 25:
+            dims.append({
+                "dim": "RISK %",
+                "flag": "CRITICAL",
+                "value": f"{risk_pct:.1f}%",
+                "finding": f"Risk {risk_pct:.1f}% — terlalu lebar. SL tidak rasional.",
+                "rule": "RULE: Skip jika risk > 25%. Cari entry lebih dekat SL.",
+            })
+        elif risk_pct > 15:
+            dims.append({
+                "dim": "RISK %",
+                "flag": "WARNING",
+                "value": f"{risk_pct:.1f}%",
+                "finding": f"Risk {risk_pct:.1f}% — di atas threshold. Sizing terlalu besar.",
+                "rule": "RULE: Kurangi sizing 50% jika risk 15–25%.",
+            })
+        else:
+            dims.append({
+                "dim": "RISK %",
+                "flag": "OK",
+                "value": f"{risk_pct:.1f}%",
+                "finding": f"Risk {risk_pct:.1f}% — dalam batas wajar.",
+                "rule": "",
+            })
+
+        # 4. MCF
+        if mcf_score > 0:
+            if mcf_score < 4:
+                dims.append({
+                    "dim": "MCF SCORE",
+                    "flag": "WARNING",
+                    "value": f"{mcf_score}/10",
+                    "finding": f"MCF {mcf_score} lemah. Momentum tidak mendukung entry.",
+                    "rule": "RULE: Jangan entry jika MCF < 5.",
+                })
+            else:
+                dims.append({
+                    "dim": "MCF SCORE",
+                    "flag": "OK",
+                    "value": f"{mcf_score}/10",
+                    "finding": f"MCF {mcf_score} — momentum mendukung saat entry.",
+                    "rule": "",
+                })
+
+        # ── Pattern match dari historical losses ──────────────────────────────
+        pattern_hits = []
+        similar_losses = []
+
+        for lt in losses:
+            if lt.get("id") == trade_id:
+                continue
+            lt_regime = lt.get("regime_tag") or "UNKNOWN"
+            lt_score  = lt.get("signal_score") or 0
+            lt_risk   = ((lt.get("entry_price",0) - lt.get("sl_price",0))
+                         / max(lt.get("entry_price",0),1) * 100) if lt.get("sl_price") else 0
+            matches = 0
+            if lt_regime == regime:               matches += 1
+            if abs(lt_score - sig_score) <= 1:    matches += 1
+            if abs(lt_risk - risk_pct) <= 5:      matches += 1
+            if matches >= 2:
+                similar_losses.append(lt)
+
+        if similar_losses:
+            pattern_hits.append(
+                f"{len(similar_losses)} dari {len(losses)} loss sebelumnya punya kondisi serupa "
+                f"(regime={regime}, score≈{sig_score}, risk≈{risk_pct:.0f}%)"
+            )
+
+        # ── Derive top causes ─────────────────────────────────────────────────
+        critical_dims = [d for d in dims if d["flag"] == "CRITICAL"]
+        warning_dims  = [d for d in dims if d["flag"] == "WARNING"]
+
+        if critical_dims:
+            primary_cause = critical_dims[0]["finding"]
+            top_rule      = critical_dims[0]["rule"]
+        elif warning_dims:
+            primary_cause = warning_dims[0]["finding"]
+            top_rule      = warning_dims[0]["rule"]
+        else:
+            primary_cause = "Kondisi entry dalam batas normal — loss karena market noise atau timing."
+            top_rule      = "Tidak ada rule yang dilanggar. Review price action saat exit."
+
+        return {
+            "available":       True,
+            "trade_id":        trade_id,
+            "ticker":          trade.get("ticker", "?"),
+            "outcome":         outcome,
+            "pnl_r":           pnl_r,
+            "dims":            dims,
+            "primary_cause":   primary_cause,
+            "top_rule":        top_rule,
+            "pattern_hits":    pattern_hits,
+            "similar_losses":  len(similar_losses),
+            "total_losses":    len(losses),
+            "critical_count":  len(critical_dims),
+            "warning_count":   len(warning_dims),
+        }
+
+    # ── Aggregate attribution (semua trades) ─────────────────────────────────
+    conn.close()
+
+    def _wr_bucket(trades_list, key_fn, label_fn):
+        """Win rate per bucket."""
+        from collections import defaultdict
+        buckets = defaultdict(lambda: {"win": 0, "loss": 0, "total": 0})
+        for t in trades_list:
+            k = key_fn(t)
+            buckets[k]["total"] += 1
+            if t.get("outcome") == "WIN":   buckets[k]["win"] += 1
+            elif t.get("outcome") == "LOSS": buckets[k]["loss"] += 1
+        result = []
+        for k, v in sorted(buckets.items()):
+            wr = v["win"] / v["total"] * 100 if v["total"] > 0 else 0
+            result.append({
+                "label":  label_fn(k),
+                "total":  v["total"],
+                "win":    v["win"],
+                "loss":   v["loss"],
+                "win_rate": round(wr, 1),
+            })
+        return result
+
+    regime_wr  = _wr_bucket(all_closed,
+        lambda t: t.get("regime_tag") or "UNKNOWN",
+        lambda k: k)
+
+    score_wr   = _wr_bucket(all_closed,
+        lambda t: "0-3" if (t.get("signal_score") or 0) <= 3
+                  else "4-5" if (t.get("signal_score") or 0) <= 5
+                  else "6-7" if (t.get("signal_score") or 0) <= 7
+                  else "8-10",
+        lambda k: f"Score {k}")
+
+    risk_wr    = _wr_bucket(all_closed,
+        lambda t: "<10%" if ((t.get("entry_price",0)-t.get("sl_price",0))/max(t.get("entry_price",1),1)*100) < 10
+                  else "10-15%" if ((t.get("entry_price",0)-t.get("sl_price",0))/max(t.get("entry_price",1),1)*100) < 15
+                  else "15-25%" if ((t.get("entry_price",0)-t.get("sl_price",0))/max(t.get("entry_price",1),1)*100) < 25
+                  else ">25%",
+        lambda k: f"Risk {k}")
+
+    # Most common loss conditions
+    loss_regime_counts = {}
+    loss_score_counts  = {}
+    for lt in losses:
+        r = lt.get("regime_tag") or "UNKNOWN"
+        s = lt.get("signal_score") or 0
+        loss_regime_counts[r] = loss_regime_counts.get(r, 0) + 1
+        bucket = "0-3" if s<=3 else "4-5" if s<=5 else "6-7" if s<=7 else "8-10"
+        loss_score_counts[bucket] = loss_score_counts.get(bucket, 0) + 1
+
+    top_loss_regime = max(loss_regime_counts, key=loss_regime_counts.get) if loss_regime_counts else "—"
+    top_loss_score  = max(loss_score_counts,  key=loss_score_counts.get)  if loss_score_counts  else "—"
+
+    return {
+        "available":        True,
+        "trade_id":         None,
+        "total_closed":     len(all_closed),
+        "total_losses":     len(losses),
+        "total_wins":       len(wins),
+        "regime_wr":        regime_wr,
+        "score_wr":         score_wr,
+        "risk_wr":          risk_wr,
+        "top_loss_regime":  top_loss_regime,
+        "top_loss_score":   top_loss_score,
+        "loss_regime_dist": loss_regime_counts,
+        "loss_score_dist":  loss_score_counts,
+    }
+
