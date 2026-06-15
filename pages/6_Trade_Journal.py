@@ -37,6 +37,76 @@ except Exception:
 
 render_sidebar("trade_journal")
 
+# ─── gemini key management ────────────────────────────────────────────────────
+_GEMINI_KEY_FILE = Path(__file__).parent.parent / "data" / "gemini_key.json"
+
+def _load_gemini_key() -> str:
+    """Baca Gemini API key dari file lokal. Fallback ke secrets.toml."""
+    try:
+        if _GEMINI_KEY_FILE.exists():
+            data = json.loads(_GEMINI_KEY_FILE.read_text(encoding="utf-8"))
+            key  = data.get("api_key", "")
+            if key:
+                return key
+    except Exception:
+        pass
+    try:
+        return st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:
+        return ""
+
+def _save_gemini_key(key: str) -> None:
+    _GEMINI_KEY_FILE.parent.mkdir(exist_ok=True)
+    _GEMINI_KEY_FILE.write_text(
+        json.dumps({"api_key": key, "saved_at": datetime.now().isoformat()}, indent=2),
+        encoding="utf-8",
+    )
+
+with st.sidebar:
+    st.markdown(
+        '<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+        'color:var(--text-muted);letter-spacing:.1em;margin:12px 0 4px">GEMINI API KEY</p>',
+        unsafe_allow_html=True,
+    )
+    _gkey     = _load_gemini_key()
+    _gkey_ok  = bool(_gkey)
+    _gkey_lbl = "✅ AKTIF" if _gkey_ok else "⚠ TIDAK ADA"
+    _gkey_clr = "var(--c-success)" if _gkey_ok else "var(--c-danger)"
+    st.markdown(
+        f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+        f'color:{_gkey_clr};margin-bottom:6px">{_gkey_lbl}</div>',
+        unsafe_allow_html=True,
+    )
+    if "show_gemini_input" not in st.session_state:
+        st.session_state.show_gemini_input = False
+    _btn_lbl = "[-] API KEY" if st.session_state.show_gemini_input else "[+] API KEY"
+    if st.button(_btn_lbl, key="gemini_key_toggle", use_container_width=True):
+        st.session_state.show_gemini_input = not st.session_state.show_gemini_input
+    if st.session_state.show_gemini_input:
+        with st.form("gemini_key_form", clear_on_submit=True):
+            new_key = st.text_input(
+                "Paste Gemini API Key", type="password",
+                placeholder="AIza...",
+                label_visibility="collapsed",
+            )
+            if st.form_submit_button("SAVE", use_container_width=True):
+                if new_key and new_key.startswith("AIza"):
+                    _save_gemini_key(new_key)
+                    st.session_state.show_gemini_input = False
+                    st.success("Key saved!")
+                    st.rerun()
+                else:
+                    st.error("Harus diawali AIza...")
+        st.markdown(
+            '<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+            'color:var(--text-dim);line-height:1.6">'
+            '1. Buka aistudio.google.com<br>'
+            '2. Get API Key → Create API Key<br>'
+            '3. Copy → Paste di sini</p>',
+            unsafe_allow_html=True,
+        )
+
+
 # ─── header ───────────────────────────────────────────────────────────────────
 render_page_header(
     eyebrow  = "◆ MODULE 06 · TRADE JOURNAL · " + "V" + _ver,
@@ -489,13 +559,9 @@ def _call_gemini(
     image_mime: str = "image/png",
 ) -> str:
     """Call Gemini 1.5 Flash API. Returns response text or error string."""
-    try:
-        api_key = st.secrets.get("GEMINI_API_KEY", "")
-    except Exception:
-        api_key = ""
-
+    api_key = _load_gemini_key()
     if not api_key:
-        return "❌ GEMINI_API_KEY tidak ditemukan di .streamlit/secrets.toml"
+        return "❌ Gemini API Key belum diset. Klik [+] API KEY di sidebar untuk input."
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
 
