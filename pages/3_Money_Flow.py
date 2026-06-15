@@ -122,15 +122,15 @@ _mf_context = st.session_state.get("mf_context", {})
 _mf_time    = st.session_state.get("mf_scan_time", None)
 
 # Filter controls (below scan button, shown only when results exist)
-filter_signal   = ["WHALE_ACCUMULATION", "INSTITUTIONAL_BUY", "RETAIL_MOMENTUM"]
+filter_signal   = ["WHALE_ACCUMULATION", "INSTITUTIONAL_BUY", "RETAIL_MOMENTUM", "NEUTRAL", "DISTRIBUTION"]
 filter_source   = ["stockbit", "proxy_ohlcv"]
-filter_min_vol  = 1.0  # default — overridden by slider kalau results sudah ada
+filter_min_vol  = 0.5  # default lebih rendah agar tidak filter habis
 if _mf_results:
     fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 1])
     with fc1:
         filter_signal = st.multiselect("SIGNAL FILTER",
             ["WHALE_ACCUMULATION","INSTITUTIONAL_BUY","RETAIL_MOMENTUM","NEUTRAL","DISTRIBUTION"],
-            default=["WHALE_ACCUMULATION","INSTITUTIONAL_BUY","RETAIL_MOMENTUM"],
+            default=["WHALE_ACCUMULATION","INSTITUTIONAL_BUY","RETAIL_MOMENTUM","NEUTRAL","DISTRIBUTION"],
             key="mf_f_sig", label_visibility="collapsed")
     with fc2:
         filter_source = st.multiselect("SOURCE",
