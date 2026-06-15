@@ -151,6 +151,11 @@ if run_scan:
             universe = [t + ".JK" for t in get_dynamic_universe()][:max_t]
             results  = scanner.scan(tickers=universe, max_workers=int(mf_max_work))
 
+            # Enrich top results dengan Stockbit broker data (jika token ada)
+            oa = scanner._get_ownership()
+            if oa:
+                results = oa.enrich_top_results(results, top_n=20)
+
             # Apply vol filter
             results = [r for r in results if (r.get("vol_ratio") or 1.0) >= mf_min_vol]
 
