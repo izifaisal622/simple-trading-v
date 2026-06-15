@@ -129,99 +129,6 @@ if run_scan:
             st.error(f"ERROR: {e}")
             st.code(traceback.format_exc())
 
-# ─── read results fresh ────────────────────────────────────────────────────────
-_results = st.session_state.get("mf_results", [])
-_ctx     = st.session_state.get("mf_context", {})
-
-# ─── display ──────────────────────────────────────────────────────────────────
-if not _results:
-    render_empty_state(
-        icon     = "💸",
-        title    = "NO FLOW DATA",
-        subtitle = "Klik RUN MONEY FLOW SCAN untuk mulai.\nScan universe IDX → sort by % gain harian + volume spike.",
-        command  = "python orchestrator.py --mode flow",
-    )
-else:
-    # ── Summary bar ───────────────────────────────────────────────────────────
-    _scan_time  = _ctx.get("scan_time", "—")
-    _total      = _ctx.get("total", len(_results))
-    _top_gain   = _ctx.get("top_gainer_pct", 0)
-    _avg_vol    = _ctx.get("avg_vol_ratio", 0)
-    _sec_counts = _ctx.get("sector_counts", {})
-
-    cols5 = st.columns(5)
-    _summary = [
-        ("TOTAL MOVERS", _total,              TEXT_MAIN),
-        ("TOP GAINER",   f"+{_top_gain:.1f}%", NEON_GREEN),
-        ("AVG VOL RATIO", f"{_avg_vol:.1f}×",  NEON_GREEN),
-        ("SECTORS",       len(_sec_counts),    TEXT_MUTED),
-        ("⏱ SCAN",        _scan_time,          TEXT_MUTED),
-    ]
-    for col, (lbl, val, clr) in zip(cols5, _summary):
-        with col:
-            st.markdown(
-                f'<div class="m-card" style="padding:0.55rem 0.7rem">'
-                f'<div class="m-lbl" style="font-size:var(--text-2xs)">{lbl}</div>'
-                f'<div class="m-val" style="color:{clr};font-size:var(--text-xl)">{val}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-
-    # ── Filters ───────────────────────────────────────────────────────────────
-    all_sectors = sorted(set(r.get("sector", "OTHER") for r in _results))
-    fc1, fc2, fc3 = st.columns([2, 2, 1])
-    with fc1:
-        sel_sectors = st.multiselect(
-            "FILTER SEKTOR", all_sectors, default=all_sectors,
-            key="mf_sectors", label_visibility="collapsed",
-        )
-    with fc2:
-        sort_by = st.selectbox(
-            "SORT BY", ["% Gain", "Vol Ratio", "Value (Bn)"],
-            key="mf_sort", label_visibility="collapsed",
-        )
-    with fc3:
-        min_chg = st.number_input("MIN CHG %", -10.0, 20.0, 0.0, 0.5, key="mf_minchg")
-
-    # ── Apply filters ─────────────────────────────────────────────────────────
-    filtered = [
-        r for r in _results
-        if r.get("sector", "OTHER") in sel_sectors
-        and (r.get("chg_pct") or 0) >= min_chg
-    ]
-
-    sort_key = {
-        "% Gain":      lambda x: -(x.get("chg_pct") or 0),
-        "Vol Ratio":   lambda x: -(x.get("vol_ratio") or 0),
-        "Value (Bn)":  lambda x: -(x.get("value_bn") or 0),
-    }.get(sort_by, lambda x: -(x.get("chg_pct") or 0))
-    filtered.sort(key=sort_key)
-
-    st.markdown(
-        f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
-        f'color:var(--text-muted)">SHOWING {len(filtered)} OF {len(_results)}</p>',
-        unsafe_allow_html=True,
-    )
-
-    # ── Copy tickers ──────────────────────────────────────────────────────────
-    if filtered:
-        if st.button(f"📋 COPY {len(filtered)} TICKERS", key="mf_copy"):
-            tickers_str = ", ".join(r.get("ticker", "").replace(".JK", "") for r in filtered)
-            st.code(tickers_str)
-
-    # ── Cards ─────────────────────────────────────────────────────────────────
-    if filtered:
-        lc, rc = st.columns(2)
-        for i, r in enumerate(filtered):
-            card_html = _build_card(r)
-            (lc if i % 2 == 0 else rc).markdown(card_html, unsafe_allow_html=True)
-    else:
-        st.markdown(
-            '<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
-            'color:var(--text-muted)">Tidak ada data untuk filter ini.</p>',
-            unsafe_allow_html=True,
-        )
-
 
 # ─── card builder ─────────────────────────────────────────────────────────────
 def _build_card(r: dict) -> str:
@@ -320,3 +227,98 @@ def _build_card(r: dict) -> str:
     border-top:1px solid rgba(255,255,255,.05);padding-top:6px;margin-top:4px;line-height:1.5">{note}</div>
 </div>
 """
+
+# ─── read results fresh ────────────────────────────────────────────────────────
+_results = st.session_state.get("mf_results", [])
+_ctx     = st.session_state.get("mf_context", {})
+
+# ─── display ──────────────────────────────────────────────────────────────────
+if not _results:
+    render_empty_state(
+        icon     = "💸",
+        title    = "NO FLOW DATA",
+        subtitle = "Klik RUN MONEY FLOW SCAN untuk mulai.\nScan universe IDX → sort by % gain harian + volume spike.",
+        command  = "python orchestrator.py --mode flow",
+    )
+else:
+    # ── Summary bar ───────────────────────────────────────────────────────────
+    _scan_time  = _ctx.get("scan_time", "—")
+    _total      = _ctx.get("total", len(_results))
+    _top_gain   = _ctx.get("top_gainer_pct", 0)
+    _avg_vol    = _ctx.get("avg_vol_ratio", 0)
+    _sec_counts = _ctx.get("sector_counts", {})
+
+    cols5 = st.columns(5)
+    _summary = [
+        ("TOTAL MOVERS", _total,              TEXT_MAIN),
+        ("TOP GAINER",   f"+{_top_gain:.1f}%", NEON_GREEN),
+        ("AVG VOL RATIO", f"{_avg_vol:.1f}×",  NEON_GREEN),
+        ("SECTORS",       len(_sec_counts),    TEXT_MUTED),
+        ("⏱ SCAN",        _scan_time,          TEXT_MUTED),
+    ]
+    for col, (lbl, val, clr) in zip(cols5, _summary):
+        with col:
+            st.markdown(
+                f'<div class="m-card" style="padding:0.55rem 0.7rem">'
+                f'<div class="m-lbl" style="font-size:var(--text-2xs)">{lbl}</div>'
+                f'<div class="m-val" style="color:{clr};font-size:var(--text-xl)">{val}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    # ── Filters ───────────────────────────────────────────────────────────────
+    all_sectors = sorted(set(r.get("sector", "OTHER") for r in _results))
+    fc1, fc2, fc3 = st.columns([2, 2, 1])
+    with fc1:
+        sel_sectors = st.multiselect(
+            "FILTER SEKTOR", all_sectors, default=all_sectors,
+            key="mf_sectors", label_visibility="collapsed",
+        )
+    with fc2:
+        sort_by = st.selectbox(
+            "SORT BY", ["% Gain", "Vol Ratio", "Value (Bn)"],
+            key="mf_sort", label_visibility="collapsed",
+        )
+    with fc3:
+        min_chg = st.number_input("MIN CHG %", -10.0, 20.0, 0.0, 0.5, key="mf_minchg")
+
+    # ── Apply filters ─────────────────────────────────────────────────────────
+    filtered = [
+        r for r in _results
+        if r.get("sector", "OTHER") in sel_sectors
+        and (r.get("chg_pct") or 0) >= min_chg
+    ]
+
+    sort_key = {
+        "% Gain":      lambda x: -(x.get("chg_pct") or 0),
+        "Vol Ratio":   lambda x: -(x.get("vol_ratio") or 0),
+        "Value (Bn)":  lambda x: -(x.get("value_bn") or 0),
+    }.get(sort_by, lambda x: -(x.get("chg_pct") or 0))
+    filtered.sort(key=sort_key)
+
+    st.markdown(
+        f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+        f'color:var(--text-muted)">SHOWING {len(filtered)} OF {len(_results)}</p>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Copy tickers ──────────────────────────────────────────────────────────
+    if filtered:
+        if st.button(f"📋 COPY {len(filtered)} TICKERS", key="mf_copy"):
+            tickers_str = ", ".join(r.get("ticker", "").replace(".JK", "") for r in filtered)
+            st.code(tickers_str)
+
+    # ── Cards ─────────────────────────────────────────────────────────────────
+    if filtered:
+        lc, rc = st.columns(2)
+        for i, r in enumerate(filtered):
+            card_html = _build_card(r)
+            (lc if i % 2 == 0 else rc).markdown(card_html, unsafe_allow_html=True)
+    else:
+        st.markdown(
+            '<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+            'color:var(--text-muted)">Tidak ada data untuk filter ini.</p>',
+            unsafe_allow_html=True,
+        )
+
+
