@@ -243,11 +243,12 @@ if not tradeable:
 
 render_regime_bar(cycle, ihsg, mom_4w, breadth, scan_date, extra=extra_regime)
 
-# ── Hengky Framework ──────────────────────────────────────────────────────────
-if "panel_hengky" not in st.session_state:
-    st.session_state.panel_hengky = False
+# ── Session state init (semua panel toggle — satu tempat, tidak ada duplicate) ─
+for _panel_key in ("panel_hengky", "panel_director", "panel_journal", "panel_lessons"):
+    if _panel_key not in st.session_state:
+        st.session_state[_panel_key] = False
 
-_hengky_lbl = "[−] ◈ HENGKY ADINATA FRAMEWORK" if st.session_state.panel_hengky else "[+] ◈ HENGKY ADINATA FRAMEWORK"
+# ── Hengky Framework ──────────────────────────────────────────────────────────_hengky_lbl = "[−] ◈ HENGKY ADINATA FRAMEWORK" if st.session_state.panel_hengky else "[+] ◈ HENGKY ADINATA FRAMEWORK"
 if st.button(_hengky_lbl, key="btn_hengky", width="stretch"):
     st.session_state.panel_hengky = not st.session_state.panel_hengky
 
@@ -429,20 +430,23 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         floor_ok=="good",  conv_ok=="good", supply_ok=="good"
     ])
     if good_count >= 5:
-        verdict = "PRIORITAS"
-        v_col   = "var(--accent)"
-        v_bg    = "rgba(0,255,102,0.06)"
-        v_border= "rgba(0,255,102,0.3)"
+        verdict  = "PRIORITAS"
+        v_col    = "var(--accent)"
+        v_col_hex= "#00FF66"   # resolved hex — dipakai di opacity suffix
+        v_bg     = "rgba(0,255,102,0.06)"
+        v_border = "rgba(0,255,102,0.3)"
     elif good_count >= 3:
-        verdict = "WATCHLIST AKTIF"
-        v_col   = "var(--c-warning)"
-        v_bg    = "rgba(240,180,41,0.04)"
-        v_border= "rgba(240,180,41,0.25)"
+        verdict  = "WATCHLIST AKTIF"
+        v_col    = "var(--c-warning)"
+        v_col_hex= "#F0B429"
+        v_bg     = "rgba(240,180,41,0.04)"
+        v_border = "rgba(240,180,41,0.25)"
     else:
-        verdict = "WATCHLIST PASIF"
-        v_col   = "var(--text-secondary)"
-        v_bg    = "rgba(100,116,139,0.04)"
-        v_border= "rgba(100,116,139,0.2)"
+        verdict  = "WATCHLIST PASIF"
+        v_col    = "var(--text-secondary)"
+        v_col_hex= "#64748B"
+        v_bg     = "rgba(100,116,139,0.04)"
+        v_border = "rgba(100,116,139,0.2)"
 
     if not tradeable:
         verdict += " (STOP TRADE — build watchlist)"
@@ -536,7 +540,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         color:var(--text-muted)">{signal} · {sector}</span>
         <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
         color:var(--text-primary);font-weight:700">Rp{close:,.0f}</span>
-        <span style="background:{v_col}20;border:1px solid {v_col}50;border-radius:var(--r-sm);
+        <span style="background:{v_col_hex}20;border:1px solid {v_col_hex}50;border-radius:var(--r-sm);
         padding:2px 10px;font-family:Orbitron,monospace;font-size:var(--text-xs);
         font-weight:700;color:{v_col};margin-left:auto">{verdict}</span>
       </div>
@@ -552,7 +556,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
             unsafe_allow_html=True)
 
         # Conclusion box
-        st.markdown(f"""<div style="background:rgba(0,0,0,0.3);border:1px solid {v_col}30;
+        st.markdown(f"""<div style="background:rgba(0,0,0,0.3);border:1px solid {v_col_hex}30;
         border-radius:var(--r-sm);padding:0.6rem 1rem;margin-top:0.6rem;
         font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:var(--text-primary);line-height:1.7">
         <span style="color:{v_col};font-weight:700">→ KESIMPULAN: </span>{action}
@@ -829,12 +833,14 @@ def _ownership_row(w: dict) -> str:
     if ff > 0 or pi > 0:
         ff_col = "var(--accent)" if ff<=15 else "var(--c-warning)" if ff<=30 else "var(--text-secondary)"
         sc_col = "var(--accent)" if sc in ("SANGAT KETAT","KETAT") else "var(--c-warning)" if sc=="MODERATE" else "var(--text-secondary)"
+        _margin_left = "0.8rem" if ob else "0"
+        _sc_html     = f" · <b style='color:{sc_col}'>{sc}</b>" if sc else ""
         parts.append(
             '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
-            f'color:var(--text-dim);margin-left:{"0.8rem" if ob else "0"}">'
+            f'color:var(--text-dim);margin-left:{_margin_left}">'
             f'📊 Insider <b style="color:var(--text-primary)">{pi:.0f}%</b> · '
             f'Float <b style="color:{ff_col}">{ff:.0f}%</b>'
-            f'{f" · <b style=\'color:{sc_col}\'>{sc}</b>" if sc else ""}'
+            f'{_sc_html}'
             '</span>'
         )
 
@@ -875,6 +881,7 @@ def _v4_row(w: dict) -> str:
     hb_desc = w.get("hitung_barang_desc","")
     if ctrl >= 4 or hb_desc:
         ctrl_col = "var(--accent)" if ctrl >= 7 else "var(--c-warning)" if ctrl >= 4 else "var(--text-muted)"
+        _hb_text = hb_desc if hb_desc else f"~{abs_p:.0f}% vol diserap institusi"
         parts.append(
             '<div style="display:flex;align-items:center;gap:0.5rem;'
             'background:rgba(0,255,102,0.04);border:1px solid rgba(0,255,102,0.1);'
@@ -884,7 +891,7 @@ def _v4_row(w: dict) -> str:
             '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
             f'color:{ctrl_col};font-weight:700">CONTROL {ctrl}/10</span>'
             '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
-            f'color:var(--text-muted)">{hb_desc if hb_desc else f"~{abs_p:.0f}% vol diserap institusi"}</span>'
+            f'color:var(--text-muted)">{_hb_text}</span>'
             '</div>'
         )
 
@@ -1540,11 +1547,7 @@ if whale_results:
     # ── Intel Panel ───────────────────────────────────────────────────────────
     sec_head("◆ INTEL PANEL")
 
-    # ── Session state toggles ──────────────────────────────────────────────
-    if "panel_hengky"   not in st.session_state: st.session_state.panel_hengky   = False
-    if "panel_director" not in st.session_state: st.session_state.panel_director = False
-    if "panel_journal"  not in st.session_state: st.session_state.panel_journal  = False
-    if "panel_lessons"  not in st.session_state: st.session_state.panel_lessons  = False
+    # ── Session state toggles (init sudah dilakukan di atas halaman) ──────
 
     cd, cj, cs = st.columns(3)
 
@@ -1584,8 +1587,6 @@ if whale_results:
             key="btn_journal", width="stretch"
         ):
             st.session_state.panel_journal = not st.session_state.panel_journal
-        if "panel_journal" not in st.session_state:
-            st.session_state.panel_journal = False
         if st.session_state.panel_journal:
             st.markdown("""<div style="background:var(--bg-base);border:1px solid rgba(0,255,102,0.12);
             border-top:none;border-radius:0 0 3px 3px;padding:0.8rem 1rem">""",
@@ -1604,8 +1605,6 @@ if whale_results:
             key="btn_lessons", width="stretch"
         ):
             st.session_state.panel_lessons = not st.session_state.panel_lessons
-        if "panel_lessons" not in st.session_state:
-            st.session_state.panel_lessons = False
         if st.session_state.panel_lessons:
             st.markdown("""<div style="background:var(--bg-base);border:1px solid rgba(0,255,102,0.12);
             border-top:none;border-radius:0 0 3px 3px;padding:0.8rem 1rem">""",

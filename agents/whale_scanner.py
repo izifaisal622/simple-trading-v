@@ -832,30 +832,56 @@ def test_whale_defense(close: pd.Series, vol: pd.Series, low: pd.Series, high: p
 def classify_whale_quality(result: dict) -> str:
     """
     Hengky: "Smart whale defend waktu turun. Dumb whale biarkan drift."
+
+    V4 update: tambah control_score (hitung barang), OB zone, VP zone, free float.
+    Threshold disesuaikan karena max score naik dari 13 → 20.
+    SMART ≥ 13 | LIKELY_SMART ≥ 8 | UNCERTAIN ≥ 4
     """
     score = 0
 
+    # Floor proximity (0–3)
     zone = result.get("entry_zone", "FAR_FROM_FLOOR")
     if zone == "AT_FLOOR":    score += 3
     elif zone == "NEAR_FLOOR": score += 2
     elif zone == "MID_RANGE":  score += 1
 
-    if result.get("pengeringan_detected"):    score += 2
+    # Pengeringan (0–3)
+    if result.get("pengeringan_detected"):        score += 2
     if result.get("pengeringan_strength",0) >= 4: score += 1
 
+    # Whale defense (0–3)
     if result.get("whale_defending"):          score += 2
     if result.get("defense_days",0) >= 2:      score += 1
 
+    # Accumulation pattern + EMA (0–3)
     if result.get("pattern") == "SUSTAINED":  score += 2
     if result.get("ema_trend") == "BULLISH":  score += 1
 
+    # Momentum (0–2)
     mom = result.get("momentum","")
     if mom == "ACCELERATING": score += 1
     if mom == "REVERSING":    score += 1
 
-    if score >= 9:   return "SMART"
-    if score >= 6:   return "LIKELY_SMART"
-    if score >= 3:   return "UNCERTAIN"
+    # V4: Hitung Barang — supply concentration (0–2)
+    ctrl = result.get("control_score", 0)
+    if ctrl >= 7:   score += 2
+    elif ctrl >= 4: score += 1
+
+    # V4: Order Block — institutional footprint (0–2)
+    if result.get("in_ob_zone"):    score += 2
+    elif result.get("near_ob_zone"): score += 1
+
+    # V4: Volume Profile — price near accumulation zone (0–1)
+    if result.get("vp_near_val") or result.get("vp_in_value"): score += 1
+
+    # Free float tight = supply terpusat = lebih mudah naik (0–1)
+    ff = result.get("free_float", 100)
+    if ff <= 15: score += 1
+
+    # Threshold adjusted: max score ~20
+    if score >= 13:  return "SMART"
+    if score >= 8:   return "LIKELY_SMART"
+    if score >= 4:   return "UNCERTAIN"
     return "DUMB"
 
 
@@ -1093,9 +1119,13 @@ class WhaleScanner:
             if value_bn < self.min_value_bn:
                 return None
 
-            # Filter ex-dividend noise
+            # Filter ex-dividend noise — tapi jangan buang panic sell + whale defense
+            # BUG 6 fix: cek defense dulu sebelum skip
             if chg_pct < -3.5 and vol_ratio > 3.0:
-                return None
+                _quick_def = test_whale_defense(close, vol, low, high)
+                if not _quick_def.get("defending"):
+                    return None  # genuine dump tanpa defender (kemungkinan ex-div / bad news)
+                # kalau ada yang defend meski harga turun → biarkan lewat untuk dianalisis
 
             # ── V3: Fundamental deterioration proxy ────────────────────────────
             # We don't have EPS data from yfinance free tier.
@@ -1248,9 +1278,7 @@ class WhaleScanner:
                     result["top_sellers"]    = []      # diisi enrich_top_results
                     result["smart_buy_pct"]  = 0
                     result["_ownership"]     = own
-                    ff = own.get("free_float", 100)
-                    if ff <= 15 and result.get("conviction",0) < 10:
-                        result["conviction"] = min(10, result["conviction"] + 1)
+                    # NOTE: ff free_float boost conviction dipindah ke setelah compute_conviction
                 except Exception as _e:
                     logger.debug(f"[Whale] {ticker} ownership failed: {_e}")
 
@@ -1269,8 +1297,14 @@ class WhaleScanner:
             # Signal
             signal, emoji, color = classify_signal(vol_ratio, chg_pct, peng_data, def_data)
 
-            # Recovery overlay: beaten down + whale buying
-            if signal not in ("DISTRIBUTION","BLOCK_SELL") and pct_52w_high < -20:
+            # Recovery overlay: beaten down + ada bukti whale buying
+            # BUG 5 fix: VOL_NEUTRAL tanpa whale evidence TIDAK di-override ke RECOVERY_EARLY
+            _has_whale_evidence = (
+                peng_data.get("detected") or
+                def_data.get("defending") or
+                vol_ratio >= 2.0
+            )
+            if signal not in ("DISTRIBUTION","BLOCK_SELL") and pct_52w_high < -20 and _has_whale_evidence:
                 signal = "RECOVERY_EARLY"
                 emoji  = "🌅"
                 color  = "#fbbf24"
@@ -1289,6 +1323,11 @@ class WhaleScanner:
             # V3: Conviction uses free-float adjusted ratio
             result["ff_adj_vol_ratio"] = round(ff_adj_ratio, 2)
             result["conviction"]    = compute_conviction(result, ff_adj_ratio)
+
+            # Free float tight → supply terpusat → boost conviction (BUG 2 fix: dipindah ke sini)
+            _ff_now = result.get("free_float", 100)
+            if _ff_now <= 15 and result["conviction"] < 10:
+                result["conviction"] = min(10, result["conviction"] + 1)
 
             # V6.4: Boost conviction if price is near Volume Profile VAL (near accumulation zone)
             if vp_data.get("near_val") and result["conviction"] < 10:
