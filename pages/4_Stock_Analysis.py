@@ -372,6 +372,115 @@ st.markdown(
     '</div>',
     unsafe_allow_html=True)
 
+# ── Pre-Flight Checklist ──────────────────────────────────────────────────────
+# Checklist wajib sebelum LOG TRADE — mencegah entry impulsif
+# Semua item harus centang sebelum log trade bisa dilakukan
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Hitung nilai checklist dari data analisis
+_pf_regime_ok   = r.regime_tag not in ("WATCHLIST_ONLY", "BEAR_TREND", "BEAR_WEAK", "BEAR_CONSOLIDATION", "")
+_pf_ema_ok      = r.ema_score >= 4
+_pf_conv_ok     = r.conviction >= 6
+_pf_floor_ok    = fp_dist <= 20
+_pf_risk_ok     = r.risk_pct <= 25
+_pf_vol_ok      = r.vol_ratio >= 1.3
+_pf_dist_ok     = r.activity_type not in ("DISTRIBUSI", "SELL_OFF", "DISTRIBUTION")
+_pf_signal_ok   = r.signal not in ("CORRECTING", "DEEP_CORRECT", "")
+
+_pf_all_pass    = all([_pf_regime_ok, _pf_ema_ok, _pf_conv_ok, _pf_floor_ok,
+                        _pf_risk_ok, _pf_vol_ok, _pf_dist_ok, _pf_signal_ok])
+_pf_pass_count  = sum([_pf_regime_ok, _pf_ema_ok, _pf_conv_ok, _pf_floor_ok,
+                        _pf_risk_ok, _pf_vol_ok, _pf_dist_ok, _pf_signal_ok])
+
+# Colors
+_pf_head_col = "#00FF66" if _pf_all_pass else "#F0B429" if _pf_pass_count >= 6 else "#EF4444"
+_pf_head_bg  = ("rgba(0,255,102,0.05)" if _pf_all_pass else
+                "rgba(240,180,41,0.05)" if _pf_pass_count >= 6 else
+                "rgba(239,68,68,0.05)")
+_pf_head_lbl = ("✅ CLEAR FOR ENTRY" if _pf_all_pass else
+                f"⚠ {8 - _pf_pass_count} KRITERIA BELUM TERPENUHI" if _pf_pass_count >= 6 else
+                f"⛔ JANGAN ENTRY ({8 - _pf_pass_count} critical miss)")
+
+# Build checklist items
+def _pf_row(ok: bool, label: str, value: str, rule: str) -> str:
+    _ic  = "✓" if ok else "✗"
+    _col = "#00FF66" if ok else "#EF4444"
+    _bg  = "rgba(0,255,102,0.03)" if ok else "rgba(239,68,68,0.05)"
+    _bdr = "rgba(0,255,102,0.12)" if ok else "rgba(239,68,68,0.2)"
+    return (
+        f'<div style="background:{_bg};border:1px solid {_bdr};'
+        f'border-radius:var(--r-sm);padding:0.3rem 0.7rem;margin-bottom:0.25rem;'
+        f'display:flex;align-items:center;gap:0.7rem">'
+        f'<span style="font-family:Orbitron,monospace;font-size:var(--text-sm);'
+        f'color:{_col};font-weight:900;min-width:16px">{_ic}</span>'
+        f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+        f'color:#94A3B8;min-width:160px">{label}</span>'
+        f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+        f'color:{_col};font-weight:700">{value}</span>'
+        f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+        f'color:var(--text-dim);margin-left:auto">{rule}</span>'
+        f'</div>'
+    )
+
+_pf_rows = (
+    _pf_row(_pf_regime_ok,  "REGIME",        r.regime_tag or "UNKNOWN",
+             "Bukan BEAR/WATCHLIST_ONLY")
+    + _pf_row(_pf_ema_ok,   "EMA SCORE",     f"{r.ema_score}/7",
+               "≥ 4 untuk entry")
+    + _pf_row(_pf_conv_ok,  "CONVICTION",    f"{r.conviction}/10",
+               "≥ 6 untuk full size")
+    + _pf_row(_pf_floor_ok, "FLOOR DIST",    f"{fp_dist:.1f}%",
+               "≤ 20% dari floor")
+    + _pf_row(_pf_risk_ok,  "RISK %",        f"{r.risk_pct:.1f}%",
+               "≤ 25% per trade")
+    + _pf_row(_pf_vol_ok,   "VOL RATIO",     f"{r.vol_ratio:.1f}×",
+               "≥ 1.3× konfirmasi")
+    + _pf_row(_pf_dist_ok,  "SINYAL ARAH",   r.activity_type or r.signal or "—",
+               "Bukan distribusi/sell-off")
+    + _pf_row(_pf_signal_ok,"EMA SIGNAL",    r.signal or "—",
+               "Bukan CORRECTING/DEEP")
+)
+
+# Session state untuk override checklist (trader tetap bisa force entry)
+if "pf_override" not in st.session_state:
+    st.session_state["pf_override"] = False
+
+_pf_col1, _pf_col2 = st.columns([5, 1])
+with _pf_col1:
+    st.markdown(f"""
+<div style="background:{_pf_head_bg};border:1px solid {_pf_head_col}30;
+border-left:4px solid {_pf_head_col};border-radius:var(--r-md);
+padding:0.7rem 1rem;margin-bottom:0.4rem">
+  <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem">
+    <span style="font-family:Orbitron,monospace;font-size:var(--text-sm);
+    font-weight:800;color:{_pf_head_col};letter-spacing:0.1em">
+    ◈ PRE-FLIGHT CHECKLIST</span>
+    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+    color:{_pf_head_col};font-weight:700">{_pf_head_lbl}</span>
+    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
+    color:var(--text-dim);margin-left:auto">{_pf_pass_count}/8 pass</span>
+  </div>
+  {_pf_rows}
+</div>
+""", unsafe_allow_html=True)
+
+with _pf_col2:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    if not _pf_all_pass:
+        _override_lbl = "🔓 OVERRIDE ON" if st.session_state["pf_override"] else "⚠ FORCE ENTRY"
+        if st.button(_override_lbl, key="pf_override_btn", use_container_width=True):
+            st.session_state["pf_override"] = not st.session_state["pf_override"]
+            st.rerun()
+        if st.session_state["pf_override"]:
+            st.markdown(
+                '<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+                'color:#EF4444;text-align:center">Override aktif —<br>log trade atas<br>risiko sendiri</p>',
+                unsafe_allow_html=True)
+
+# Store checklist state untuk dipakai di form log trade
+_pf_entry_allowed = _pf_all_pass or st.session_state.get("pf_override", False)
+
 # ── Tabs: Paper Trade Journal + Ringkasan + System Flags ─────────────────────
 tab_labels = ["📋 Paper Trade Journal", "◈ Ringkasan Analisis", "⚙ System Flags"]
 tab_journal, tab_ringkasan, tab_flags = st.tabs(tab_labels)
@@ -400,7 +509,11 @@ with tab_journal:
         with jc2:
             j_tp1   = st.number_input("TP1", value=float(r.tp1_price or 0), step=1.0, format="%.0")
             j_notes = st.text_input("Notes (opsional)", placeholder="Setup notes, catalyst, dll", label_visibility="visible")
-        log_btn = st.form_submit_button("◈ LOG PAPER TRADE", use_container_width=True, type="primary")
+        # Pre-flight gate: disabled jika checklist belum pass dan belum di-override
+        _btn_label = "◈ LOG PAPER TRADE" if _pf_entry_allowed else f"⛔ LOG DIBLOKIR ({8-_pf_pass_count} kriteria gagal)"
+        _btn_type  = "primary" if _pf_entry_allowed else "secondary"
+        log_btn = st.form_submit_button(_btn_label, use_container_width=True, type=_btn_type,
+                                         disabled=not _pf_entry_allowed)
         if log_btn:
             if j_entry > 0 and j_sl > 0:
                 tid = add_paper_trade(
