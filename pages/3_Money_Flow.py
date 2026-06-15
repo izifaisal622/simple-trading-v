@@ -147,20 +147,30 @@ if run_scan:
         try:
             from agents.flow_scanner import FlowScanner
             from core.data_feed import get_dynamic_universe
+
+            # ── Step 1: universe
+            st.session_state["_mf_debug"] = "step1: get_dynamic_universe"
             scanner  = FlowScanner()
             max_t    = int(mf_top_n)
             universe = [t + ".JK" for t in get_dynamic_universe()][:max_t]
-            results  = scanner.scan(tickers=universe, max_workers=int(mf_max_work))
+            st.session_state["_mf_debug"] = f"step2: scan {len(universe)} tickers"
 
-            # Enrich top results dengan Stockbit broker data (jika token ada)
+            # ── Step 2: scan
+            results  = scanner.scan(tickers=universe, max_workers=int(mf_max_work))
+            st.session_state["_mf_debug"] = f"step3: scan done {len(results)} raw results"
+
+            # ── Step 3: enrich
             oa = scanner._get_ownership()
             if oa:
                 results = oa.enrich_top_results(results, top_n=20)
+            st.session_state["_mf_debug"] = f"step4: enrich done, {len(results)} results"
 
-            # Apply vol filter
+            # ── Step 4: vol filter
+            results_before = len(results)
             results = [r for r in results if (r.get("vol_ratio") or 1.0) >= mf_min_vol]
+            st.session_state["_mf_debug"] = f"step5: vol filter {results_before}→{len(results)}"
 
-            # Build context
+            # ── Step 5: build context
             sig_counts = Counter(r.get("signal") for r in results)
             src_counts = Counter(r.get("source") for r in results)
             buy_flow   = sum(r.get("smart_net", 0) or 0 for r in results if (r.get("smart_net") or 0) > 0)
@@ -181,8 +191,9 @@ if run_scan:
             st.session_state.mf_results   = results
             st.session_state.mf_context   = mf_ctx
             st.session_state.mf_scan_time = datetime.now().strftime("%H:%M:%S")
+            st.session_state["_mf_debug"] = f"step6: session_state set, {len(results)} results"
 
-            # Save to daily_results.json
+            # ── Step 6: save to daily_results.json
             existing = {}
             if RESULTS_FILE.exists():
                 try: existing = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
@@ -200,8 +211,10 @@ if run_scan:
             st.success(f"◈ DONE — {len(results)} results | 🐋{whale_c} whale | 🏦{inst_c} inst | 👥{retail_c} retail | ⚠{dist_c} dist")
             st.rerun()
         except Exception as e:
-            st.error(f"ERROR: {e}")
-            import traceback; st.code(traceback.format_exc())
+            import traceback
+            _last_step = st.session_state.get("_mf_debug", "unknown")
+            st.error(f"ERROR at [{_last_step}]: {e}")
+            st.code(traceback.format_exc())
 
 # ─── display results ──────────────────────────────────────────────────────────
 if not _mf_results:
