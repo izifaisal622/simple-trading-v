@@ -1,8 +1,9 @@
 {
-  "version": "8.4.7",
+  "version": "8.4.8",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-15",
   "changelog": [
+    "8.4.8 — REWRITE: learning_agent V3 — statistical inference dari trade history: analisis single dimension (regime/grade/risk/holding), kombinasi 2-dimensi prediktif, systematic leak detection, derived rules konkret → lessons.md actionable",
     "8.4.7 — FEAT: 6_Trade_Journal — Tab Paper vs Real (Unified View): compare paper trade (journal_agent) vs real trade (trade_logger) per grade-bucket; derive grade dari signal_score; slippage check; insight generator otomatis",
     "8.4.6 — FEAT: 4_Stock_Analysis — Pre-Flight Checklist: 8 kriteria wajib (regime/EMA score/conviction/floor dist/risk%/vol/sinyal arah/EMA signal) sebelum LOG PAPER TRADE — tombol disabled jika belum pass, override button untuk force entry",
     "8.4.5 — FEAT: 5_Alert_Watch — prioritize posisi aktif: [AW-1] posisi banner di atas page (saham yang di-hold + status ⚡/👁/·); [AW-2] alert posisi aktif tampil di tier teratas dengan badge entry+P&L+%toSL; [AW-3] tab label tunjukkan jumlah posisi aktif yang alert/watch; [AW-4] split: POSISI AKTIF → ALERTS UNIVERSE → WATCHLIST",
