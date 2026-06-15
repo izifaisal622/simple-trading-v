@@ -1,8 +1,9 @@
 {
-  "version": "8.3.2",
+  "version": "8.3.3",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-15",
   "changelog": [
+    "8.3.3 — FIX: 3_Money_Flow.py — pastikan _build_card didefinisikan sebelum dipanggil (ordering fix)",
     "8.3.2 — REWRITE: 3_Money_Flow.py — repurpose jadi Daily Top Mover Scanner: sort by % gain harian, filter sektor/vol/value, pakai whale_scanner sebagai data source",
     "8.3.1 — FIX: 3_Money_Flow.py — hapus st.rerun() dalam spinner context; display block baca session_state fresh setelah scan selesai",
     "8.3.0 — FIX: 3_Money_Flow.py — default filter include semua signal (NEUTRAL+DISTRIBUTION) agar hasil scan selalu tampil; min vol default turun ke 0.5",
