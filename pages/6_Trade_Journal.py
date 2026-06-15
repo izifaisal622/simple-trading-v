@@ -105,13 +105,14 @@ except Exception:
     pass
 
 # ─── TABS ─────────────────────────────────────────────────────────────────────
-t_log, t_open, t_perf, t_manual, t_history, t_postmortem = st.tabs([
+t_log, t_open, t_perf, t_manual, t_history, t_postmortem, t_unified = st.tabs([
     "📥 Log Trade",
     "📋 Open Trades",
     "📊 Performance",
     "✏️ Input Manual",
     "🗂 History",
     "🔬 Post-Mortem",
+    "⚖ Paper vs Real",
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -718,4 +719,289 @@ margin:0.8rem 0 0.3rem">{title}</div>""", unsafe_allow_html=True)
                 _wr_table("WIN RATE BY REGIME", agg.get("regime_wr", []))
                 _wr_table("WIN RATE BY SIGNAL SCORE", agg.get("score_wr", []))
                 _wr_table("WIN RATE BY RISK %", agg.get("risk_wr", []))
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 7 — PAPER vs REAL UNIFIED VIEW
+# ══════════════════════════════════════════════════════════════════════════════
+with t_unified:
+    _sec("PAPER vs REAL — UNIFIED COMPARISON")
+
+    st.markdown(
+        _mono(
+            "Bandingkan performa paper trade (Page 04) dengan real trade (Page 06) "
+            "per grade/setup. Grade real trade di-derive dari signal_score.",
+            "var(--text-muted)"
+        ),
+        unsafe_allow_html=True,
+    )
+
+    # ── Load data dari kedua sumber ───────────────────────────────────────────
+    _paper_closed = []
+    try:
+        from agents.journal_agent import get_closed_trades as _get_paper_closed
+        _paper_closed = _get_paper_closed(limit=500)
+    except Exception as _e:
+        st.warning(f"Paper journal tidak tersedia: {_e}")
+
+    _real_closed = get_closed_trades(limit=500)
+
+    # ── Derive grade dari signal_score untuk real trades ──────────────────────
+    def _derive_grade(signal_score: int) -> str:
+        """
+        Proxy grade dari signal_score (0-10).
+        Mapping dibuat konsisten dengan grading logic di Page 04:
+        A+/A = setup terbaik, score tinggi
+        B    = setup medium
+        C    = setup lemah tapi masih tradeable
+        D/F  = below threshold
+        """
+        s = signal_score or 0
+        if s >= 9:  return "A+"
+        if s >= 7:  return "A"
+        if s >= 5:  return "B"
+        if s >= 3:  return "C"
+        if s >= 1:  return "D"
+        return "F"
+
+    # Enrich real trades dengan derived grade
+    for _rt in _real_closed:
+        _rt["_derived_grade"] = _derive_grade(_rt.get("signal_score") or 0)
+        _rt["_source"]        = "REAL"
+
+    for _pt in _paper_closed:
+        _pt["_derived_grade"] = _pt.get("grade") or _derive_grade(_pt.get("ema_score") or 0)
+        _pt["_source"]        = "PAPER"
+
+    if not _paper_closed and not _real_closed:
+        st.markdown(
+            _mono("Belum ada closed trades di kedua database. "
+                  "Log dan close trade di tab Log Trade / Paper Trade Journal dulu.",
+                  "var(--text-muted)"),
+            unsafe_allow_html=True,
+        )
+    else:
+        # ── Summary metric row ────────────────────────────────────────────────
+        _p_total  = len(_paper_closed)
+        _r_total  = len(_real_closed)
+        _p_wins   = sum(1 for t in _paper_closed if t.get("outcome") == "WIN")
+        _r_wins   = sum(1 for t in _real_closed  if t.get("outcome") == "WIN")
+        _p_wr     = round(_p_wins / _p_total * 100, 1) if _p_total else 0
+        _r_wr     = round(_r_wins / _r_total * 100, 1) if _r_total else 0
+        _p_exp    = (sum(t.get("pnl_r") or 0 for t in _paper_closed) / _p_total
+                     if _p_total else 0)
+        _r_exp    = (sum(t.get("pnl_r") or 0 for t in _real_closed) / _r_total
+                     if _r_total else 0)
+
+        _um1, _um2, _um3, _um4 = st.columns(4)
+        _metrics = [
+            (_um1, "PAPER TRADES",    f"{_p_total}",        f"WR {_p_wr:.1f}%",  NEON_GREEN if _p_wr >= 50 else C_WARNING),
+            (_um2, "REAL TRADES",     f"{_r_total}",        f"WR {_r_wr:.1f}%",  NEON_GREEN if _r_wr >= 50 else C_WARNING),
+            (_um3, "PAPER AVG R",     f"{_p_exp:+.2f}R",    "per trade",          NEON_GREEN if _p_exp > 0 else C_DANGER),
+            (_um4, "REAL AVG R",      f"{_r_exp:+.2f}R",    "per trade",          NEON_GREEN if _r_exp > 0 else C_DANGER),
+        ]
+        for _col, _lbl, _val, _sub, _clr in _metrics:
+            with _col:
+                st.markdown(_metric_box(_lbl, _val, _sub, _clr), unsafe_allow_html=True)
+
+        # ── Slippage check ────────────────────────────────────────────────────
+        if _p_total >= 5 and _r_total >= 5:
+            _slip = _r_wr - _p_wr
+            _slip_col = NEON_GREEN if _slip >= -5 else C_WARNING if _slip >= -15 else C_DANGER
+            _slip_lbl = ("✓ Real sesuai ekspektasi paper" if _slip >= -5
+                         else "⚠ Real underperform paper — review sizing / disiplin"
+                         if _slip >= -15 else
+                         "⛔ Gap besar — paper terlalu optimistis atau eksekusi real bermasalah")
+            st.markdown(
+                f'<div style="background:rgba(0,0,0,0.2);border:1px solid {_slip_col}30;'
+                f'border-left:3px solid {_slip_col};border-radius:var(--r-sm);'
+                f'padding:0.5rem 1rem;margin:0.5rem 0;font-family:Share Tech Mono,monospace;'
+                f'font-size:var(--text-xs);display:flex;gap:1rem;align-items:center">'
+                f'<span style="color:var(--text-dim)">PAPER→REAL SLIPPAGE</span>'
+                f'<span style="color:{_slip_col};font-weight:700">{_slip:+.1f}% WR</span>'
+                f'<span style="color:#94A3B8">{_slip_lbl}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        _sec("WIN RATE PER GRADE — PAPER vs REAL")
+
+        # ── Per-grade comparison ──────────────────────────────────────────────
+        _GRADES    = ["A+", "A", "B", "C", "D", "F"]
+        _grade_rows = []
+
+        for _g in _GRADES:
+            _p_g = [t for t in _paper_closed if t.get("_derived_grade") == _g]
+            _r_g = [t for t in _real_closed  if t.get("_derived_grade") == _g]
+
+            if not _p_g and not _r_g:
+                continue
+
+            def _gstats(trades):
+                if not trades:
+                    return None
+                _w   = sum(1 for t in trades if t.get("outcome") == "WIN")
+                _wr  = round(_w / len(trades) * 100, 1)
+                _ar  = round(sum(t.get("pnl_r") or 0 for t in trades) / len(trades), 2)
+                return {"n": len(trades), "wr": _wr, "avg_r": _ar, "wins": _w}
+
+            _pg = _gstats(_p_g)
+            _rg = _gstats(_r_g)
+
+            _grade_rows.append({"grade": _g, "paper": _pg, "real": _rg})
+
+        if not _grade_rows:
+            st.markdown(
+                _mono("Belum ada data per grade. Tambah dan close beberapa trade dulu.",
+                      "var(--text-muted)"),
+                unsafe_allow_html=True,
+            )
+        else:
+            # Header
+            _h0, _h1, _h2, _h3 = st.columns([1, 3, 3, 2])
+            for _hcol, _hlbl in [(_h0, "GRADE"), (_h1, "📄 PAPER"), (_h2, "💰 REAL"), (_h3, "DELTA WR")]:
+                _hcol.markdown(
+                    f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+                    f'letter-spacing:.15em;color:var(--text-dim);padding:4px 0">{_hlbl}</div>',
+                    unsafe_allow_html=True,
+                )
+
+            # Grade rows
+            for _row in _grade_rows:
+                _g   = _row["grade"]
+                _pg  = _row["paper"]
+                _rg  = _row["real"]
+
+                _gc  = (NEON_GREEN if _g in ("A+","A") else C_WARNING if _g == "B"
+                        else C_INFO if _g == "C" else C_DANGER)
+
+                # Delta WR
+                if _pg and _rg:
+                    _dwr     = _rg["wr"] - _pg["wr"]
+                    _dwr_col = NEON_GREEN if _dwr >= -5 else C_WARNING if _dwr >= -15 else C_DANGER
+                    _dwr_str = f"{_dwr:+.1f}%"
+                elif _rg and not _pg:
+                    _dwr_col = C_INFO
+                    _dwr_str = "no paper"
+                elif _pg and not _rg:
+                    _dwr_col = "var(--text-dim)"
+                    _dwr_str = "no real"
+                else:
+                    _dwr_col = "var(--text-dim)"
+                    _dwr_str = "—"
+
+                def _cell(stats, source_col: str) -> str:
+                    if not stats:
+                        return (f'<div style="background:rgba(255,255,255,0.02);'
+                                f'border:1px solid rgba(255,255,255,0.05);border-radius:var(--r-sm);'
+                                f'padding:0.45rem 0.7rem;font-family:Share Tech Mono,monospace;'
+                                f'font-size:var(--text-xs);color:var(--text-dim)">—</div>')
+                    _wr_c = NEON_GREEN if stats["wr"] >= 55 else C_WARNING if stats["wr"] >= 40 else C_DANGER
+                    _ar_c = NEON_GREEN if stats["avg_r"] > 0 else C_DANGER
+                    return (
+                        f'<div style="background:rgba(255,255,255,0.03);'
+                        f'border:1px solid rgba(255,255,255,0.07);border-radius:var(--r-sm);'
+                        f'padding:0.45rem 0.7rem;font-family:Share Tech Mono,monospace">'
+                        f'<span style="font-size:var(--text-sm);color:{_wr_c};font-weight:700">'
+                        f'{stats["wr"]:.0f}%</span>'
+                        f'<span style="font-size:var(--text-xs);color:var(--text-dim);margin:0 0.4rem">WR</span>'
+                        f'<span style="font-size:var(--text-xs);color:{_ar_c}">{stats["avg_r"]:+.2f}R</span>'
+                        f'<span style="font-size:var(--text-2xs);color:var(--text-dim);margin-left:0.4rem">'
+                        f'({stats["n"]} trades)</span>'
+                        f'</div>'
+                    )
+
+                _rc0, _rc1, _rc2, _rc3 = st.columns([1, 3, 3, 2])
+                with _rc0:
+                    st.markdown(
+                        f'<div style="background:{_gc}18;border:1px solid {_gc}40;'
+                        f'border-radius:var(--r-sm);padding:0.45rem 0.5rem;text-align:center;'
+                        f'font-family:Orbitron,monospace;font-size:var(--text-base);'
+                        f'font-weight:900;color:{_gc}">{_g}</div>',
+                        unsafe_allow_html=True,
+                    )
+                with _rc1:
+                    st.markdown(_cell(_pg, NEON_GREEN), unsafe_allow_html=True)
+                with _rc2:
+                    st.markdown(_cell(_rg, C_INFO), unsafe_allow_html=True)
+                with _rc3:
+                    st.markdown(
+                        f'<div style="padding:0.45rem 0.7rem;font-family:Share Tech Mono,monospace;'
+                        f'font-size:var(--text-sm);font-weight:700;color:{_dwr_col}">{_dwr_str}</div>',
+                        unsafe_allow_html=True,
+                    )
+
+        # ── Insight generator ─────────────────────────────────────────────────
+        st.markdown("<br>", unsafe_allow_html=True)
+        _sec("INSIGHTS OTOMATIS")
+
+        _insights = []
+
+        # Grade A win rate comparison
+        _pa = [t for t in _paper_closed if t.get("_derived_grade") in ("A+","A")]
+        _ra = [t for t in _real_closed  if t.get("_derived_grade") in ("A+","A")]
+        if len(_pa) >= 3 and len(_ra) >= 3:
+            _pa_wr = sum(1 for t in _pa if t.get("outcome")=="WIN") / len(_pa) * 100
+            _ra_wr = sum(1 for t in _ra if t.get("outcome")=="WIN") / len(_ra) * 100
+            if _ra_wr >= _pa_wr - 5:
+                _insights.append(("✓", NEON_GREEN,
+                    f"Grade A setup: paper {_pa_wr:.0f}% vs real {_ra_wr:.0f}% — "
+                    f"konsisten. Setup Grade A bisa dipercaya."))
+            else:
+                _insights.append(("⚠", C_WARNING,
+                    f"Grade A setup: paper {_pa_wr:.0f}% vs real {_ra_wr:.0f}% — "
+                    f"gap {_pa_wr-_ra_wr:.0f}%. Review eksekusi atau sizing saat Grade A."))
+
+        # Grade B vs A real comparison
+        _rb = [t for t in _real_closed if t.get("_derived_grade") == "B"]
+        if len(_ra) >= 3 and len(_rb) >= 3:
+            _rb_wr = sum(1 for t in _rb if t.get("outcome")=="WIN") / len(_rb) * 100
+            _ra_wr2 = sum(1 for t in _ra if t.get("outcome")=="WIN") / len(_ra) * 100
+            if _ra_wr2 - _rb_wr > 15:
+                _insights.append(("✓", NEON_GREEN,
+                    f"Grade A real WR {_ra_wr2:.0f}% vs Grade B {_rb_wr:.0f}% — "
+                    f"gap {_ra_wr2-_rb_wr:.0f}%. Filter Grade B dari portfolio."))
+            else:
+                _insights.append(("·", C_INFO,
+                    f"Grade A dan B real WR mirip ({_ra_wr2:.0f}% vs {_rb_wr:.0f}%). "
+                    f"Grade filter belum terbukti differentiator kuat."))
+
+        # Low grade trades
+        _rdf = [t for t in _real_closed if t.get("_derived_grade") in ("D","F")]
+        if _rdf:
+            _rdf_loss = sum(1 for t in _rdf if t.get("outcome")=="LOSS")
+            _insights.append(("⛔", C_DANGER,
+                f"{len(_rdf)} real trade Grade D/F — {_rdf_loss} loss. "
+                f"Hapus trades Grade D/F dari strategi."))
+
+        # Overall verdict
+        if _r_total >= 10:
+            if _r_exp > 0 and _r_wr >= 50:
+                _insights.append(("✅", NEON_GREEN,
+                    f"Sistem menguntungkan: real WR {_r_wr:.0f}%, avg {_r_exp:+.2f}R/trade. "
+                    f"Fokus scale up setup yang sudah proven."))
+            elif _r_exp <= 0:
+                _insights.append(("⛔", C_DANGER,
+                    f"Expectancy negatif ({_r_exp:+.2f}R). Review Post-Mortem tab untuk "
+                    f"identifikasi pola loss yang berulang."))
+
+        if not _insights:
+            st.markdown(
+                _mono("Butuh minimal 5–10 closed trades per sumber untuk generate insights.",
+                      "var(--text-muted)"),
+                unsafe_allow_html=True,
+            )
+        else:
+            for _ico, _ic, _msg in _insights:
+                st.markdown(
+                    f'<div style="background:rgba(0,0,0,0.2);border:1px solid {_ic}25;'
+                    f'border-left:3px solid {_ic};border-radius:var(--r-sm);'
+                    f'padding:0.45rem 0.9rem;margin-bottom:0.35rem;'
+                    f'font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+                    f'display:flex;gap:0.7rem;align-items:flex-start">'
+                    f'<span style="color:{_ic};font-weight:700;min-width:16px">{_ico}</span>'
+                    f'<span style="color:#94A3B8;line-height:1.6">{_msg}</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
 
