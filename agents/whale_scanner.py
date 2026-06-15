@@ -208,42 +208,47 @@ def check_market_breadth(regime: dict) -> dict:
 # "Sahamnya bagus, harganya bagus → baru masuk"
 # ─────────────────────────────────────────────────────────────────────────────
 
-def estimate_floor_price(close: pd.Series, vol: pd.Series, low: pd.Series) -> dict:
+def estimate_floor_price(
+    close: pd.Series,
+    vol: pd.Series,
+    low: pd.Series,
+    vp_val: float = 0.0,
+) -> dict:
     """
     Estimasi floor price menggunakan:
-    1. Volume Weighted Average Price (VWAP) lookback 60 hari
-       → harga rata-rata di mana barang berpindah tangan
-    2. Support cluster terkuat (area di mana rebound terjadi berkali-kali)
-    3. Low 52W (absolute floor)
+    1. Volume Profile VAL (Value Area Low) — jika tersedia dari compute_volume_profile()
+       => level batas bawah 70% volume area = defend zone terkuat whale
+    2. VWAP 60 hari — proxy cost basis (fallback)
+    3. Low 52W x 1.05 — absolute floor buffer
 
-    Floor price = area di mana emiten/whale rugi kalau turun lagi.
-    Di sinilah mereka pasti defend.
+    W-7 fix: support_cluster (pd.cut fragile) diganti dengan vp_val dari VP.
+    VP VAL dihitung dari distribusi volume per price bin — jauh lebih akurat
+    dari frekuensi harga di equal-width bins.
     """
     current  = float(close.iloc[-1])
     low_52w  = float(low.tail(252).min()) if len(low) >= 252 else float(low.min())
     high_52w = float(close.tail(252).max()) if len(close) >= 252 else float(close.max())
 
-    # VWAP 60 hari — proxy harga rata-rata akumulasi
-    lookback    = min(60, len(close))
-    c60         = close.tail(lookback)
-    v60         = vol.tail(lookback)
-    vwap_60     = float((c60 * v60).sum() / v60.sum()) if v60.sum() > 0 else current
+    # VWAP 60 hari — fallback jika VP tidak tersedia
+    lookback = min(60, len(close))
+    c60      = close.tail(lookback)
+    v60      = vol.tail(lookback)
+    vwap_60  = float((c60 * v60).sum() / v60.sum()) if v60.sum() > 0 else current
 
-    # Support cluster: cari level di mana harga paling sering bounce
-    l60         = low.tail(lookback)
-    bins        = pd.cut(l60, bins=10)
-    support_cluster = float(getattr(l60.groupby(bins).count().idxmax(), "mid", l60.min())) if len(l60) > 10 else float(l60.min())
+    # Floor layer 1: VP VAL (lebih akurat) atau VWAP (fallback)
+    if vp_val > 0 and vp_val < current * 1.10:
+        floor_1 = vp_val
+    else:
+        floor_1 = vwap_60 if vwap_60 < current else current * 0.85
 
-    # Floor = max dari: support cluster, low 52w + 5% buffer, vwap - 15%
-    floor_1 = support_cluster
+    # Floor layer 2: low 52W + 5% buffer (absolute minimum)
     floor_2 = low_52w * 1.05
-    # FIX 7.1.4: floor_3 = vwap*0.85 dihapus — jika vwap > current (saham turun),
-    # floor_3 selalu dominan dan menghasilkan pct_above_floor = 25.0% deterministik
-    # untuk semua ticker (current*0.80 fallback path).
-    floor   = max(floor_1, floor_2)
-    # Guard: jika floor masih >= current, paksa ke low_52w sebagai absolute floor
+
+    floor = max(floor_1, floor_2)
+
+    # Guard: jika floor >= current, paksa ke low_52w sebagai absolute floor
     if floor >= current:
-        floor = max(low_52w, current * 0.70)  # absolute worst case: 30% di bawah
+        floor = max(low_52w, current * 0.70)
 
     # Proximity to floor (seberapa dekat harga sekarang dengan floor)
     pct_above_floor = (current - floor) / floor * 100 if floor > 0 else 999
@@ -984,6 +989,114 @@ def classify_signal(vol_ratio: float, chg_pct: float,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# W-8: Sector Classification — Full Ticker + 2-char Prefix Fallback
+# Layer 1: full ticker lookup (akurat, ~200 saham paling aktif IDX)
+# Layer 2: 2-char prefix fallback (catch remaining tickers)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_IDX_SECTOR_MAP: dict = {
+    # BANKING / KEUANGAN
+    "BBCA":"BANKING","BBRI":"BANKING","BMRI":"BANKING","BBNI":"BANKING",
+    "BNGA":"BANKING","BDMN":"BANKING","BNII":"BANKING","BJTM":"BANKING",
+    "BJBR":"BANKING","BRIS":"BANKING","BTPS":"BANKING","BACA":"BANKING",
+    "AGRO":"BANKING","BBKP":"BANKING","MEGA":"BANKING","NISP":"BANKING",
+    "PNBN":"BANKING","MAYA":"BANKING","BMAS":"BANKING","NOBU":"BANKING",
+    "DNAR":"BANKING","BBYB":"BANKING","ARTO":"BANKING","BANK":"BANKING",
+    "BGTG":"BANKING","ADMF":"FINANCE","MFIN":"FINANCE","BFIN":"FINANCE",
+    "CFIN":"FINANCE","VRNA":"FINANCE","WOMF":"FINANCE","IMJS":"FINANCE",
+    "HDFA":"FINANCE","MAPI":"RETAIL","LPPF":"RETAIL","ACES":"RETAIL",
+    # TELCO / TOWER
+    "TLKM":"TELCO","EXCL":"TELCO","ISAT":"TELCO","FREN":"TELCO",
+    "TBIG":"TELCO","TOWR":"TELCO","MTEL":"TELCO","SUPR":"TELCO",
+    # ENERGY / COAL / MINING
+    "PTBA":"MINING","ADRO":"MINING","ITMG":"MINING","HRUM":"MINING",
+    "BUMI":"MINING","INDY":"MINING","KKGI":"MINING","DOID":"MINING",
+    "GEMS":"MINING","BOSS":"MINING","BYAN":"MINING","MCOL":"MINING",
+    "ANTM":"MINING","INCO":"MINING","MDKA":"MINING","NICL":"MINING",
+    "NCKL":"MINING","TINS":"MINING","PSAB":"MINING",
+    "PGAS":"ENERGY","AKRA":"ENERGY","ESSA":"ENERGY","ELSA":"ENERGY",
+    "MEDC":"ENERGY","ENRG":"ENERGY","RAJA":"ENERGY","TBLA":"ENERGY",
+    # PROPERTY / KONSTRUKSI
+    "BSDE":"PROPERTY","CTRA":"PROPERTY","SMRA":"PROPERTY","PWON":"PROPERTY",
+    "LPKR":"PROPERTY","ASRI":"PROPERTY","DILD":"PROPERTY","BEST":"PROPERTY",
+    "MDLN":"PROPERTY","JRPT":"PROPERTY","GPRA":"PROPERTY","KIJA":"PROPERTY",
+    "PPRO":"PROPERTY","APLN":"PROPERTY","RODA":"PROPERTY","MTLA":"PROPERTY",
+    "WIKA":"KONSTRUKSI","PTPP":"KONSTRUKSI","WSKT":"KONSTRUKSI",
+    "ADHI":"KONSTRUKSI","TOTL":"KONSTRUKSI","ACST":"KONSTRUKSI","NRCA":"KONSTRUKSI",
+    # CONSUMER / F&B / TOBACCO
+    "UNVR":"CONSUMER","ICBP":"CONSUMER","INDF":"CONSUMER","MYOR":"CONSUMER",
+    "SIDO":"CONSUMER","CLEO":"CONSUMER","ULTJ":"CONSUMER","DLTA":"CONSUMER",
+    "ROTI":"CONSUMER","SKLT":"CONSUMER","ADES":"CONSUMER","GOOD":"CONSUMER",
+    "CAMP":"CONSUMER","CPIN":"CONSUMER","JPFA":"CONSUMER","MAIN":"CONSUMER",
+    "GGRM":"CONSUMER","HMSP":"CONSUMER","WIIM":"CONSUMER","RMBA":"CONSUMER",
+    # HEALTHCARE / PHARMA
+    "KLBF":"HEALTHCARE","KAEF":"HEALTHCARE","MIKA":"HEALTHCARE","HEAL":"HEALTHCARE",
+    "SILO":"HEALTHCARE","SRAJ":"HEALTHCARE","DVLA":"HEALTHCARE","PYFA":"HEALTHCARE",
+    "TSPC":"HEALTHCARE","PRDA":"HEALTHCARE","BMHS":"HEALTHCARE","MERK":"HEALTHCARE",
+    "SOHO":"HEALTHCARE","ARNA":"HEALTHCARE",
+    # INFRA / TOLL
+    "JSMR":"INFRA","WTON":"INFRA",
+    # MATERIAL / CEMENT / CHEMICAL
+    "SMGR":"MATERIAL","INTP":"MATERIAL","SMBR":"MATERIAL","SMCB":"MATERIAL",
+    "TPIA":"CHEMICAL","BRPT":"CHEMICAL","DPNS":"CHEMICAL",
+    # TECH / DIGITAL / MEDIA
+    "GOTO":"TECH","BUKA":"TECH","EMTK":"TECH","KIOS":"TECH",
+    "DMMX":"TECH","DCII":"TECH","MTDL":"TECH",
+    "MNCN":"MEDIA","SCMA":"MEDIA","FILM":"MEDIA",
+    # AUTOMOTIVE / MANUFAKTUR
+    "ASII":"AUTOMOTIVE","AUTO":"AUTOMOTIVE","SMSM":"AUTOMOTIVE",
+    "IMAS":"AUTOMOTIVE","INDS":"AUTOMOTIVE","LPIN":"AUTOMOTIVE",
+    # AGRICULTURE / PLANTATION
+    "AALI":"AGRI","LSIP":"AGRI","SIMP":"AGRI","SGRO":"AGRI",
+    "SMAR":"AGRI","SSMS":"AGRI","PALM":"AGRI","JAWA":"AGRI",
+    "DSFI":"AGRI","BWPT":"AGRI",
+    # RETAIL / TRADE
+    "ERAA":"RETAIL","MIDI":"RETAIL","HERO":"RETAIL","RALS":"RETAIL",
+    "TELE":"RETAIL","MPPA":"RETAIL","CSAP":"RETAIL",
+}
+
+_IDX_PREFIX_MAP: dict = {
+    # Banking
+    "BB":"BANKING","BM":"BANKING","BN":"BANKING","BI":"BANKING",
+    "BJ":"BANKING","BT":"BANKING","BD":"BANKING","AG":"BANKING",
+    "NO":"BANKING","PN":"BANKING",
+    # Telco
+    "TL":"TELCO","XL":"TELCO","IS":"TELCO","FR":"TELCO","MT":"TELCO",
+    # Mining/Energy
+    "PT":"MINING","AD":"MINING","IT":"MINING","HR":"MINING",
+    "BU":"MINING","GE":"MINING","BY":"MINING","AN":"MINING",
+    "PG":"ENERGY","AK":"ENERGY","EL":"ENERGY","ME":"ENERGY","EN":"ENERGY",
+    # Property/Konstruksi
+    "BS":"PROPERTY","CT":"PROPERTY","SM":"MATERIAL","PW":"PROPERTY",
+    "LP":"PROPERTY","AS":"PROPERTY","DI":"PROPERTY",
+    "WI":"KONSTRUKSI","WS":"KONSTRUKSI","DH":"KONSTRUKSI","TO":"KONSTRUKSI",
+    # Consumer
+    "UN":"CONSUMER","IC":"CONSUMER","MY":"CONSUMER","SI":"CONSUMER",
+    "CL":"CONSUMER","UL":"CONSUMER","DL":"CONSUMER","RO":"CONSUMER",
+    "SK":"CONSUMER","CP":"CONSUMER","JP":"CONSUMER","GG":"CONSUMER",
+    "HM":"CONSUMER","WI":"CONSUMER","AD":"CONSUMER",
+    # Healthcare
+    "KL":"HEALTHCARE","KA":"HEALTHCARE","MI":"HEALTHCARE","HE":"HEALTHCARE",
+    "SL":"HEALTHCARE","DV":"HEALTHCARE","PY":"HEALTHCARE","TS":"HEALTHCARE",
+    "PR":"HEALTHCARE","SO":"HEALTHCARE","ME":"HEALTHCARE",
+    # Infra/Material
+    "JS":"INFRA","WO":"INFRA","TP":"CHEMICAL","BR":"CHEMICAL",
+    # Tech/Media
+    "GO":"TECH","BK":"TECH","EM":"TECH","MN":"MEDIA","SC":"MEDIA","FI":"MEDIA",
+    "DC":"TECH","MT":"TECH",
+    # Automotive
+    "AU":"AUTOMOTIVE","SS":"AUTOMOTIVE","IM":"AUTOMOTIVE","LI":"AUTOMOTIVE",
+    # Finance
+    "MF":"FINANCE","BF":"FINANCE","CF":"FINANCE","WO":"FINANCE",
+    "VR":"FINANCE","HD":"FINANCE",
+    # Agri
+    "AA":"AGRI","LS":"AGRI","SG":"AGRI","PA":"AGRI","JA":"AGRI",
+    # Retail
+    "ER":"RETAIL","HE":"RETAIL","RA":"RETAIL","TE":"RETAIL","CS":"RETAIL",
+}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Main WhaleScanner Class
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1146,23 +1259,23 @@ class WhaleScanner:
 
             # ── Hengky's analysis pipeline ────────────────────────────────────
 
-            # 1. Floor price
-            floor_data  = estimate_floor_price(close, vol, low)
+            # 1. Volume Profile dulu — VAL dipakai sebagai floor anchor (W-7 fix)
+            vp_data     = compute_volume_profile(close, vol, high, low)
 
-            # 2. Pengeringan barang
+            # 2. Floor price — inject vp_val agar floor lebih akurat dari VP VAL
+            floor_data  = estimate_floor_price(close, vol, low, vp_val=vp_data.get("val", 0.0))
+
+            # 3. Pengeringan barang
             peng_data   = detect_pengeringan(close, vol, high, low)
 
-            # 3. Whale defense test
+            # 4. Whale defense test
             def_data    = test_whale_defense(close, vol, low, high)
 
-            # 4. V4: Hitung Barang (Hengky supply concentration math)
+            # 5. V4: Hitung Barang (Hengky supply concentration math)
             hb_data     = hitung_barang(close, vol, high, low)
 
-            # 5. V4: Order Block (institutional footprint / compression zone)
+            # 6. V4: Order Block (institutional footprint / compression zone)
             ob_data     = detect_order_block(close, high, low, vol)
-
-            # 6. V6.4: Volume Profile — distribusi volume per price level
-            vp_data     = compute_volume_profile(close, vol, high, low)
 
             # 4. Multi-day accumulation
             accum_days  = int((vol.tail(5) > vol_ma * 1.5).sum())
@@ -1282,17 +1395,9 @@ class WhaleScanner:
                 except Exception as _e:
                     logger.debug(f"[Whale] {ticker} ownership failed: {_e}")
 
-            # ── V3: Sector tag (basic from ticker prefix) ────────────────────
-            sector_map = {
-                "BB":"BANKING","BM":"BANKING","BN":"BANKING","BI":"BANKING",
-                "TL":"TELCO","XL":"TELCO",
-                "AS":"MINING","AD":"MINING","TB":"MINING","HA":"MINING",
-                "MD":"PROPERTY","BS":"PROPERTY","CL":"PROPERTY","PP":"PROPERTY",
-                "UN":"CONSUMER","IC":"CONSUMER","MY":"CONSUMER",
-                "AK":"INFRA","WS":"INFRA","JK":"INFRA",
-            }
-            t2 = ticker.replace(".JK","")[:2].upper()
-            sector = sector_map.get(t2, "OTHER")
+            # ── W-8: Sector tag — full-ticker lookup + 2-char prefix fallback ──
+            _base_t = ticker.replace(".JK","").upper()
+            sector  = _IDX_SECTOR_MAP.get(_base_t) or _IDX_PREFIX_MAP.get(_base_t[:2], "OTHER")
 
             # Signal
             signal, emoji, color = classify_signal(vol_ratio, chg_pct, peng_data, def_data)

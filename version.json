@@ -1,8 +1,9 @@
 {
-  "version": "8.3.9",
+  "version": "8.4.0",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-15",
   "changelog": [
+    "8.4.0 — FIX: whale_scanner — [W-7] estimate_floor_price: ganti support_cluster (pd.cut fragile) dengan VP VAL; VP dihitung dulu di pipeline sebelum floor; [W-8] sector map: full-ticker lookup + 2-char prefix fallback, 0% OTHER di IDX watchlist (dari 72%)",
     "8.3.9 — FIX: 2_Follow_Whale + whale_scanner — 9 bugs: [W-1] CSS var() opacity suffix invalid, [W-2] conviction boost sebelum compute_conviction, [W-3] nested f-string di 3 tempat, [W-4] classify_whale_quality tidak pakai control_score/OB/VP, [W-5] recovery signal false positive tanpa whale evidence, [W-6] ex-div filter buang panic+defend setup, [W-9] session_state panel double-init",
     "8.3.5 — REMOVE: 6_Trade_Journal.py — hapus tab AI Challenge dan semua Gemini dependency",
     "8.3.4 — FEAT: 6_Trade_Journal.py — Gemini API key via UI sidebar, tidak perlu secrets.toml",
