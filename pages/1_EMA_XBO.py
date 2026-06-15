@@ -16,6 +16,14 @@ from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# ── Module-level helper — menggantikan 4x definisi _g() nested ──────────────
+def _g(r, key, default=0):
+    """Ambil field dari dict atau object secara safe."""
+    if isinstance(r, dict):
+        return r.get(key, default)
+    return getattr(r, key, default)
+
+
 st.set_page_config(page_title="EMA-XBO Scanner",
                    page_icon="🎯", layout="wide",
                    initial_sidebar_state="expanded")
@@ -43,19 +51,15 @@ def _render_mcf_block(r, lines_out: list) -> None:
     Sebelumnya: MCF 8/10 JOIN ditampilkan dengan badge hijau terang
                 bahkan saat EMA system bilang WATCHLIST_ONLY (bear market)
     """
-    def _g(key, default=0):
-        if isinstance(r, dict): return r.get(key, default)
-        return getattr(r, key, default)
-
-    mcf_score   = _g("mcf_score", 0)
-    mcf_label   = _g("mcf_label", "")
-    mcf_mom     = _g("mcf_momentum", 0)
-    mcf_vol     = _g("mcf_volume", 0)
-    mcf_fu      = _g("mcf_followup", 0)
-    mcf_ok      = _g("mcf_entry_ok", False)
-    mcf_detail  = _g("mcf_detail", {})
-    regime_tag  = _g("regime_tag", "")
-    bear_blocked = _g("mcf_bear_blocked", False)
+    mcf_score   = _g(r, "mcf_score", 0)
+    mcf_label   = _g(r, "mcf_label", "")
+    mcf_mom     = _g(r, "mcf_momentum", 0)
+    mcf_vol     = _g(r, "mcf_volume", 0)
+    mcf_fu      = _g(r, "mcf_followup", 0)
+    mcf_ok      = _g(r, "mcf_entry_ok", False)
+    mcf_detail  = _g(r, "mcf_detail", {})
+    regime_tag  = _g(r, "regime_tag", "")
+    bear_blocked = _g(r, "mcf_bear_blocked", False)
 
     # FIX V4: Override jika bear blocked (atau regime_tag WATCHLIST_ONLY + mcf JOIN)
     # Double safety: cek dari dua sumber
@@ -111,7 +115,7 @@ def _render_mcf_block(r, lines_out: list) -> None:
     det_m = (mcf_detail.get("momentum", "") if isinstance(mcf_detail, dict) else "")[:90]
     det_v = (mcf_detail.get("volume",   "") if isinstance(mcf_detail, dict) else "")[:90]
     det_f = (mcf_detail.get("followup", "") if isinstance(mcf_detail, dict) else "")[:90]
-    mcf_mkt = _g("mcf_market_bonus", 0)
+    mcf_mkt = _g(r, "mcf_market_bonus", 0)
     mcf_mkt_str = ("IHSG ↑ +1 bonus" if mcf_mkt > 0
                    else "IHSG ↓ −1 penalti" if mcf_mkt < 0
                    else "market neutral")
@@ -168,13 +172,9 @@ def _render_risk_warning(r, lines_out: list) -> None:
 
     Sekarang: Badge merah + kalkulasi max lot yang aman (1% modal = 10jt default).
     """
-    def _g(key, default=0):
-        if isinstance(r, dict): return r.get(key, default)
-        return getattr(r, key, default)
-
-    risk_pct      = _g("risk_pct", 0)
-    entry_price   = _g("entry_price", _g("close", 0))
-    sl_price      = _g("sl_price", 0)
+    risk_pct      = _g(r, "risk_pct", 0)
+    entry_price   = _g(r, "entry_price", _g(r, "close", 0))
+    sl_price      = _g(r, "sl_price", 0)
 
     if risk_pct <= 15:
         return  # Tidak perlu warning
@@ -216,11 +216,7 @@ def _render_ema200_warning(r, lines_out: list) -> None:
     """
     NEW V4: Warning jika EMA200 tidak reliable karena data tidak cukup.
     """
-    def _g(key, default=None):
-        if isinstance(r, dict): return r.get(key, default)
-        return getattr(r, key, default)
-
-    ema200_reliable = _g("ema200_reliable", True)
+    ema200_reliable = _g(r, "ema200_reliable", True)
     if ema200_reliable is False:
         lines_out.append(
             '<div style="background:rgba(240,180,41,0.06);border:1px solid rgba(240,180,41,0.25);'
@@ -237,30 +233,30 @@ def _render_ema200_warning(r, lines_out: list) -> None:
 def _render_ema_detail(r) -> None:
     """EMA detail V4 — dengan MCF bear blocking, risk warning, EMA200 flag."""
 
-    def _g(key, default=0):
-        if isinstance(r, dict): return r.get(key, default)
-        return getattr(r, key, default)
-
-    ticker   = _g("ticker","").replace(".JK","")  # noqa: F841
-    signal   = _g("signal","")
-    cross    = _g("cross_state","")
-    close    = _g("close",0)
-    vol      = _g("vol_ratio",0)
-    score    = _g("score",0)
-    regime   = _g("regime_tag","")
-    rs       = _g("rs_vs_ihsg_4w",0)
-    ema13    = _g("ema13",0)
-    ema89    = _g("ema89",0)
-    sl       = _g("sl_price",0)
-    tp1      = _g("tp1_price",0)
-    tp2      = _g("tp2_price",0)
-    rr       = _g("rr_ratio",0)
-    risk     = _g("risk_pct",0)
+    ticker   = _g(r, "ticker","").replace(".JK","")  # noqa: F841
+    signal   = _g(r, "signal","")
+    cross    = _g(r, "cross_state","")
+    close    = _g(r, "close",0)
+    vol      = _g(r, "vol_ratio",0)
+    score    = _g(r, "score",0)
+    regime   = _g(r, "regime_tag","")
+    rs       = _g(r, "rs_vs_ihsg_4w",0)
+    ema13    = _g(r, "ema13",0)
+    ema89    = _g(r, "ema89",0)
+    sl       = _g(r, "sl_price",0)
+    tp1      = _g(r, "tp1_price",0)
+    tp2      = _g(r, "tp2_price",0)
+    rr       = _g(r, "rr_ratio",0)
+    risk     = _g(r, "risk_pct",0)
 
     ema_gap_pct  = ((ema13 - ema89) / ema89 * 100) if ema89 > 0 else 0
     pct_vs_ema13 = ((close - ema13) / ema13 * 100) if ema13 > 0 else 0
     pct_vs_ema89 = ((close - ema89) / ema89 * 100) if ema89 > 0 else 0
     ema_crossed  = cross in ("ABOVE", "CROSSING")
+
+    # Pre-build color variables — hindari ternary inline di dalam f-string
+    _ema_gap_col    = "#00FF66" if ema_gap_pct > 0 else "#EF4444"
+    _ema13_diff_col = "#00FF66" if pct_vs_ema13 > 0 else "#EF4444"
 
     # ── Market Structure Phase ────────────────────────────────────────────────
     if not ema_crossed:
@@ -316,7 +312,7 @@ def _render_ema_detail(r) -> None:
     if regime == "WATCHLIST_ONLY":
         v_col,v_bg = "#EF4444","rgba(239,68,68,0.04)"
         verdict    = "⛔ BEAR — WATCH ONLY"
-    elif signal == "BREAKOUT" or phase in {"GOLDEN_CROSS","PULLBACK_TO_EMA_CONFIRMED",
+    elif signal in ("BREAKOUT", "STRONG_BREAKOUT") or phase in {"GOLDEN_CROSS","PULLBACK_TO_EMA_CONFIRMED",
                                             "BREAKOUT_CONFIRMED","TREND_WITH_MOMENTUM","INSTITUTIONAL_SPIKE"}:
         v_col,v_bg = "#00FF66","rgba(0,255,102,0.06)"
         verdict    = "ENTRY VALID"
@@ -342,18 +338,23 @@ def _render_ema_detail(r) -> None:
     lines_out.append(
         f'<b>EMA:</b> EMA13 <b style="color:#E2E8F0">Rp{ema13:,.0f}</b> · '
         f'EMA89 <b style="color:#94A3B8">Rp{ema89:,.0f}</b> · '
-        f'Gap <b style="color:{"#00FF66" if ema_gap_pct>0 else "#EF4444"}">{ema_gap_pct:+.1f}%</b> · '
-        f'vs EMA13 <b style="color:{"#00FF66" if pct_vs_ema13>0 else "#EF4444"}">{pct_vs_ema13:+.1f}%</b>'
+        f'Gap <b style="color:{_ema_gap_col}">{ema_gap_pct:+.1f}%</b> · '
+        f'vs EMA13 <b style="color:{_ema13_diff_col}">{pct_vs_ema13:+.1f}%</b>'
     )
 
     # Volume line
     vol_col = "#00FF66" if vol>=3 else "#F0B429" if vol>=1.3 else "#94A3B8"
     vol_lbl = "EKSTREM" if vol>=6 else "SPIKE" if vol>=3 else "ELEVATED" if vol>=1.3 else "NORMAL"
+    # Pre-build color vars untuk volume line
+    _score_col  = "#00FF66" if score >= 5 else "#F0B429" if score >= 3 else "#94A3B8"
+    _rs_col     = "#00FF66" if rs > 0 else "#EF4444"
+    _regime_col = "#EF4444" if regime == "WATCHLIST_ONLY" else "#64748B"
+
     lines_out.append(
         f'<b>Volume:</b> <b style="color:{vol_col}">{vol:.1f}× — {vol_lbl}</b> · '
-        f'Score <b style="color:{"#00FF66" if score>=5 else "#F0B429" if score>=3 else "#94A3B8"}">{score}/8</b> · '
-        f'RS <b style="color:{"#00FF66" if rs>0 else "#EF4444"}">{rs:+.1f}%</b>'
-        + (f' · Regime <b style="color:{"#EF4444" if regime=="WATCHLIST_ONLY" else "#64748B"}">{regime}</b>' if regime else '')
+        f'Score <b style="color:{_score_col}">{score}/8</b> · '
+        f'RS <b style="color:{_rs_col}">{rs:+.1f}%</b>'
+        + (f' · Regime <b style="color:{_regime_col}">{regime}</b>' if regime else '')
     )
 
     # Risk line
@@ -375,15 +376,15 @@ def _render_ema_detail(r) -> None:
     _render_mcf_block(r, lines_out)
 
     # Dual-timeframe row
-    daily_ok      = _g("daily_ok", False)
-    daily_pattern = _g("daily_pattern", "")
-    daily_note    = _g("daily_entry_note", "")
-    ema13d_v      = _g("ema13d", 0)
-    ema89d_v      = _g("ema89d", 0)
-    ema5d_v       = _g("ema5d", 0)
-    pct_ema13d    = _g("pct_vs_ema13d", 0)
-    vol_d         = _g("vol_ratio_d", 0)
-    dual_ok       = _g("dual_confirmed", False)
+    daily_ok      = _g(r, "daily_ok", False)
+    daily_pattern = _g(r, "daily_pattern", "")
+    daily_note    = _g(r, "daily_entry_note", "")
+    ema13d_v      = _g(r, "ema13d", 0)
+    ema89d_v      = _g(r, "ema89d", 0)
+    ema5d_v       = _g(r, "ema5d", 0)
+    pct_ema13d    = _g(r, "pct_vs_ema13d", 0)
+    vol_d         = _g(r, "vol_ratio_d", 0)
+    dual_ok       = _g(r, "dual_confirmed", False)
 
     if daily_pattern:
         d_col    = "#00FF66" if daily_ok else "#F0B429" if "WAIT" in daily_pattern else "#94A3B8"
@@ -391,23 +392,26 @@ def _render_ema_detail(r) -> None:
                       'font-family:Orbitron,monospace;font-size:var(--text-2xs);border-radius:var(--r-sm);'
                       'padding:1px 7px;margin-right:0.4rem">✦ DUAL CONFIRM</span>' if dual_ok else "")
         ema5_str = f'EMA5d <b style="color:#E2E8F0">Rp{ema5d_v:,.0f}</b> · ' if ema5d_v else ""
+        # Pre-build color vars untuk daily line — hindari ternary inline di f-string
+        _ema13d_diff_col = "#00FF66" if pct_ema13d >= 0 else "#EF4444"
+        _vol_d_col       = "#00FF66" if vol_d >= 1.5 else "#F0B429"
         lines_out.append(
             f'{dual_badge}<b>EMA Daily:</b> {ema5_str}'
             f'EMA13d <b style="color:#E2E8F0">Rp{ema13d_v:,.0f}</b> · '
             f'EMA89d <b style="color:#94A3B8">Rp{ema89d_v:,.0f}</b> · '
-            f'vs EMA13d <b style="color:{"#00FF66" if pct_ema13d>=0 else "#EF4444"}">{pct_ema13d:+.1f}%</b> · '
-            f'Vol <b style="color:{"#00FF66" if vol_d>=1.5 else "#F0B429"}">{vol_d:.1f}×</b> · '
+            f'vs EMA13d <b style="color:{_ema13d_diff_col}">{pct_ema13d:+.1f}%</b> · '
+            f'Vol <b style="color:{_vol_d_col}">{vol_d:.1f}×</b> · '
             f'<b style="color:{d_col}">{daily_pattern}</b>'
             + (f' — {daily_note}' if daily_note else '')
         )
 
     # Market Structure row
-    ms_struct  = _g("ms_structure","")
-    ms_age     = _g("ms_age_label","")
-    ms_slope   = _g("ms_slope_label","")
-    ms_boost   = _g("ms_conviction_boost",0)
-    ms_support = _g("ms_nearest_support",0)
-    ms_sup_d   = _g("ms_support_dist_pct",0)
+    ms_struct  = _g(r, "ms_structure","")
+    ms_age     = _g(r, "ms_age_label","")
+    ms_slope   = _g(r, "ms_slope_label","")
+    ms_boost   = _g(r, "ms_conviction_boost",0)
+    ms_support = _g(r, "ms_nearest_support",0)
+    ms_sup_d   = _g(r, "ms_support_dist_pct",0)
 
     if ms_struct:
         sc = ("#00FF66" if ms_struct in ("HH_HL","TRENDING_UP") else
@@ -422,7 +426,7 @@ def _render_ema_detail(r) -> None:
         )
 
     # ── MSCI Alert block ──────────────────────────────────────────────────
-    _ticker_upper = _g("ticker","").replace(".JK","").upper()
+    _ticker_upper = _g(r, "ticker","").replace(".JK","").upper()
     _ma = _msci_alerts_by_ticker.get(_ticker_upper)
     if _ma:
         _lv   = _ma.get("alert_level","")
@@ -439,9 +443,25 @@ def _render_ema_detail(r) -> None:
                  "rgba(240,180,41,0.05)" if _lv == "MEDIUM" else "rgba(74,158,255,0.04)")
         _reasons_str = " · ".join(_reasons[:4]) if _reasons else ""
 
-        lines_out.append(
-            f'<div style="background:{_lbg};border:1px solid {_lcol}40;'            'border-radius:var(--r-md);padding:.5rem .8rem;margin:.3rem 0">'            '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.25rem">'            '<span style="font-family:Orbitron,monospace;font-size:var(--text-2xs);'            f'font-weight:800;color:{_lcol}">◈ {_idx}</span>'            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'            f'color:{_lcol}">{_lv} · T-{_t} · Conv {_mc}/12</span>'            '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'            f'color:#64748B">Eff: {_eff}</span>'            '</div>'            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'            f'color:#94A3B8">{_reasons_str}</div>'            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'            f'color:{_lcol};margin-top:.2rem">{_note}</div>'            '</div>'
-        )
+        # BUG-07 FIX: Multi-line build — ganti flat single-line concat
+        _msci_lines = [
+            f'<div style="background:{_lbg};border:1px solid {_lcol}40;'
+            'border-radius:var(--r-md);padding:.5rem .8rem;margin:.3rem 0">',
+            '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.25rem">',
+            f'<span style="font-family:Orbitron,monospace;font-size:var(--text-2xs);'
+            f'font-weight:800;color:{_lcol}">◈ {_idx}</span>',
+            f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+            f'color:{_lcol}">{_lv} · T-{_t} · Conv {_mc}/12</span>',
+            f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+            f'color:#64748B">Eff: {_eff}</span>',
+            '</div>',
+            f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+            f'color:#94A3B8">{_reasons_str}</div>',
+            f'<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+            f'color:{_lcol};margin-top:.2rem">{_note}</div>',
+            '</div>',
+        ]
+        lines_out.append("".join(_msci_lines))
 
     # Action
     if regime == "WATCHLIST_ONLY":
@@ -721,10 +741,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
             mcf_lbl = r.get("mcf_label","")
             regime_tag = r.get("regime_tag","")
 
-            # Risk warning color for card border
-            card_border = "#00FF66" if risk <= 15 else "#F0B429" if risk <= 25 else "#EF4444"
-
-            # Build all badge HTML as Python strings first — avoid inline injection in f-string
+            # Risk warning color for card border — computed in _border_col below
             risk_badge = ""
             if risk > 25:
                 risk_badge = f'<span style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid #EF444455;border-radius:4px;padding:1px 6px;font-size:11px;margin-left:0.4rem">&#9888; RISK {risk:.0f}%</span>'
@@ -736,7 +753,16 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
             _dual      = r.get("dual_confirmed", False)
             _is_strong = _sig == "STRONG_BREAKOUT"
             _sig_col   = SIG_COLORS.get(_sig, "#00FF66")
-            _border_col = "#00FF66" if risk <= 15 else "#F0B429" if risk <= 25 else "#EF4444"
+            # BUG-04 FIX: STRONG_BREAKOUT gets thicker border + distinct styling
+            _border_col   = "#00FF66" if risk <= 15 else "#F0B429" if risk <= 25 else "#EF4444"
+            _border_width = "3px" if _is_strong else "1px"
+            _card_bg      = "rgba(0,255,102,0.03)" if _is_strong else "#0F1318"
+            _strong_label = (
+                '<span style="background:#00FF66;color:#000;font-family:Orbitron,monospace;'
+                'font-size:10px;font-weight:900;border-radius:3px;padding:1px 7px;'
+                'letter-spacing:0.12em;margin-right:0.3rem">STRONG</span>'
+                if _is_strong else ""
+            )
 
             # Pre-build all badge strings
             _sig_badge   = signal_badge(_sig)
@@ -746,10 +772,11 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
 
             # Build complete card HTML as single string
             _card_html = (
-                f'<div style="background:#0F1318;border:1px solid rgba(255,255,255,0.06);'
-                f'border-left:3px solid {_border_col};border-radius:8px;'
+                f'<div style="background:{_card_bg};border:{_border_width} solid rgba(255,255,255,0.06);'
+                f'border-left:{_border_width} solid {_border_col};border-radius:8px;'
                 f'padding:0.6rem 0.8rem;margin-bottom:4px">'
                 f'<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap">'
+                f'{_strong_label}'
                 f'<span style="font-family:Orbitron,monospace;font-size:18px;font-weight:900;color:#E2E8F0;letter-spacing:0.03em">{ticker}</span>'
                 f'{_sig_badge}'
                 f'{_score_badge}'
@@ -778,7 +805,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                 _render_ema_detail(r)
 
     # ── ALL SETUPS with filter controls ──────────────────────────────────────
-    rest = [r for r in ema_results if r.get("signal") != "BREAKOUT"]
+    rest = [r for r in ema_results if r.get("signal") not in ("BREAKOUT", "STRONG_BREAKOUT")]
     if rest:
         sec_head("◆ ALL SETUPS")
 
