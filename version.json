@@ -1,8 +1,9 @@
 {
-  "version": "8.3.4",
+  "version": "8.3.5",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-15",
   "changelog": [
+    "8.3.5 — REMOVE: 6_Trade_Journal.py — hapus tab AI Challenge dan semua Gemini dependency",
     "8.3.4 — FEAT: 6_Trade_Journal.py — Gemini API key via UI sidebar, tidak perlu secrets.toml",
     "8.3.3 — FIX: 3_Money_Flow.py — pastikan _build_card didefinisikan sebelum dipanggil (ordering fix)",
     "8.3.2 — REWRITE: 3_Money_Flow.py — repurpose jadi Daily Top Mover Scanner: sort by % gain harian, filter sektor/vol/value, pakai whale_scanner sebagai data source",
