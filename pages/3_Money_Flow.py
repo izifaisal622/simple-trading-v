@@ -209,7 +209,9 @@ if run_scan:
             retail_c = sig_counts.get("RETAIL_MOMENTUM", 0)
             dist_c   = sig_counts.get("DISTRIBUTION", 0)
             st.success(f"◈ DONE — {len(results)} results | 🐋{whale_c} whale | 🏦{inst_c} inst | 👥{retail_c} retail | ⚠{dist_c} dist")
-            st.rerun()
+            # TIDAK st.rerun() — biarkan display block di bawah render langsung
+            # dalam run yang sama. st.rerun() dalam spinner context menyebabkan
+            # session_state tidak ter-commit sebelum page restart.
         except Exception as e:
             import traceback
             _last_step = st.session_state.get("_mf_debug", "unknown")
@@ -217,7 +219,12 @@ if run_scan:
             st.code(traceback.format_exc())
 
 # ─── display results ──────────────────────────────────────────────────────────
-if not _mf_results:
+# Baca FRESH dari session_state — bukan dari _mf_results yang dibaca di awal
+_display_results = st.session_state.get("mf_results", [])
+_display_context = st.session_state.get("mf_context", {})
+_display_time    = st.session_state.get("mf_scan_time", None)
+
+if not _display_results:
     render_empty_state(
         icon     = "💸",
         title    = "NO FLOW DATA",
@@ -226,14 +233,14 @@ if not _mf_results:
     )
 else:
     # ── Summary stats (setara Whale 8-box) ────────────────────────────────────
-    mf_ctx = _mf_context
+    mf_ctx = _display_context
     _whale_c  = mf_ctx.get("whale_count", 0)
     _inst_c   = mf_ctx.get("inst_count", 0)
     _retail_c = mf_ctx.get("retail_count", 0)
     _dist_c   = mf_ctx.get("dist_count", 0)
     _sb_c     = mf_ctx.get("stockbit_count", 0)
     _px_c     = mf_ctx.get("proxy_count", 0)
-    _total    = mf_ctx.get("total", len(_mf_results))
+    _total    = mf_ctx.get("total", len(_display_results))
 
     cols8 = st.columns(8)
     mdata = [
@@ -244,7 +251,7 @@ else:
         ("⚠ DISTRIBUSI", _dist_c,  "var(--c-danger)"),
         ("🟢 STOCKBIT",  _sb_c,     NEON_GREEN),
         ("🟡 PROXY",     _px_c,     "var(--c-warning)"),
-        ("⏱ SCAN",       _mf_time or "—", "var(--text-muted)"),
+        ("⏱ SCAN",       _display_time or "—", "var(--text-muted)"),
     ]
     for col, (lbl, val, clr) in zip(cols8, mdata):
         with col:
@@ -283,12 +290,12 @@ else:
       <span style="color:var(--text-muted)">FLOW BIAS</span>
       <span style="font-family:Orbitron,monospace;font-size:var(--text-base);font-weight:700;color:{bias_color}">{bias}</span>
       <span style="color:var(--text-muted)">SIGNALS: {sig_breakdown}</span>
-      <span style="color:var(--text-muted);margin-left:auto">SCAN: {_mf_time or "—"}</span>
+      <span style="color:var(--text-muted);margin-left:auto">SCAN: {_display_time or "—"}</span>
     </div>
     """, unsafe_allow_html=True)
 
     # ── Filter & sort ─────────────────────────────────────────────────────────
-    filtered = [r for r in _mf_results
+    filtered = [r for r in _display_results
                 if r.get("signal") in filter_signal
                 and r.get("source") in filter_source
                 and (r.get("vol_ratio") or 1.0) >= filter_min_vol]
@@ -305,7 +312,7 @@ else:
 
     st.markdown(
         f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--text-muted)">'
-        f'SHOWING {len(filtered)} OF {len(_mf_results)}</p>',
+        f'SHOWING {len(filtered)} OF {len(_display_results)}</p>',
         unsafe_allow_html=True,
     )
 

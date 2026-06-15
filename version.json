@@ -1,8 +1,9 @@
 {
-  "version": "8.3.0",
+  "version": "8.3.1",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-15",
   "changelog": [
+    "8.3.1 — FIX: 3_Money_Flow.py — hapus st.rerun() dalam spinner context; display block baca session_state fresh setelah scan selesai",
     "8.3.0 — FIX: 3_Money_Flow.py — default filter include semua signal (NEUTRAL+DISTRIBUTION) agar hasil scan selalu tampil; min vol default turun ke 0.5",
     "8.2.9 — FIX: 3_Money_Flow.py — filter_min_vol NameError saat results pertama kali muncul setelah scan",
     "8.2.8 — FIX: 3_Money_Flow.py — enrich_top_results() dipanggil setelah scan agar Stockbit token benar-benar dipakai untuk broker data",
