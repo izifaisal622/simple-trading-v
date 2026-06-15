@@ -733,7 +733,31 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
         _bo_lbl = f"◉ BREAKOUT SIGNALS — {len(breakouts)} total"
         if n_strong: _bo_lbl += f" ({n_strong} STRONG)"
         sec_head(_bo_lbl)
-        for r in breakouts:
+
+        # P01-A: Min score filter + copy tickers
+        _bh1, _bh2, _bh3 = st.columns([1, 1, 2])
+        with _bh1:
+            _bo_min_score = st.slider("Min Score", 1, 8, 3, key="bo_min_score",
+                                      help="Filter breakout berdasarkan minimum score")
+        with _bh2:
+            _bo_max_risk = st.slider("Max Risk %", 5, 50, 30, 5, key="bo_max_risk",
+                                     help="Filter breakout berdasarkan maximum risk %")
+        with _bh3:
+            _bo_filtered = [r for r in breakouts
+                            if r.get("score", 0) >= _bo_min_score
+                            and r.get("risk_pct", 0) <= _bo_max_risk]
+            _bo_hidden   = len(breakouts) - len(_bo_filtered)
+            _tickers_str = ", ".join(r.get("ticker","").replace(".JK","") for r in _bo_filtered)
+            _copy_lbl    = f"📋 COPY {len(_bo_filtered)} TICKERS"
+            if _bo_hidden:
+                st.markdown(f'<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+                            f'color:var(--text-muted);margin-top:1.6rem">'
+                            f'{len(_bo_filtered)} shown · {_bo_hidden} filtered</p>',
+                            unsafe_allow_html=True)
+            if st.button(_copy_lbl, key="bo_copy_tickers"):
+                st.code(_tickers_str)
+
+        for r in _bo_filtered:
             ticker = r.get("ticker","").replace(".JK","")
             score  = r.get("score",0)
             vol    = r.get("vol_ratio",0)
@@ -803,6 +827,42 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
 
             if is_open:
                 _render_ema_detail(r)
+
+            # P01-B: Inline outcome logging — satu klik dari breakout card
+            with st.expander(f"📝 LOG TRADE — {ticker}", expanded=False):
+                _oc1, _oc2, _oc3, _oc4 = st.columns(4)
+                with _oc1:
+                    _log_entry = st.number_input("Entry Price", value=float(r.get("close", 0)),
+                                                  step=10.0, key=f"log_entry_{ticker}")
+                with _oc2:
+                    _log_sl = st.number_input("SL Price", value=float(r.get("sl_price", 0)),
+                                               step=10.0, key=f"log_sl_{ticker}")
+                with _oc3:
+                    _log_outcome = st.selectbox("Outcome", ["OPEN", "WIN", "LOSS", "BREAKEVEN"],
+                                                 key=f"log_out_{ticker}")
+                with _oc4:
+                    _log_exit = st.number_input("Exit Price (0=skip)", value=0.0,
+                                                 step=10.0, key=f"log_exit_{ticker}")
+                _log_notes = st.text_input("Notes (opsional)", key=f"log_note_{ticker}",
+                                            placeholder="contoh: TP1 hit, exit manual")
+                if st.button(f"💾 SIMPAN TRADE {ticker}", key=f"log_save_{ticker}"):
+                    try:
+                        from trade_logger import log_trade, close_trade
+                        _tid = log_trade(
+                            ticker       = ticker,
+                            entry_price  = _log_entry,
+                            sl_price     = _log_sl,
+                            signal_type  = r.get("signal", "BREAKOUT"),
+                            signal_score = int(r.get("score", 0)),
+                            regime_tag   = r.get("regime_tag", ""),
+                            mcf_score    = int(r.get("mcf_score", 0)),
+                            notes        = _log_notes,
+                        )
+                        if _log_outcome != "OPEN" and _log_exit > 0:
+                            close_trade(_tid, _log_exit, _log_outcome, _log_notes)
+                        st.success(f"✅ Trade {ticker} tersimpan (ID #{_tid}) — outcome: {_log_outcome}")
+                    except Exception as _le:
+                        st.error(f"Error log trade: {_le}")
 
     # ── ALL SETUPS with filter controls ──────────────────────────────────────
     rest = [r for r in ema_results if r.get("signal") not in ("BREAKOUT", "STRONG_BREAKOUT")]
@@ -995,7 +1055,6 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
             if match:
                 _render_ema_detail(match)
 
-    # Outcome logging → lihat page 6 Trade Journal
 
 else:
     render_empty_state(

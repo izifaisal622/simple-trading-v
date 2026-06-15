@@ -568,11 +568,36 @@ def _render_broker_ksei_tab(whale_results: list, min_conv: int) -> None:
     """Tab 7: Broker History + KSEI Ownership + Hengky Math."""
     import streamlit as st
     import pandas as pd
+    from pathlib import Path as _P7Path
 
     st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
     color:var(--text-muted);letter-spacing:0.08em;margin-bottom:1rem">
     Akumulasi broker historis · Hengky lot math · Upload data kepemilikan KSEI
     </p>""", unsafe_allow_html=True)
+
+    # P02-D: Onboarding card — tampil jika token belum ada
+    _token_file = _P7Path(__file__).parent.parent / "data" / "stockbit_token.json"
+    _has_token  = _token_file.exists()
+    if not _has_token:
+        st.markdown("""
+<div style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.25);
+border-left:4px solid #60A5FA;border-radius:var(--r-md);padding:1rem 1.2rem;margin-bottom:1rem">
+  <div style="font-family:Orbitron,monospace;font-size:var(--text-sm);font-weight:700;
+  color:#60A5FA;letter-spacing:0.1em;margin-bottom:0.6rem">🏦 SETUP BROKER DATA</div>
+  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+  color:#94A3B8;line-height:2.0">
+    Tab ini menampilkan data akumulasi broker historis dari Stockbit.<br>
+    Tanpa token, hanya data KSEI manual yang tersedia.<br><br>
+    <b style="color:#E2E8F0">Cara dapat token Stockbit (1x setup, berlaku ~24 jam):</b><br>
+    <span style="color:#60A5FA">1.</span> Login ke <b>stockbit.com</b> di browser<br>
+    <span style="color:#60A5FA">2.</span> Tekan <b>F12</b> → tab <b>Network</b><br>
+    <span style="color:#60A5FA">3.</span> Filter pencarian: ketik <b>exodus</b><br>
+    <span style="color:#60A5FA">4.</span> Klik salah satu request → tab <b>Headers</b><br>
+    <span style="color:#60A5FA">5.</span> Cari header <b>Authorization</b> → copy nilai setelah <b>"Bearer "</b><br>
+    <span style="color:#60A5FA">6.</span> Paste di sidebar kiri → <b>[+] INPUT TOKEN</b>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
     if not _HAS_BROKER_HIST:
         st.warning("Module broker_history / ksei_agent tidak tersedia.")
@@ -1406,14 +1431,22 @@ if whale_results:
                                "python orchestrator.py --mode whale")
 
     with tab2:
-        peng = sorted([w for w in peng_list if w.get("conviction",0) >= min_conv_ui],
-                       key=lambda x:(-x.get("pengeringan_strength",0),-x.get("conviction",0)))
-        _ph, _pc = st.columns([4,1])
+        _ph, _ps, _pc = st.columns([3, 1, 1])
         with _ph:
             st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
             color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.3rem">
             VOL ELEVATED + RANGE SEMPIT = SMART MONEY ACCUMULATING FROM RETAIL</p>""",
             unsafe_allow_html=True)
+        with _ps:
+            _peng_sort = st.selectbox("Sort", ["Peng. Strength", "Conviction", "% Above Floor"],
+                                       key="peng_sort", label_visibility="collapsed")
+        _peng_sort_fn = {
+            "Peng. Strength": lambda x: (-x.get("pengeringan_strength",0), -x.get("conviction",0)),
+            "Conviction":     lambda x: (-x.get("conviction",0), -x.get("pengeringan_strength",0)),
+            "% Above Floor":  lambda x: (x.get("pct_above_floor",999), -x.get("conviction",0)),
+        }.get(_peng_sort, lambda x: (-x.get("pengeringan_strength",0), -x.get("conviction",0)))
+        peng = sorted([w for w in peng_list if w.get("conviction",0) >= min_conv_ui],
+                       key=_peng_sort_fn)
         with _pc:
             if peng and st.button("📋 COPY", key="copy_peng", width="stretch"):
                 st.toast(", ".join(w["ticker"].replace(".JK","") for w in peng), icon="📋")
@@ -1426,12 +1459,22 @@ if whale_results:
             render_empty_state("💧","NO PENGERINGAN","Tidak ada pengeringan barang terdeteksi saat ini.")
 
     with tab3:
+        _fh, _fs = st.columns([4, 1])
+        with _fh:
+            st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+            color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.6rem">
+            MENDEKATI FLOOR PRICE = R/R TERBAIK · DI SINILAH EMITEN DEFEND</p>""",
+            unsafe_allow_html=True)
+        with _fs:
+            _floor_sort = st.selectbox("Sort", ["% Above Floor", "Conviction", "Vol Ratio"],
+                                        key="floor_sort", label_visibility="collapsed")
+        _floor_sort_fn = {
+            "% Above Floor": lambda x: (x.get("pct_above_floor",999), -x.get("conviction",0)),
+            "Conviction":    lambda x: (-x.get("conviction",0), x.get("pct_above_floor",999)),
+            "Vol Ratio":     lambda x: (-x.get("ff_adj_vol_ratio", x.get("vol_ratio",0))),
+        }.get(_floor_sort, lambda x: (x.get("pct_above_floor",999), -x.get("conviction",0)))
         at_fl = sorted([w for w in floor_list if w.get("conviction",0) >= min_conv_ui],
-                        key=lambda x:(x.get("pct_above_floor",999),-x.get("conviction",0)))
-        st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-        color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.6rem">
-        MENDEKATI FLOOR PRICE = R/R TERBAIK · DI SINILAH EMITEN DEFEND</p>""",
-        unsafe_allow_html=True)
+                        key=_floor_sort_fn)
         if at_fl:
             l,r = st.columns(2)
             for i,w in enumerate(at_fl):
@@ -1441,12 +1484,22 @@ if whale_results:
             render_empty_state("🎯","NO AT FLOOR","Tidak ada setup mendekati floor saat ini.")
 
     with tab4:
-        rec = sorted([w for w in recov_list if w.get("conviction",0) >= min_conv_ui],
-                      key=lambda x:(-x.get("conviction",0),x.get("pct_from_52w_high",0)))
         lbl = "RECOVERY WATCHLIST" if not tradeable else "EARLY RECOVERY PLAYS"
-        st.markdown(f"""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-        color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.6rem">
-        {lbl} · BEATEN DOWN >20% DARI 52W HIGH + WHALE BUYING</p>""", unsafe_allow_html=True)
+        _rh, _rs = st.columns([4, 1])
+        with _rh:
+            st.markdown(f"""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+            color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.6rem">
+            {lbl} · BEATEN DOWN >20% DARI 52W HIGH + WHALE BUYING</p>""", unsafe_allow_html=True)
+        with _rs:
+            _rec_sort = st.selectbox("Sort", ["Conviction", "% dari 52W High", "Vol Ratio"],
+                                      key="rec_sort", label_visibility="collapsed")
+        _rec_sort_fn = {
+            "Conviction":       lambda x: (-x.get("conviction",0), x.get("pct_from_52w_high",0)),
+            "% dari 52W High":  lambda x: (x.get("pct_from_52w_high",0), -x.get("conviction",0)),
+            "Vol Ratio":        lambda x: (-x.get("ff_adj_vol_ratio", x.get("vol_ratio",0))),
+        }.get(_rec_sort, lambda x: (-x.get("conviction",0), x.get("pct_from_52w_high",0)))
+        rec = sorted([w for w in recov_list if w.get("conviction",0) >= min_conv_ui],
+                      key=_rec_sort_fn)
         if rec:
             l,r = st.columns(2)
             for i,w in enumerate(rec):
