@@ -67,12 +67,12 @@ def _derive_optimal_thresholds(current_regime: str) -> dict:
     """
     # Hardcoded fallbacks (regime-based, tetap dipakai jika data tidak cukup)
     REGIME_DEFAULTS = {
-        "BULL_TREND":        {"min_score": 3, "whale_vol_mult": 3.0, "whale_val_bn": 1.0},
-        "BULL_CONSOLIDATION":{"min_score": 4, "whale_vol_mult": 2.5, "whale_val_bn": 0.8},
-        "TRANSITION":        {"min_score": 5, "whale_vol_mult": 2.0, "whale_val_bn": 0.5},
-        "BEAR_CONSOLIDATION":{"min_score": 6, "whale_vol_mult": 1.5, "whale_val_bn": 0.3},
-        "BEAR_TREND":        {"min_score": 7, "whale_vol_mult": 1.2, "whale_val_bn": 0.2},
-        "UNKNOWN":           {"min_score": 4, "whale_vol_mult": 2.5, "whale_val_bn": 0.5},
+        "BULL_TREND":        {"min_score": 3, "whale_vol_multiplier": 3.0, "whale_min_value_bn": 1.0},
+        "BULL_CONSOLIDATION":{"min_score": 4, "whale_vol_multiplier": 2.5, "whale_min_value_bn": 0.8},
+        "TRANSITION":        {"min_score": 5, "whale_vol_multiplier": 2.0, "whale_min_value_bn": 0.5},
+        "BEAR_CONSOLIDATION":{"min_score": 6, "whale_vol_multiplier": 1.5, "whale_min_value_bn": 0.3},
+        "BEAR_TREND":        {"min_score": 7, "whale_vol_multiplier": 1.2, "whale_min_value_bn": 0.2},
+        "UNKNOWN":           {"min_score": 4, "whale_vol_multiplier": 2.5, "whale_min_value_bn": 0.5},
     }
     fallback = REGIME_DEFAULTS.get(current_regime, REGIME_DEFAULTS["UNKNOWN"])
 
@@ -158,7 +158,7 @@ def _derive_optimal_thresholds(current_regime: str) -> dict:
                      if t.get("outcome") == "WIN") / len(analysis_trades) * 100 \
                  if analysis_trades else 0
 
-    base_vol_mult = fallback["whale_vol_mult"]
+    base_vol_mult = fallback["whale_vol_multiplier"]
     if overall_wr >= 60 and len(analysis_trades) >= 5:
         # Profitable → bisa sedikit lebih loose (lebih banyak signal)
         derived_vol_mult = max(1.5, base_vol_mult - 0.5)
@@ -180,7 +180,7 @@ def _derive_optimal_thresholds(current_regime: str) -> dict:
     return {
         "min_score":            best_min_score,
         "whale_vol_multiplier": round(derived_vol_mult, 1),
-        "whale_min_value_bn":   fallback["whale_val_bn"],
+        "whale_min_value_bn":   fallback["whale_min_value_bn"],
         "confidence":           confidence,
         "basis":                basis,
         "data_driven":          True,
@@ -680,12 +680,12 @@ def _derive_optimal_thresholds(current_regime: str) -> dict:
     """
     # Hardcoded fallbacks (regime-based, tetap dipakai jika data tidak cukup)
     REGIME_DEFAULTS = {
-        "BULL_TREND":        {"min_score": 3, "whale_vol_mult": 3.0, "whale_val_bn": 1.0},
-        "BULL_CONSOLIDATION":{"min_score": 4, "whale_vol_mult": 2.5, "whale_val_bn": 0.8},
-        "TRANSITION":        {"min_score": 5, "whale_vol_mult": 2.0, "whale_val_bn": 0.5},
-        "BEAR_CONSOLIDATION":{"min_score": 6, "whale_vol_mult": 1.5, "whale_val_bn": 0.3},
-        "BEAR_TREND":        {"min_score": 7, "whale_vol_mult": 1.2, "whale_val_bn": 0.2},
-        "UNKNOWN":           {"min_score": 4, "whale_vol_mult": 2.5, "whale_val_bn": 0.5},
+        "BULL_TREND":        {"min_score": 3, "whale_vol_multiplier": 3.0, "whale_min_value_bn": 1.0},
+        "BULL_CONSOLIDATION":{"min_score": 4, "whale_vol_multiplier": 2.5, "whale_min_value_bn": 0.8},
+        "TRANSITION":        {"min_score": 5, "whale_vol_multiplier": 2.0, "whale_min_value_bn": 0.5},
+        "BEAR_CONSOLIDATION":{"min_score": 6, "whale_vol_multiplier": 1.5, "whale_min_value_bn": 0.3},
+        "BEAR_TREND":        {"min_score": 7, "whale_vol_multiplier": 1.2, "whale_min_value_bn": 0.2},
+        "UNKNOWN":           {"min_score": 4, "whale_vol_multiplier": 2.5, "whale_min_value_bn": 0.5},
     }
     fallback = REGIME_DEFAULTS.get(current_regime, REGIME_DEFAULTS["UNKNOWN"])
 
@@ -771,7 +771,7 @@ def _derive_optimal_thresholds(current_regime: str) -> dict:
                      if t.get("outcome") == "WIN") / len(analysis_trades) * 100 \
                  if analysis_trades else 0
 
-    base_vol_mult = fallback["whale_vol_mult"]
+    base_vol_mult = fallback["whale_vol_multiplier"]
     if overall_wr >= 60 and len(analysis_trades) >= 5:
         # Profitable → bisa sedikit lebih loose (lebih banyak signal)
         derived_vol_mult = max(1.5, base_vol_mult - 0.5)
@@ -793,7 +793,7 @@ def _derive_optimal_thresholds(current_regime: str) -> dict:
     return {
         "min_score":            best_min_score,
         "whale_vol_multiplier": round(derived_vol_mult, 1),
-        "whale_min_value_bn":   fallback["whale_val_bn"],
+        "whale_min_value_bn":   fallback["whale_min_value_bn"],
         "confidence":           confidence,
         "basis":                basis,
         "data_driven":          True,
