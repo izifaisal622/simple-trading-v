@@ -1302,6 +1302,7 @@ border-radius:var(--r-sm);padding:0.5rem 0.65rem">
         'border-left:4px solid ' + border_color + ';border-radius:var(--r-md);' +
         'padding:1rem 1.2rem;margin-bottom:0.75rem;' +
         'box-shadow:0 2px 12px rgba(0,0,0,0.35);' +
+        'display:flex;flex-direction:column;height:100%;' +
         'transition:border-color 0.2s,background 0.2s">' +
         row1 +
         '<div style="display:grid;grid-template-columns:repeat(5,1fr);' +

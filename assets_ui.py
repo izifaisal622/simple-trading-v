@@ -317,6 +317,23 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
   position: relative; z-index: 1;
 }}
 
+/* ── Equal-height columns — whale card grid ── */
+[data-testid="stHorizontalBlock"] {{
+  align-items: stretch !important;
+}}
+[data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {{
+  display: flex !important;
+  flex-direction: column !important;
+}}
+[data-testid="stHorizontalBlock"] > [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {{
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}}
+[data-testid="stHorizontalBlock"] > [data-testid="stColumn"] > [data-testid="stVerticalBlock"] > div:first-child {{
+  flex: 1 !important;
+}}
+
 /* ══════════════════════════════════════
    SIDEBAR
 ══════════════════════════════════════ */
