@@ -193,9 +193,12 @@ def _health_color(pct_to_sl: float, pct_to_tp1: float) -> tuple:
     """
     Traffic light berdasarkan jarak ke SL dan TP1.
     P03-W1: NEAR_TP1 dibedakan secara visual dari HEALTHY
-    — keduanya actionable tapi berbeda arah (trim vs hold).
+    P03-X1: handle case harga sudah DI BAWAH SL (pct_to_sl negatif)
     """
-    if pct_to_sl <= 3:
+    # P03-X1: SL sudah terlewat (harga < SL) — emergency state
+    if pct_to_sl <= 0:
+        return "#7F1D1D", "🚨 SL TERLEWAT"   # dark red = exit sekarang
+    elif pct_to_sl <= 3:
         return "#EF4444", "🔴 NEAR SL"       # exit / tighten SL
     elif pct_to_sl <= 8:
         return "#F0B429", "🟡 WATCH"          # pantau, jangan tambah
@@ -275,6 +278,13 @@ else:
     _fetch_all = st.button("⟳ REFRESH SEMUA HARGA", key="btn_refresh_all",
                             use_container_width=False)
 
+    # P03-X3: fetch semua posisi dulu dalam satu spinner, baru render cards
+    if _fetch_all:
+        with st.spinner(f"Fetching {len(_open_trades)} posisi..."):
+            for _t_pre in _open_trades:
+                _tk = _t_pre.get("ticker","").upper()
+                st.session_state[f"pos_data_{_tk}"] = _fetch_position_data(_tk)
+
     _pos_cols = st.columns(min(len(_open_trades), 3))
     for _idx, _trade in enumerate(_open_trades):
         _t      = _trade.get("ticker", "").upper()
@@ -316,6 +326,15 @@ else:
         _pct_to_tp1 = ((_tp1 - _last) / _last * 100) if _last > 0 and _tp1 > 0 else 999
         _ema_ok     = _last > _ema13 * 0.98 if _ema13 > 0 else True
 
+        # Pre-build holding days string untuk card render
+        _holding_days_str = "—"
+        if _edate:
+            try:
+                from datetime import date as _cdate
+                _holding_days_str = f"{(_cdate.today() - _cdate.fromisoformat(_edate[:10])).days}d"
+            except Exception:
+                pass
+
         _health_c, _health_lbl = _health_color(_pct_to_sl, _pct_to_tp1)
         _pnl_col = "#00FF66" if _pnl_pct >= 0 else "#EF4444"
         _ema_badge = (
@@ -337,7 +356,7 @@ padding:0.8rem 1rem;margin-bottom:0.6rem">
     <span style="font-family:Orbitron,monospace;font-size:var(--text-xs);
     font-weight:700;color:{_health_c}">{_health_lbl}</span>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;margin-bottom:0.5rem">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin-bottom:0.5rem">
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">HARGA</div>
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#E2E8F0;font-weight:700">
@@ -353,15 +372,27 @@ padding:0.8rem 1rem;margin-bottom:0.6rem">
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">→ SL</div>
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-      color:{"#EF4444" if _pct_to_sl <= 5 else "#F0B429" if _pct_to_sl <= 10 else "#94A3B8"}">
-        {f"{_pct_to_sl:.1f}%" if _last else "—"}
+      color:{"#7F1D1D" if _pct_to_sl <= 0 else "#EF4444" if _pct_to_sl <= 5 else "#F0B429" if _pct_to_sl <= 10 else "#94A3B8"}">
+        {f"TERLEWAT" if _pct_to_sl <= 0 else f"{_pct_to_sl:.1f}%" if _last else "—"}
       </div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">→ TP1</div>
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-      color:{"#00FF66" if _pct_to_tp1 <= 5 else "#94A3B8"}">
+      color:{"#60A5FA" if _pct_to_tp1 <= 5 else "#00FF66" if _pct_to_tp1 <= 12 else "#94A3B8"}">
         {f"{_pct_to_tp1:.1f}%" if _last and _tp1 else "—"}
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">→ TP2</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#64748B">
+        {f"Rp{_tp2:,.0f}" if _tp2 else "—"}
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">HARI</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#94A3B8">
+        {_holding_days_str}
       </div>
     </div>
   </div>

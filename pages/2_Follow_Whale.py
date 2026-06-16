@@ -1242,6 +1242,7 @@ transition:border-color 0.2s,background 0.2s">
     <span style="margin-left:auto;display:flex;align-items:center;gap:0.5rem">
       <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
       color:{qual_color};font-weight:700">{qual_lbl}</span>
+      {f'<span style="background:rgba(0,255,102,0.1);border:1px solid rgba(0,255,102,0.3);border-radius:var(--r-sm);padding:1px 6px;font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--accent);font-weight:700">Ctrl {w.get("control_score",0)}/10</span>' if w.get("control_score",0) >= 4 else ""}
       {sec_html}
     </span>
   </div>
@@ -1277,7 +1278,15 @@ if whale_results:
     blkbuy_list  = [w for w in whale_results if w["signal"]=="BLOCK_BUY"]
     recov_list   = [w for w in whale_results if w["signal"]=="RECOVERY_EARLY"]
     distrib_list = [w for w in whale_results if not w.get("is_long_signal",True)]
-    smart_list   = [w for w in whale_results if w.get("whale_quality") in ("SMART","LIKELY_SMART") and w.get("is_long_signal")]
+    smart_list   = sorted(
+        [w for w in whale_results if w.get("whale_quality") in ("SMART","LIKELY_SMART") and w.get("is_long_signal")],
+        # P02-X2: prioritaskan SMART whale yang di OB/VP zone — setup terkuat Hengky method
+        key=lambda w: (
+            -(w.get("in_ob_zone",False) or w.get("vp_near_val",False) or w.get("vp_in_value",False)),
+            -w.get("conviction",0),
+             w.get("pct_above_floor",999),
+        )
+    )
     peng_list    = [w for w in whale_results if w.get("pengeringan_detected") and w.get("is_long_signal")]
     def_list     = [w for w in whale_results if w.get("whale_defending") and w.get("is_long_signal")]
     floor_list   = [w for w in whale_results if w.get("entry_zone") in ("AT_FLOOR","NEAR_FLOOR") and w.get("is_long_signal")]
@@ -1369,16 +1378,23 @@ if whale_results:
                 if w.get("ema_trend") in _ema_ok
                 and w.get("conviction",0) >= min_conv_ui]
         _tradeable_str = '· TRADEABLE ✓' if tradeable else '· ⛔ WATCHLIST ONLY'
-        _t1h, _t1s, _t1c = st.columns([3, 1, 1])
-        with _t1h:
-            st.markdown(f"""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-            color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.3rem">
-            SETUP · SMART WHALE + EMA BULLISH + CONVICTION ≥ {min_conv_ui}
-            {_tradeable_str}</p>""", unsafe_allow_html=True)
-        with _t1s:
-            # P02-W2: sort toggle Tab 1 — konsisten dengan Tab 2/3/4
-            _best_sort = st.selectbox("Sort", ["Conviction", "% Above Floor", "Control Score", "Vol Ratio"],
-                                       key="best_sort", label_visibility="collapsed")
+        # P02-X1: sort selectbox hanya render jika best tidak kosong
+        _best_sort = "Conviction"  # default jika best kosong
+        if best:
+            _t1h, _t1s, _t1c = st.columns([3, 1, 1])
+            with _t1h:
+                st.markdown(f"""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+                color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.3rem">
+                {len(best)} SETUP · SMART WHALE + EMA BULLISH + CONVICTION ≥ {min_conv_ui}
+                {_tradeable_str}</p>""", unsafe_allow_html=True)
+            with _t1s:
+                _best_sort = st.selectbox("Sort", ["Conviction", "% Above Floor", "Control Score", "Vol Ratio"],
+                                           key="best_sort", label_visibility="collapsed")
+            with _t1c:
+                _ticker_list = ", ".join(w["ticker"].replace(".JK","") for w in best)
+                if st.button("📋 COPY TICKERS", key="copy_best", width="stretch"):
+                    st.session_state["_clipboard"] = _ticker_list
+                    st.toast(f"✅ Copied: {_ticker_list[:60]}", icon="📋")
         _best_sort_fn = {
             "Conviction":    lambda x: (-x.get("conviction",0),   x.get("pct_above_floor",999)),
             "% Above Floor": lambda x: ( x.get("pct_above_floor",999), -x.get("conviction",0)),
@@ -1386,13 +1402,8 @@ if whale_results:
             "Vol Ratio":     lambda x: (-x.get("ff_adj_vol_ratio", x.get("vol_ratio",0)),),
         }.get(_best_sort, lambda x: (-x.get("conviction",0), x.get("pct_above_floor",999)))
         best.sort(key=_best_sort_fn)
-        if best:
-            with _t1c:
-                _ticker_list = ", ".join(w["ticker"].replace(".JK","") for w in best)
-                if st.button("📋 COPY TICKERS", key="copy_best", width="stretch"):
-                    st.session_state["_clipboard"] = _ticker_list
-                    st.toast(f"✅ Copied: {_ticker_list[:60]}", icon="📋")
 
+        if best:
             # 2-column layout
             left_col, right_col = st.columns(2)
             for i, w in enumerate(best):

@@ -845,7 +845,23 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                                                  step=10.0, key=f"log_exit_{ticker}")
                 _log_notes = st.text_input("Notes (opsional)", key=f"log_note_{ticker}",
                                             placeholder="contoh: TP1 hit, exit manual")
-                if st.button(f"💾 SIMPAN TRADE {ticker}", key=f"log_save_{ticker}"):
+                # P01-X2: quick pre-flight gate sebelum simpan
+                # Pakai data yang sudah ada dari result dict (r)
+                _pf_quick_regime = r.get("regime_tag","") not in ("BEAR_TREND","WATCHLIST_ONLY","BEAR_WEAK")
+                _pf_quick_score  = int(r.get("score",0)) >= 3
+                _pf_quick_risk   = float(r.get("risk_pct",0)) <= 25
+                _pf_quick_pass   = _pf_quick_regime and _pf_quick_score and _pf_quick_risk
+                _pf_quick_fails  = []
+                if not _pf_quick_regime: _pf_quick_fails.append(f"Regime={r.get('regime_tag','?')}")
+                if not _pf_quick_score:  _pf_quick_fails.append(f"Score={r.get('score',0)}/8 (<3)")
+                if not _pf_quick_risk:   _pf_quick_fails.append(f"Risk={r.get('risk_pct',0):.0f}% (>25%)")
+
+                if not _pf_quick_pass:
+                    st.warning(f"⚠ Pre-flight: {' · '.join(_pf_quick_fails)} — override di Page 04 untuk analisis lengkap")
+
+                _save_lbl = "💾 SIMPAN TRADE" if _pf_quick_pass else "⚠ SIMPAN (ada warning)"
+                if st.button(_save_lbl, key=f"log_save_{ticker}",
+                             type="primary" if _pf_quick_pass else "secondary"):
                     try:
                         from trade_logger import log_trade, close_trade
                         # P01-W1 fix: pass tp1_price agar War Room bisa hitung pct_to_tp1
@@ -892,6 +908,8 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
         # rs_pos dan mcf_ok adalah toggle non-widget, bisa di-set kapanpun
         rs_pos_only = st.session_state.pop("f_rs_pos", False)
         mcf_ok_only = st.session_state.pop("f_mcf_ok", False)
+        # P01-X3: RS minimum threshold — bukan hanya binary > 0
+        _rs_min = st.session_state.get("f_rs_min", 0.0)
 
         with st.container():
             st.markdown("""<div style="font-family:Share Tech Mono,monospace;
@@ -968,7 +986,8 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
         filtered = [r for r in filtered if r.get("score", 0) >= min_score_val]
         filtered = [r for r in filtered if r.get("risk_pct", 0) <= max_risk_val]
         if rs_pos_only:
-            filtered = [r for r in filtered if r.get("rs_vs_ihsg_4w", 0) > 0]
+            # P01-X3: minimum RS threshold — bukan hanya > 0
+            filtered = [r for r in filtered if r.get("rs_vs_ihsg_4w", 0) >= _rs_min]
         if mcf_ok_only:
             filtered = [r for r in filtered if r.get("mcf_label","") in ("JOIN","WAIT")]
 
@@ -981,6 +1000,15 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
             "Vol× ↓":   lambda r: -r.get("vol_ratio", 0),
         }
         sort_key = st.session_state.get("f_sort", "Score ↓")
+        # P01-X3: RS min threshold slider — hanya tampil jika RS filter aktif
+        if rs_pos_only:
+            _rs_min_new = st.slider("Min RS% vs IHSG", 0.0, 20.0,
+                                    float(st.session_state.get("f_rs_min", 0.0)),
+                                    0.5, key="rs_min_slider",
+                                    help="Hanya tampilkan saham dengan RS ≥ X% vs IHSG 4W")
+            st.session_state["f_rs_min"] = _rs_min_new
+            _rs_min = _rs_min_new
+            filtered = [r for r in filtered if r.get("rs_vs_ihsg_4w", 0) >= _rs_min]
         filtered.sort(key=sort_map.get(sort_key, sort_map["Score ↓"]))
 
         # Filter stats
