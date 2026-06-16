@@ -556,7 +556,9 @@ scan_date   = last.get("date", "—")[:10] if last.get("date") else "—"
 
 cycle   = regime.get("cycle", "—")
 ihsg    = regime.get("ihsg", 0)
-mom_4w  = regime.get("mom_4w", 0)
+mom_4w      = regime.get("mom_4w", 0)
+mom_2w      = regime.get("mom_2w", 0)
+pct_from_low= regime.get("pct_from_low", 0)
 breadth = regime.get("breadth", 0)
 
 # Sidebar
@@ -601,7 +603,7 @@ render_page_header(
     scan_date= scan_date,
 )
 
-render_regime_bar(cycle, ihsg, mom_4w, breadth, scan_date)
+render_regime_bar(cycle, ihsg, mom_4w, breadth, scan_date, mom_2w=mom_2w, pct_from_low=pct_from_low)
 
 # Summary metrics
 breakouts  = [r for r in ema_results if r.get("signal") in ("STRONG_BREAKOUT","BREAKOUT")]

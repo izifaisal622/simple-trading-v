@@ -791,19 +791,33 @@ def get_ihsg_regime(period: str = "1y") -> dict:
     """
     Market regime from IHSG (^JKSE).
 
-    V5 added: BULL_STRONG tier — EMA13>EMA89 AND mom_4w > 3% AND breadth > 70%.
-    Used by analyst_agent conviction engine for 1.25× sizing.
+    V7 — Adaptive Multi-Signal Regime (8.5.9):
+    Ganti single-gating EMA cross dengan tiga sinyal yang di-weight:
+      1. EMA13 vs EMA89 — struktur trend jangka panjang
+      2. mom_2w — momentum 2 minggu (lebih responsif dari 4W)
+      3. pct_from_52w_low — seberapa jauh dari bottom (objective recovery proxy)
 
-    V6 fix (8.2.4):
-      • [DF-2] breadth: ganti formula invalid (hitung hari naik/turun) dengan
-        % bar IHSG di atas EMA13 dalam 20 bar terakhir — trend consistency proxy.
-      • [NEW-2] DataFeed default period daily: 60d → 1y agar EMA89 konvergen.
+    Regime matrix:
+      EMA13 > EMA89, mom_2w > 0, breadth > 55         → BULL_STRONG (jika mom_2w > 3 & breadth > 70)
+      EMA13 > EMA89, mom_2w > 0                        → BULL_TREND
+      EMA13 > EMA89, mom_2w ≤ 0                        → BULL_CONSOLIDATION
+      EMA13 ≤ EMA89, mom_2w > 0, pct_from_low ≥ 8%    → TRANSITION
+      EMA13 ≤ EMA89, mom_2w > -3%, pct_from_low ≥ 5%  → BEAR_CONSOLIDATION
+      EMA13 ≤ EMA89, else                               → BEAR_TREND
+
+    Alasan perubahan:
+    - mom_4w terlalu lambat: IHSG bisa rebound +11% dari bottom tapi
+      mom_4w masih -10% karena 4W lalu harga masih tinggi → scanner
+      stuck di BEAR_TREND meski ada recovery signals yang valid
+    - pct_from_low sebagai recovery proxy: lebih objektif dari momentum
+      murni, tidak terpengaruh level harga 4W lalu
     """
     try:
         df = yf.download("^JKSE", period=period, interval="1wk",
                          progress=False, auto_adjust=True)
         if df is None or len(df) < 20:
-            return {"cycle": "UNKNOWN", "ihsg": 0, "mom_4w": 0, "breadth": 0}
+            return {"cycle": "UNKNOWN", "ihsg": 0, "mom_4w": 0, "mom_2w": 0,
+                    "breadth": 0, "pct_from_low": 0}
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
@@ -814,43 +828,61 @@ def get_ihsg_regime(period: str = "1y") -> dict:
         last_close = float(close.iloc[-1])
         last_ema13 = float(ema13.iloc[-1])
         last_ema89 = float(ema89.iloc[-1])
-        ema_gap_pct = abs(last_ema13 - last_ema89) / last_ema89 * 100 if last_ema89 > 0 else 0.0
 
-        mom_4w  = ((last_close / float(close.iloc[-5]) - 1) * 100) if len(close) >= 5 else 0.0
+        # Signal 1: Momentum 2W (responsif) — ganti 4W yang terlalu lambat
+        # 2W = 2 bar weekly
+        mom_2w = ((last_close / float(close.iloc[-3]) - 1) * 100) if len(close) >= 3 else 0.0
+        # Tetap hitung mom_4w untuk backward compat output
+        mom_4w = ((last_close / float(close.iloc[-5]) - 1) * 100) if len(close) >= 5 else 0.0
 
-        # Trend consistency proxy: % bar di atas EMA13 dalam 20 bar terakhir.
-        # Lebih valid dari hitung hari naik/turun — mengukur apakah harga
-        # konsisten berada di atas trend line, bukan sekadar momentum sesaat.
-        # Catatan: ini bukan market breadth sejati (butuh per-saham data),
-        # tapi merupakan proxy terbaik yang tersedia dari single-index IHSG.
+        # Signal 2: % dari 52W low — recovery proxy paling objektif
+        low_52w     = float(close.tail(52).min()) if len(close) >= 52 else float(close.min())
+        pct_from_low = ((last_close - low_52w) / low_52w * 100) if low_52w > 0 else 0.0
+
+        # Signal 3: Breadth proxy — % bar IHSG di atas EMA13 dalam 20 bar
         lookback_bars = min(20, len(close))
         above_ema13   = int((close.tail(lookback_bars) > ema13.tail(lookback_bars)).sum())
         breadth       = int(above_ema13 / lookback_bars * 100)
 
+        # ── Adaptive regime matrix ────────────────────────────────────────────
         if last_ema13 > last_ema89:
-            if mom_4w > 3.0 and breadth > 70:
+            # Bull structure — EMA13 sudah di atas EMA89
+            if mom_2w > 3.0 and breadth > 70:
                 cycle = "BULL_STRONG"
-            elif mom_4w > 0:
+            elif mom_2w > 0:
                 cycle = "BULL_TREND"
             else:
                 cycle = "BULL_CONSOLIDATION"
-        elif last_ema13 <= last_ema89 and mom_4w > 0:
+
+        elif mom_2w > 0 and pct_from_low >= 8.0:
+            # Bear structure tapi ada recovery nyata:
+            # - momentum 2W positif (harga naik dalam 2 minggu terakhir)
+            # - sudah ≥8% dari 52W low (bukan sekadar dead cat bounce)
+            # → TRANSITION: scanner selektif, sizing 50%, conviction ≥6
             cycle = "TRANSITION"
-        elif last_ema13 <= last_ema89 and ema_gap_pct < 2.0:
+
+        elif mom_2w > -3.0 and pct_from_low >= 5.0:
+            # Bear tapi konsolidasi — tidak turun agresif, ada sedikit recovery
+            # → BEAR_CONSOLIDATION: sizing 25%, hanya Grade A
             cycle = "BEAR_CONSOLIDATION"
+
         else:
+            # Bear aktif — momentum negatif dan/atau belum jauh dari bottom
             cycle = "BEAR_TREND"
 
         return {
-            "cycle":   cycle,
-            "ihsg":    round(last_close, 0),
-            "mom_4w":  round(mom_4w, 1),
-            "breadth": round(breadth, 0),
+            "cycle":        cycle,
+            "ihsg":         round(last_close, 0),
+            "mom_4w":       round(mom_4w, 1),       # backward compat
+            "mom_2w":       round(mom_2w, 1),        # baru — lebih responsif
+            "breadth":      round(breadth, 0),
+            "pct_from_low": round(pct_from_low, 1),  # baru — recovery proxy
         }
 
     except Exception as exc:
         logger.error(f"[DataFeed] IHSG regime error: {exc}")
-        return {"cycle": "UNKNOWN", "ihsg": 0, "mom_4w": 0, "breadth": 0}
+        return {"cycle": "UNKNOWN", "ihsg": 0, "mom_4w": 0, "mom_2w": 0,
+                "breadth": 0, "pct_from_low": 0}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

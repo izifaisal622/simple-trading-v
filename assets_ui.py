@@ -994,43 +994,65 @@ def render_page_header(eyebrow: str, title: str, accent: str, subtitle: str,
 
 # ── Regime bar ────────────────────────────────────────────────────────────────
 def render_regime_bar(cycle: str, ihsg: float, mom_4w: float,
-                      breadth: int, scan_date: str = "—", extra: str = ""):
+                      breadth: int, scan_date: str = "—", extra: str = "",
+                      mom_2w: float = 0.0, pct_from_low: float = 0.0):
     import streamlit as st
-    rc = REGIME_COLORS.get(cycle, TEXT_MUTED)
-    mc = C_SUCCESS if mom_4w > 0 else C_DANGER
+    rc  = REGIME_COLORS.get(cycle, TEXT_MUTED)
+    mc4 = C_SUCCESS if mom_4w > 0 else C_DANGER
+    mc2 = C_SUCCESS if mom_2w > 0 else C_DANGER
 
-    bear_html = ""
     if cycle == "BEAR_TREND":
-        bear_html = """
-        <div class="bear-banner">
-          <span style="color:var(--c-danger);font-weight:700;font-size:var(--text-base)">⛔ BEAR TREND ACTIVE</span>
-          <span>ALL LONG SIGNALS = SPECULATIVE ONLY · MAX 25% SIZE · PREFER CASH</span>
-        </div>"""
+        bear_html = (
+            '<div class="bear-banner">' +
+            '<span style="color:var(--c-danger);font-weight:700;font-size:var(--text-base)">⛔ BEAR TREND ACTIVE</span>' +
+            '<span>ALL LONG SIGNALS = SPECULATIVE ONLY · MAX 25% SIZE · PREFER CASH</span>' +
+            '</div>'
+        )
     elif cycle == "BEAR_CONSOLIDATION":
-        bear_html = """
-        <div class="bear-banner" style="border-color:rgba(251,140,0,0.25);border-left-color:var(--c-warning);background:rgba(251,140,0,0.04)">
-          <span style="color:var(--c-warning);font-weight:700">⚠ BEAR CONSOLIDATION</span>
-          <span>SELECTIVE ONLY · BUILD WATCHLIST · WAIT FOR CONFIRMATION</span>
-        </div>"""
+        bear_html = (
+            '<div class="bear-banner" style="border-color:rgba(251,140,0,0.25);border-left-color:var(--c-warning);background:rgba(251,140,0,0.04)">' +
+            '<span style="color:var(--c-warning);font-weight:700">⚠ BEAR CONSOLIDATION</span>' +
+            '<span>SELECTIVE ONLY · BUILD WATCHLIST · WAIT FOR CONFIRMATION</span>' +
+            '</div>'
+        )
+    elif cycle == "TRANSITION":
+        bear_html = (
+            '<div class="bear-banner" style="border-color:rgba(96,165,250,0.25);border-left-color:#60A5FA;background:rgba(96,165,250,0.04)">' +
+            '<span style="color:#60A5FA;font-weight:700">🔄 TRANSITION — RECOVERY MODE</span>' +
+            '<span style="color:var(--text-muted)">SIZING 50% · CONVICTION ≥6 · WHALE EVIDENCE REQUIRED · PANTAU EMA CROSS</span>' +
+            '</div>'
+        )
     elif cycle == "BULL_STRONG":
-        bear_html = """
-        <div class="bear-banner" style="border-color:rgba(0,255,102,0.2);border-left-color:var(--c-success);background:rgba(0,255,102,0.03)">
-          <span style="color:var(--c-success);font-weight:700">✦ BULL STRONG</span>
-          <span style="color:var(--text-muted)">FULL SIZE ALLOWED · AGGRESSIVE BREAKOUT MODE · FOLLOW SMART MONEY</span>
-        </div>"""
+        bear_html = (
+            '<div class="bear-banner" style="border-color:rgba(0,255,102,0.2);border-left-color:var(--c-success);background:rgba(0,255,102,0.03)">' +
+            '<span style="color:var(--c-success);font-weight:700">✦ BULL STRONG</span>' +
+            '<span style="color:var(--text-muted)">FULL SIZE ALLOWED · AGGRESSIVE BREAKOUT MODE · FOLLOW SMART MONEY</span>' +
+            '</div>'
+        )
+    else:
+        bear_html = ""
 
-    st.markdown(f"""
-    {bear_html}
-    <div class="regime-bar" style="--rc:{rc}">
-      <span style="color:{rc};font-family:Orbitron,monospace;font-size:var(--text-base);font-weight:700;letter-spacing:0.06em">⬤ {cycle}</span>
-      <span class="r-label">IHSG <b>{ihsg:,.0f}</b></span>
-      <span class="r-label">4W <b style="color:{mc}">{mom_4w:+.1f}%</b></span>
-      <span class="r-label">BREADTH <b>{breadth}/6</b></span>
-      {extra}
-      <span style="color:var(--text-dim);margin-left:auto;font-family:Share Tech Mono,monospace;
-      font-size:var(--text-2xs);letter-spacing:0.1em">SCAN: {scan_date}</span>
-    </div>
-    """, unsafe_allow_html=True)
+    fl_col       = C_SUCCESS if pct_from_low >= 8 else C_WARNING if pct_from_low >= 5 else C_DANGER
+    from_low_html = (
+        '<span class="r-label">FROM LOW <b style="color:' + fl_col + '">' +
+        ("+%.1f%%" % pct_from_low) + '</b></span>'
+    ) if pct_from_low > 0 else ""
+
+    st.markdown(
+        bear_html +
+        '<div class="regime-bar" style="--rc:' + rc + '">' +
+        '<span style="color:' + rc + ';font-family:Orbitron,monospace;font-size:var(--text-base);font-weight:700;letter-spacing:0.06em">⬤ ' + cycle + '</span>' +
+        '<span class="r-label">IHSG <b>' + ('%,.0f' % ihsg) + '</b></span>' +
+        '<span class="r-label">2W <b style="color:' + mc2 + '">' + ('%+.1f%%' % mom_2w) + '</b></span>' +
+        '<span class="r-label">4W <b style="color:' + mc4 + '">' + ('%+.1f%%' % mom_4w) + '</b></span>' +
+        from_low_html +
+        '<span class="r-label">BREADTH <b>' + str(breadth) + '/6</b></span>' +
+        extra +
+        '<span style="color:var(--text-dim);margin-left:auto;font-family:Share Tech Mono,monospace;' +
+        'font-size:var(--text-2xs);letter-spacing:0.1em">SCAN: ' + scan_date + '</span>' +
+        '</div>',
+        unsafe_allow_html=True
+    )
 
 
 # ── Empty state ───────────────────────────────────────────────────────────────

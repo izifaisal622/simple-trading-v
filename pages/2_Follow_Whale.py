@@ -136,6 +136,8 @@ scan_date     = last.get("date","—")[:10] if last.get("date") else "—"
 cycle       = ctx.get("cycle",    regime.get("cycle","—"))
 ihsg        = ctx.get("ihsg",     regime.get("ihsg", 0))
 mom_4w      = ctx.get("mom_4w",   regime.get("mom_4w", 0))
+mom_2w      = ctx.get("mom_2w",   regime.get("mom_2w", 0))
+pct_from_low= ctx.get("pct_from_low", regime.get("pct_from_low", 0))
 mom_13w     = ctx.get("mom_13w",  regime.get("mom_13w", 0))
 breadth     = ctx.get("breadth",  regime.get("breadth", 0))
 tradeable   = ctx.get("tradeable", True)
@@ -241,7 +243,7 @@ if not tradeable:
       <div style="color:var(--text-muted);font-size:var(--text-sm);margin-top:0.3rem">{mkt_advice}</div>
     </div>""", unsafe_allow_html=True)
 
-render_regime_bar(cycle, ihsg, mom_4w, breadth, scan_date, extra=extra_regime)
+render_regime_bar(cycle, ihsg, mom_4w, breadth, scan_date, extra=extra_regime, mom_2w=mom_2w, pct_from_low=pct_from_low)
 
 # ── Session state init (semua panel toggle — satu tempat, tidak ada duplicate) ─
 for _panel_key in ("panel_hengky", "panel_director", "panel_journal", "panel_lessons"):
