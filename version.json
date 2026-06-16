@@ -1,8 +1,9 @@
 {
-  "version": "8.5.9",
+  "version": "8.6.0",
   "codename": "AI-CHALLENGE-V1",
-  "date": "2026-06-15",
+  "date": "2026-06-16",
   "changelog": [
+    "8.6.0 — FIX: 3_Money_Flow.py (War Room) — 3 bugs: [P03-B1] NameError _edate: tambah _edate = _trade.get(entry_date) di Section 2 loop sebelum dipakai untuk holding days; [P03-B2] nested ternary di f-string HTML untuk _sl_col dan _tp1_col: pre-build sebagai Python variable sebelum inject ke HTML string; [P03-B3] regional_data silent empty: hilangkan inner if _fetch_regional_btn — auto-fetch saat data belum ada di session_state",
     "8.5.9 — FEAT: Adaptive Multi-Signal Regime Detection — get_ihsg_regime() V7: ganti single-gating EMA cross dengan 3 sinyal (EMA13/89 + mom_2w + pct_from_52w_low); TRANSITION terpenuhi jika mom_2w>0 AND pct_from_low>=8% meski EMA belum cross; render_regime_bar: tambah 2W + FROM LOW indicator + TRANSITION banner; backward compat: mom_4w tetap ada di output",
     "8.5.8 — FIX: equal-height whale cards — CSS align-items:stretch di stHorizontalBlock + height:100% di whale_card outer div; card kiri dan kanan sekarang sama tinggi per baris",
     "8.5.7 — REWRITE: whale_card() — ganti f-string raksasa (9000+ char) dengan pure string concatenation; eliminasi semua potensi f-string leak/corrupt sesuai aturan kerja STV",

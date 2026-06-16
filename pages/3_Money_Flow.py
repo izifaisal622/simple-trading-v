@@ -151,9 +151,8 @@ with _pm2:
 
 # Regional market data
 if _fetch_regional_btn or "regional_data" not in st.session_state:
-    if _fetch_regional_btn:
-        with st.spinner("Fetching regional data..."):
-            st.session_state["regional_data"] = _fetch_regional()
+    with st.spinner("Fetching regional data..."):
+        st.session_state["regional_data"] = _fetch_regional()
 
 _regional = st.session_state.get("regional_data", {})
 if _regional:
@@ -292,6 +291,7 @@ else:
         _sl     = _trade.get("sl_price", 0) or 0
         _notes  = _trade.get("notes", "") or ""
         _tid    = _trade.get("id", 0)
+        _edate  = _trade.get("entry_date", "") or ""
 
         # Parse TP dari notes jika ada
         _tp1 = _trade.get("tp1_price", 0) or 0
@@ -337,6 +337,23 @@ else:
 
         _health_c, _health_lbl = _health_color(_pct_to_sl, _pct_to_tp1)
         _pnl_col = "#00FF66" if _pnl_pct >= 0 else "#EF4444"
+
+        # Pre-build colors for SL/TP1 cells — avoid nested ternary inside f-string
+        if _pct_to_sl <= 0:
+            _sl_col = "#7F1D1D"
+        elif _pct_to_sl <= 5:
+            _sl_col = "#EF4444"
+        elif _pct_to_sl <= 10:
+            _sl_col = "#F0B429"
+        else:
+            _sl_col = "#94A3B8"
+
+        if _pct_to_tp1 <= 5:
+            _tp1_col = "#60A5FA"
+        elif _pct_to_tp1 <= 12:
+            _tp1_col = "#00FF66"
+        else:
+            _tp1_col = "#94A3B8"
         _ema_badge = (
             '<span style="color:#00FF66;font-size:var(--text-2xs)">EMA ✓</span>'
             if _ema_ok else
@@ -372,14 +389,14 @@ padding:0.8rem 1rem;margin-bottom:0.6rem">
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">→ SL</div>
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-      color:{"#7F1D1D" if _pct_to_sl <= 0 else "#EF4444" if _pct_to_sl <= 5 else "#F0B429" if _pct_to_sl <= 10 else "#94A3B8"}">
+      color:{_sl_col}">
         {f"TERLEWAT" if _pct_to_sl <= 0 else f"{_pct_to_sl:.1f}%" if _last else "—"}
       </div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">→ TP1</div>
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-      color:{"#60A5FA" if _pct_to_tp1 <= 5 else "#00FF66" if _pct_to_tp1 <= 12 else "#94A3B8"}">
+      color:{_tp1_col}">
         {f"{_pct_to_tp1:.1f}%" if _last and _tp1 else "—"}
       </div>
     </div>
