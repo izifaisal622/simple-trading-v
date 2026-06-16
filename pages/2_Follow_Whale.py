@@ -1414,10 +1414,13 @@ if whale_results:
 
         if best:
             # 2-column layout
+            # BUG FIX: st.columns + st.markdown HTML + st.button dalam block yang sama
+            # menyebabkan HTML bocor — pisahkan dengan st.container()
             left_col, right_col = st.columns(2)
             for i, w in enumerate(best):
                 with (left_col if i % 2 == 0 else right_col):
-                    st.markdown(whale_card(w, NEON_GREEN), unsafe_allow_html=True)
+                    with st.container():
+                        st.markdown(whale_card(w, NEON_GREEN), unsafe_allow_html=True)
                     t = w["ticker"].replace(".JK","")
                     wl_key = f"wl_{t}_{i}"
                     # Load watchlist
