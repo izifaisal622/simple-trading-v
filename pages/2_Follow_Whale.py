@@ -1207,6 +1207,14 @@ def whale_card(w: dict, border_color: str = NEON_GREEN) -> str:
                 'border-radius:var(--r-sm);padding:1px 6px;font-family:Share Tech Mono,monospace;'
                 f'font-size:var(--text-xs);color:var(--text-muted);letter-spacing:0.04em">{sector}</span>') if sector else ""
 
+    # P02-X3: pre-build ctrl_badge — JANGAN inline di dalam f-string besar (menyebabkan HTML leak)
+    _ctrl_score = w.get("control_score", 0)
+    ctrl_badge  = (
+        f'<span style="background:rgba(0,255,102,0.1);border:1px solid rgba(0,255,102,0.3);'
+        f'border-radius:var(--r-sm);padding:1px 6px;font-family:Share Tech Mono,monospace;'
+        f'font-size:var(--text-2xs);color:var(--accent);font-weight:700">Ctrl {_ctrl_score}/10</span>'
+    ) if _ctrl_score >= 4 else ""
+
     peng_desc  = w.get("pengeringan_desc","")
     def_desc   = w.get("defense_desc","")
 
@@ -1243,7 +1251,7 @@ transition:border-color 0.2s,background 0.2s">
     <span style="margin-left:auto;display:flex;align-items:center;gap:0.5rem">
       <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
       color:{qual_color};font-weight:700">{qual_lbl}</span>
-      {f'<span style="background:rgba(0,255,102,0.1);border:1px solid rgba(0,255,102,0.3);border-radius:var(--r-sm);padding:1px 6px;font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--accent);font-weight:700">Ctrl {w.get("control_score",0)}/10</span>' if w.get("control_score",0) >= 4 else ""}
+      {ctrl_badge}
       {sec_html}
     </span>
   </div>
