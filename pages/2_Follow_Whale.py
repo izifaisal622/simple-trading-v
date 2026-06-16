@@ -248,7 +248,8 @@ for _panel_key in ("panel_hengky", "panel_director", "panel_journal", "panel_les
     if _panel_key not in st.session_state:
         st.session_state[_panel_key] = False
 
-# ── Hengky Framework ──────────────────────────────────────────────────────────_hengky_lbl = "[−] ◈ HENGKY ADINATA FRAMEWORK" if st.session_state.panel_hengky else "[+] ◈ HENGKY ADINATA FRAMEWORK"
+# ── Hengky Framework ──────────────────────────────────────────────────────────
+_hengky_lbl = "[−] ◈ HENGKY ADINATA FRAMEWORK" if st.session_state.panel_hengky else "[+] ◈ HENGKY ADINATA FRAMEWORK"
 if st.button(_hengky_lbl, key="btn_hengky", width="stretch"):
     st.session_state.panel_hengky = not st.session_state.panel_hengky
 
