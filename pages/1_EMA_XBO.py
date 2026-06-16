@@ -848,10 +848,13 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                 if st.button(f"💾 SIMPAN TRADE {ticker}", key=f"log_save_{ticker}"):
                     try:
                         from trade_logger import log_trade, close_trade
+                        # P01-W1 fix: pass tp1_price agar War Room bisa hitung pct_to_tp1
+                        _tp1_val = _log_exit if _log_outcome == "OPEN" and _log_exit > 0 else 0.0
                         _tid = log_trade(
                             ticker       = ticker,
                             entry_price  = _log_entry,
                             sl_price     = _log_sl,
+                            tp1_price    = _tp1_val,
                             signal_type  = r.get("signal", "BREAKOUT"),
                             signal_score = int(r.get("score", 0)),
                             regime_tag   = r.get("regime_tag", ""),

@@ -190,15 +190,21 @@ except Exception:
     pass
 
 def _health_color(pct_to_sl: float, pct_to_tp1: float) -> tuple:
-    """Traffic light berdasarkan jarak ke SL dan TP1."""
+    """
+    Traffic light berdasarkan jarak ke SL dan TP1.
+    P03-W1: NEAR_TP1 dibedakan secara visual dari HEALTHY
+    — keduanya actionable tapi berbeda arah (trim vs hold).
+    """
     if pct_to_sl <= 3:
-        return "#EF4444", "🔴 NEAR SL"
+        return "#EF4444", "🔴 NEAR SL"       # exit / tighten SL
     elif pct_to_sl <= 8:
-        return "#F0B429", "🟡 WATCH"
-    elif pct_to_tp1 <= 5:
-        return "#4ADE80", "🟢 NEAR TP1"
+        return "#F0B429", "🟡 WATCH"          # pantau, jangan tambah
+    elif pct_to_tp1 is not None and pct_to_tp1 <= 5:
+        return "#60A5FA", "🔵 NEAR TP1"       # biru = pertimbangkan partial exit
+    elif pct_to_tp1 is not None and pct_to_tp1 <= 12:
+        return "#00FF66", "🟢 ON TRACK"       # hijau = biarkan jalan
     else:
-        return "#00FF66", "🟢 HEALTHY"
+        return "#00FF66", "🟢 HEALTHY"        # hijau = hold, TP masih jauh
 
 def _fetch_position_data(ticker: str) -> dict:
     """Fetch current price + EMA data untuk satu posisi."""
@@ -467,6 +473,15 @@ else:
                 _atr  = _pdata.get("atr14", 0)
 
                 if _df is not None and _entry > 0 and _sl > 0:
+                    # P03-W2: derive actual holding days dari entry_date → hari ini
+                    _holding_est = 10  # default fallback
+                    if _edate:
+                        try:
+                            from datetime import date as _date
+                            _ed = _date.fromisoformat(_edate[:10])
+                            _holding_est = max(1, (_date.today() - _ed).days)
+                        except Exception:
+                            pass
                     sigs = _engine.evaluate(
                         ticker           = _t,
                         entry_price      = _entry,
@@ -476,7 +491,7 @@ else:
                         tp2_price        = _tp2,
                         df               = _df,
                         atr14            = _atr,
-                        holding_days_est = 10,
+                        holding_days_est = _holding_est,
                     )
                     _all_sig.extend(sigs)
 

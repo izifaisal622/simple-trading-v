@@ -1039,18 +1039,22 @@ def _trading_summary_row(w: dict) -> str:
     rr       = (tp1 - close) / (close - sl_base) if (close - sl_base) > 0 else 0
 
     # ── Verdict logic ────────────────────────────────────────────────────────
+    # P02-W5: weighted positive_signals — bobot sesuai Hengky priority
+    # Defending + ctrl tinggi = bukti terkuat. EMA/vol = konfirmasi saja.
     positive_signals = sum([
-        peng,
-        defending,
-        in_ob,
-        near_ob,
-        vp_near_val or w.get("vp_in_value", False),
-        ctrl >= 6,
-        qual in ("SMART", "LIKELY_SMART"),
-        ema_tr == "BULLISH",
-        ff_vol >= 1.5,
-        conv >= 6,
+        defending * 2,                              # 2pt: whale defend = bukti terkuat
+        (ctrl >= 6) * 2,                            # 2pt: control score tinggi
+        peng * 1,                                   # 1pt: pengeringan barang
+        in_ob * 1,                                  # 1pt: di OB zone
+        (vp_near_val or w.get("vp_in_value",False)),# 1pt: di VP value area
+        near_ob * 1,                                # 1pt: dekat OB
+        (qual in ("SMART","LIKELY_SMART")) * 1,     # 1pt: whale quality
+        (ema_tr == "BULLISH") * 1,                  # 1pt: EMA trend
+        (ff_vol >= 1.5) * 1,                        # 1pt: volume konfirmasi
+        (conv >= 6) * 1,                            # 1pt: conviction
     ])
+    # Max score = 12 — normalisasi ke skala 8 untuk kompatibilitas threshold lama
+    positive_signals = round(positive_signals * 8 / 12)
 
     if is_dist:
         verdict      = "DISTRIBUSI"
@@ -1315,7 +1319,14 @@ if whale_results:
             </div>""", unsafe_allow_html=True)
 
     # Bias strip + sector breakdown
-    sec_bkd = ctx.get("sector_breakdown", {})
+    sec_bkd   = ctx.get("sector_breakdown", {})
+    # P02-W4: rebuild sector_breakdown dari hasil scan saat ini (tidak pakai stale ctx)
+    # Hitung ulang dari whale_results yang baru di-render
+    if whale_results:
+        from collections import Counter as _Counter
+        _sec_live = _Counter(w.get("sector","OTHER") for w in whale_results
+                             if w.get("is_long_signal") and w.get("sector","OTHER") != "OTHER")
+        sec_bkd   = dict(_sec_live) if _sec_live else sec_bkd  # fallback ke ctx jika kosong
     sec_str  = "  ·  ".join(
         f'<b style="color:var(--text-primary)">{s}</b> <span style="color:var(--accent)">{c}</span>'
         for s, c in sorted(sec_bkd.items(), key=lambda x:-x[1])[:6]
@@ -1357,16 +1368,26 @@ if whale_results:
         best = [w for w in smart_list
                 if w.get("ema_trend") in _ema_ok
                 and w.get("conviction",0) >= min_conv_ui]
-        best.sort(key=lambda x:(-x.get("conviction",0), x.get("pct_above_floor",999)))
+        _tradeable_str = '· TRADEABLE ✓' if tradeable else '· ⛔ WATCHLIST ONLY'
+        _t1h, _t1s, _t1c = st.columns([3, 1, 1])
+        with _t1h:
+            st.markdown(f"""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+            color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.3rem">
+            SETUP · SMART WHALE + EMA BULLISH + CONVICTION ≥ {min_conv_ui}
+            {_tradeable_str}</p>""", unsafe_allow_html=True)
+        with _t1s:
+            # P02-W2: sort toggle Tab 1 — konsisten dengan Tab 2/3/4
+            _best_sort = st.selectbox("Sort", ["Conviction", "% Above Floor", "Control Score", "Vol Ratio"],
+                                       key="best_sort", label_visibility="collapsed")
+        _best_sort_fn = {
+            "Conviction":    lambda x: (-x.get("conviction",0),   x.get("pct_above_floor",999)),
+            "% Above Floor": lambda x: ( x.get("pct_above_floor",999), -x.get("conviction",0)),
+            "Control Score": lambda x: (-x.get("control_score",0), -x.get("conviction",0)),
+            "Vol Ratio":     lambda x: (-x.get("ff_adj_vol_ratio", x.get("vol_ratio",0)),),
+        }.get(_best_sort, lambda x: (-x.get("conviction",0), x.get("pct_above_floor",999)))
+        best.sort(key=_best_sort_fn)
         if best:
-            _tradeable_str = '· TRADEABLE ✓' if tradeable else '· ⛔ WATCHLIST ONLY'
-            hdr_col, copy_col = st.columns([4,1])
-            with hdr_col:
-                st.markdown(f"""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-                color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.3rem">
-                {len(best)} SETUP · SMART WHALE + EMA BULLISH + CONVICTION ≥ {min_conv_ui}
-                {_tradeable_str}</p>""", unsafe_allow_html=True)
-            with copy_col:
+            with _t1c:
                 _ticker_list = ", ".join(w["ticker"].replace(".JK","") for w in best)
                 if st.button("📋 COPY TICKERS", key="copy_best", width="stretch"):
                     st.session_state["_clipboard"] = _ticker_list
@@ -1509,11 +1530,27 @@ if whale_results:
             render_empty_state("🌅","NO RECOVERY","Belum ada recovery signal.")
 
     with tab5:
-        dist = sorted(distrib_list,key=lambda x:-x.get("vol_ratio",0))
-        st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-        color:var(--c-danger);letter-spacing:0.08em;margin-bottom:0.6rem">
-        ⚠ IDX LONG ONLY — DISTRIBUSI = AWARENESS ONLY. BUKAN SHORT SIGNAL.</p>""",
-        unsafe_allow_html=True)
+        # P02-W3: tambah sort toggle + copy tickers — konsisten dengan tab lain
+        _d5h, _d5s, _d5c = st.columns([3, 1, 1])
+        with _d5h:
+            st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+            color:var(--c-danger);letter-spacing:0.08em;margin-bottom:0.6rem">
+            ⚠ IDX LONG ONLY — DISTRIBUSI = AWARENESS ONLY. BUKAN SHORT SIGNAL.</p>""",
+            unsafe_allow_html=True)
+        with _d5s:
+            _dist_sort = st.selectbox("Sort", ["Vol Ratio", "Conviction", "% Above Floor"],
+                                       key="dist_sort", label_visibility="collapsed")
+        _dist_sort_fn = {
+            "Vol Ratio":     lambda x: -x.get("vol_ratio",0),
+            "Conviction":    lambda x: -x.get("conviction",0),
+            "% Above Floor": lambda x:  x.get("pct_above_floor",999),
+        }.get(_dist_sort, lambda x: -x.get("vol_ratio",0))
+        dist = sorted(distrib_list, key=_dist_sort_fn)
+        with _d5c:
+            if dist and st.button("📋 COPY", key="copy_dist", width="stretch"):
+                _dist_tickers = ", ".join(w["ticker"].replace(".JK","") for w in dist)
+                st.toast(f"✅ {len(dist)} dist tickers", icon="📋")
+                st.session_state["_dist_clip"] = _dist_tickers
         if dist:
             l,r = st.columns(2)
             for i,w in enumerate(dist):
@@ -1539,16 +1576,20 @@ if whale_results:
                 default=["SMART","LIKELY_SMART","UNCERTAIN"])
         with cf4:
             sort_f = st.selectbox("SORT BY",
-                ["Conviction","Vol Ratio","% Above Floor","Value"])
+                ["Conviction","Vol Ratio","% Above Floor","Value",
+                 "Control Score","% Smart","Sector"])
 
         filtered = [w for w in whale_results
                     if w.get("signal") in sig_f
                     and w.get("entry_zone","") in zone_f
                     and w.get("whale_quality","") in qual_f]
-        ks = {"Conviction":lambda x:-x.get("conviction",0),
-              "Vol Ratio": lambda x:-x.get("vol_ratio",0),
-              "% Above Floor":lambda x:x.get("pct_above_floor",999),
-              "Value":lambda x:-x.get("value_bn",0)}
+        ks = {"Conviction":     lambda x: -x.get("conviction",0),
+              "Vol Ratio":      lambda x: -x.get("vol_ratio",0),
+              "% Above Floor":  lambda x:  x.get("pct_above_floor",999),
+              "Value":          lambda x: -x.get("value_bn",0),
+              "Control Score":  lambda x: -x.get("control_score",0),
+              "% Smart":        lambda x: 0 if x.get("whale_quality","") in ("SMART","LIKELY_SMART") else 1,
+              "Sector":         lambda x:  x.get("sector","~")}
         filtered.sort(key=ks[sort_f])
 
         _sa_col, _sc_col = st.columns([4,1])
@@ -1567,6 +1608,7 @@ if whale_results:
                      "Signal":   f"{w.get('emoji','')} {w.get('signal','')}",
                      "Whale":    w.get("whale_quality",""),
                      "Conv":     w.get("conviction",0),
+                     "Ctrl":     w.get("control_score",0),
                      "Price":    w.get("close",0),
                      "Chg%":     round(w.get("chg_pct",0),1),
                      "FF-Vol×":  round(w.get("ff_adj_vol_ratio",w.get("vol_ratio",0)),1),
@@ -1575,6 +1617,7 @@ if whale_results:
                      "Zone":     w.get("entry_zone",""),
                      "Peng.":    "✓" if w.get("pengeringan_detected") else "—",
                      "Def.":     "✓" if w.get("whale_defending") else "—",
+                     "OB/VP":    "✓" if (w.get("in_ob_zone") or w.get("vp_near_val")) else "—",
                      "EMA":      w.get("ema_trend",""),
                      "5D%":      round(w.get("mom_5d",0),1),
                      "52Wh%":    round(w.get("pct_from_52w_high",0),1),
@@ -1584,15 +1627,17 @@ if whale_results:
             try:
                 st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True,
                     column_config={
-                        "Conv":     st.column_config.NumberColumn("Conv", format="%d/10"),
-                        "Price":    st.column_config.NumberColumn("Price", format="Rp%,.0f"),
-                        "Chg%":     st.column_config.NumberColumn("Chg%", format="%+.1f%%"),
-                        "FF-Vol×":  st.column_config.NumberColumn("FF-Vol×", format="%.1f×"),
-                        "Floor":    st.column_config.NumberColumn("Floor", format="Rp%,.0f"),
-                        "%↑Floor":  st.column_config.NumberColumn("%↑Floor", format="%+.1f%%"),
-                        "5D%":      st.column_config.NumberColumn("5D%", format="%+.1f%%"),
-                        "52Wh%":    st.column_config.NumberColumn("52Wh%", format="%+.1f%%"),
-                        "Val(Bn)":  st.column_config.NumberColumn("Val(Bn)", format="%.2f"),
+                        "Conv":     st.column_config.NumberColumn("Conv",    format="%d/10"),
+                        "Ctrl":     st.column_config.NumberColumn("Ctrl",    format="%d/10",
+                                        help="Control Score (hitung barang) — makin tinggi makin terpusat"),
+                        "Price":    st.column_config.NumberColumn("Price",   format="Rp%,.0f"),
+                        "Chg%":     st.column_config.NumberColumn("Chg%",   format="%+.1f%%"),
+                        "FF-Vol×":  st.column_config.NumberColumn("FF-Vol×",format="%.1f×"),
+                        "Floor":    st.column_config.NumberColumn("Floor",   format="Rp%,.0f"),
+                        "%↑Floor":  st.column_config.NumberColumn("%↑Floor",format="%+.1f%%"),
+                        "5D%":      st.column_config.NumberColumn("5D%",    format="%+.1f%%"),
+                        "52Wh%":    st.column_config.NumberColumn("52Wh%",  format="%+.1f%%"),
+                        "Val(Bn)":  st.column_config.NumberColumn("Val(Bn)",format="%.2f"),
                     })
             except Exception:
                 st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)

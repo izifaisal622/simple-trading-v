@@ -1,8 +1,9 @@
 {
-  "version": "8.5.0",
+  "version": "8.5.1",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-15",
   "changelog": [
+    "8.5.1 — FIX: audit Page 01/02/03 — [P01-W1] tp1_price di-pass ke log_trade() dari inline card; [P02-W1] Tab 6: tambah Ctrl+OB/VP columns, expand sort ke 7 options; [P02-W2] Tab 1 BEST LONG: sort toggle (Conviction/Floor/Ctrl/Vol); [P02-W3] Tab 5 DISTRIBUSI: sort toggle + copy tickers; [P02-W4] sector_breakdown rebuild dari live whale_results (tidak stale); [P02-W5] positive_signals weighted (defending+ctrl=2pt, rest=1pt); [P03-W1] NEAR TP1 visual: biru=trim, hijau=hold; [P03-W2] holding_days_est dari actual entry_date",
     "8.5.0 — FEAT: director_agent Sesi B — _analyze_whale_performance upgrade: baca 6 field baru (whale_quality/control_score/ob_zone/vp/pengeringan/free_float/sector); quality_score 0-10; grade dari kualitas bukan hanya jumlah; fix _bench_data_feed kosong",
     "8.4.9 — FEAT: director_agent Sesi C — auto-threshold data-driven: _derive_optimal_thresholds() cari min_score optimal dari historical WR per regime; EMA + whale patch diganti data-driven (fallback ke hardcoded jika data <10 trades); fix merge error _bench_data_feed",
     "8.4.8 — REWRITE: learning_agent V3 — statistical inference dari trade history: analisis single dimension (regime/grade/risk/holding), kombinasi 2-dimensi prediktif, systematic leak detection, derived rules konkret → lessons.md actionable",
