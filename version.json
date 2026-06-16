@@ -1,8 +1,9 @@
 {
-  "version": "8.5.6",
+  "version": "8.5.7",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-15",
   "changelog": [
+    "8.5.7 — REWRITE: whale_card() — ganti f-string raksasa (9000+ char) dengan pure string concatenation; eliminasi semua potensi f-string leak/corrupt sesuai aturan kerja STV",
     "8.5.6 — HOTFIX: 2_Follow_Whale.py — HTML leak di Tab 1 BEST LONG: st.columns + st.markdown(whale_card) + st.button dalam block yang sama menyebabkan HTML bocor; fix: wrap st.markdown dalam st.container() terpisah dari st.button",
     "8.5.5 — HOTFIX: 2_Follow_Whale.py — HTML leak di whale_card: ctrl_badge nested f-string dengan quote conflict menyebabkan sec_html ter-render sebagai teks literal; fix: pre-build ctrl_badge sebagai variable terpisah sebelum f-string besar",
     "8.5.4 — HOTFIX: 2_Follow_Whale.py — NameError _hengky_lbl: newline hilang antara komentar dan assignment akibat W-9 refactor",

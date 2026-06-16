@@ -1229,55 +1229,90 @@ border-radius:var(--r-sm);padding:0.5rem 0.65rem">
   color:{sub_color};margin-top:2px">{subval}</div>
 </div>"""
 
-    return f"""
-<div style="background:#0F1318;border:1px solid {border_color}35;
-border-left:4px solid {border_color};border-radius:var(--r-md);
-padding:1rem 1.2rem;margin-bottom:0.75rem;
-box-shadow:0 2px 12px rgba(0,0,0,0.35);
-transition:border-color 0.2s,background 0.2s">
+    # ── Build HTML via string concatenation — NO large f-string ──────────────
+    # Sesuai aturan kerja STV: f-string besar selalu berpotensi leak/corrupt.
+    # Semua komponen di-build terpisah lalu di-join.
 
-  <!-- ROW 1: Identity -->
-  <div style="display:flex;align-items:center;gap:0.7rem;flex-wrap:wrap;margin-bottom:0.55rem;
-  border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:0.55rem">
-    <span style="font-family:Orbitron,monospace;font-size:var(--text-xl);font-weight:900;
-    color:var(--text-primary);letter-spacing:0.05em">{ticker}</span>
-    <span style="background:{sig_color}15;border:1px solid {sig_color}50;border-radius:var(--r-sm);
-    padding:2px 9px;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-    letter-spacing:0.08em;color:{sig_color};font-weight:600">{emoji}&nbsp;{signal}</span>
-    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-base);
-    font-weight:700;color:var(--text-primary)">{fmt_rp(w.get("close",0))}</span>
-    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-base);
-    color:{chg_col};font-weight:700">{chg:+.2f}%</span>
-    <span style="margin-left:auto;display:flex;align-items:center;gap:0.5rem">
-      <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-      color:{qual_color};font-weight:700">{qual_lbl}</span>
-      {ctrl_badge}
-      {sec_html}
-    </span>
-  </div>
+    # ROW 2 metric cells
+    floor_subval = floor_lbl + " " + ("%+.1f%%" % pct_f)
+    mom5_subval  = "5D " + ("%+.1f%%" % mom5)
+    w52h_subval  = "52W " + ("%+.1f%%" % w52h)
 
-  <!-- ROW 2: Metrics grid — 5 cells, bigger labels -->
-  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.45rem;margin-bottom:0.5rem">
-    {metric_cell("FLOOR PRICE", fmt_rp(floor_p), f"{floor_lbl} {pct_f:+.1f}%", "var(--text-primary)", floor_col)}
-    {metric_cell("CONVICTION", f"{conv}/10", bar, bar_col, bar_col)}
-    {metric_cell("FF-VOL", f"{ff_vol:.1f}×", f"5D {mom5:+.1f}%", "var(--c-info)", m5_col)}
-    {metric_cell("EMA TREND", ema_tr, f"52W {w52h:+.1f}%", ema_col, "var(--text-muted)")}
-    {metric_cell("VALUE", val_str, "TRADED", "var(--text-secondary)", "var(--text-dim)")}
-  </div>
+    def mc(label, value, subval, vc, sc):
+        return (
+            '<div style="background:var(--bg-deep);border:1px solid rgba(255,255,255,0.06);' +
+            'border-radius:var(--r-sm);padding:0.5rem 0.65rem">' +
+            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);' +
+            'letter-spacing:0.14em;color:#94A3B8;margin-bottom:3px;text-transform:uppercase">' +
+            label + '</div>' +
+            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-base);' +
+            'font-weight:700;color:' + vc + ';line-height:1.2">' + value + '</div>' +
+            '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);' +
+            'color:' + sc + ';margin-top:2px">' + subval + '</div></div>'
+        )
 
-  <!-- ROW 3: Tags + descriptions -->
-  <div style="display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap">
-    {tags_html_str}
-    {(f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--c-info);margin-left:0.4rem">{peng_desc}</span>') if peng_desc else ""}
-    {(f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--accent);margin-left:0.4rem">{def_desc}</span>') if def_desc else ""}
-  </div>
-  <!-- ROW 4: V4 Hitung Barang + Order Block -->
-  {_v4_row(w)}
-  <!-- ROW 5: Ownership + Broker (Phase 1-3) -->
-  {_ownership_row(w)}
-  <!-- ROW 6: Trading Summary — Hengky Method verdict -->
-  {_trading_summary_row(w)}
-</div>"""
+    row2 = (
+        mc("FLOOR PRICE", fmt_rp(floor_p), floor_subval, "var(--text-primary)", floor_col) +
+        mc("CONVICTION",  str(conv) + "/10", bar, bar_col, bar_col) +
+        mc("FF-VOL",      ("%.1f×" % ff_vol), mom5_subval, "var(--c-info)", m5_col) +
+        mc("EMA TREND",   ema_tr, w52h_subval, ema_col, "var(--text-muted)") +
+        mc("VALUE",       val_str, "TRADED", "var(--text-secondary)", "var(--text-dim)")
+    )
+
+    # ROW 3 tag descriptions (pre-built, no inline conditional)
+    peng_span = (
+        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);' +
+        'color:var(--c-info);margin-left:0.4rem">' + peng_desc + '</span>'
+    ) if peng_desc else ""
+    def_span = (
+        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);' +
+        'color:var(--accent);margin-left:0.4rem">' + def_desc + '</span>'
+    ) if def_desc else ""
+
+    # Close price + chg
+    close_str = fmt_rp(w.get("close", 0))
+    chg_str   = ("%+.2f%%" % chg)
+
+    # Assemble ROW 1
+    row1 = (
+        '<div style="display:flex;align-items:center;gap:0.7rem;flex-wrap:wrap;' +
+        'margin-bottom:0.55rem;border-bottom:1px solid rgba(255,255,255,0.05);' +
+        'padding-bottom:0.55rem">' +
+        '<span style="font-family:Orbitron,monospace;font-size:var(--text-xl);' +
+        'font-weight:900;color:var(--text-primary);letter-spacing:0.05em">' + ticker + '</span>' +
+        '<span style="background:' + sig_color + '15;border:1px solid ' + sig_color + '50;' +
+        'border-radius:var(--r-sm);padding:2px 9px;font-family:Share Tech Mono,monospace;' +
+        'font-size:var(--text-xs);letter-spacing:0.08em;color:' + sig_color + ';' +
+        'font-weight:600">' + emoji + "&nbsp;" + signal + '</span>' +
+        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-base);' +
+        'font-weight:700;color:var(--text-primary)">' + close_str + '</span>' +
+        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-base);' +
+        'color:' + chg_col + ';font-weight:700">' + chg_str + '</span>' +
+        '<span style="margin-left:auto;display:flex;align-items:center;gap:0.5rem">' +
+        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);' +
+        'color:' + qual_color + ';font-weight:700">' + qual_lbl + '</span>' +
+        ctrl_badge +
+        sec_html +
+        '</span></div>'
+    )
+
+    # Final assembly — pure string concat, zero f-string
+    return (
+        '<div style="background:#0F1318;border:1px solid ' + border_color + '35;' +
+        'border-left:4px solid ' + border_color + ';border-radius:var(--r-md);' +
+        'padding:1rem 1.2rem;margin-bottom:0.75rem;' +
+        'box-shadow:0 2px 12px rgba(0,0,0,0.35);' +
+        'transition:border-color 0.2s,background 0.2s">' +
+        row1 +
+        '<div style="display:grid;grid-template-columns:repeat(5,1fr);' +
+        'gap:0.45rem;margin-bottom:0.5rem">' + row2 + '</div>' +
+        '<div style="display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap">' +
+        tags_html_str + peng_span + def_span + '</div>' +
+        _v4_row(w) +
+        _ownership_row(w) +
+        _trading_summary_row(w) +
+        '</div>'
+    )
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA DISPLAY
