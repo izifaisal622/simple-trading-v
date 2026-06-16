@@ -447,7 +447,19 @@ def _analyze_ema_performance() -> dict:
 
 
 def _analyze_whale_performance() -> dict:
-    """Director reads Whale scan results and judges quality."""
+    """
+    Director reads Whale scan results and judges quality.
+
+    Sesi B upgrade: baca field baru dari whale_scanner output:
+    - control_score (hitung barang — supply concentration)
+    - in_ob_zone / vp_near_val (institutional footprint + VP)
+    - whale_quality (SMART/LIKELY_SMART/UNCERTAIN/DUMB)
+    - pengeringan_detected (volume pengeringan)
+    - free_float (tight supply = lebih mudah naik)
+    - sector distribution (apakah ada sector concentration?)
+
+    Grade bukan lagi hanya jumlah alerts — tapi KUALITAS sinyal.
+    """
     findings = []
     patches  = {}
     grade    = "A"
@@ -464,66 +476,167 @@ def _analyze_whale_performance() -> dict:
     except Exception as e:
         return {"grade": "F", "findings": [f"Cannot read results: {e}"], "patches": {}}
 
-    total      = len(whale_results)
-    ema_align  = [w for w in whale_results if w.get("ema_trend") == "BULLISH"
-                  and "BUY" in w.get("direction","")]
-    avg_conv   = sum(w.get("conviction",0) for w in whale_results) / total if total else 0
+    total    = len(whale_results)
+    is_bear  = cycle in ("BEAR_TREND", "BEAR_CONSOLIDATION", "WATCHLIST_ONLY")
+    is_bull  = cycle in ("BULL_TREND", "BULL_CONSOLIDATION")
 
-    # Zero alerts in non-bear — scanner is too strict
-    if total == 0 and cycle not in ("BEAR_TREND",):
-        grade = "D"
-        findings.append(f"🔴 FAIL: Zero whale alerts in {cycle} market — thresholds too high")
-        # Sesi C: data-driven whale threshold
-        _wt = _derive_optimal_thresholds(cycle)
-        if _wt["data_driven"]:
-            patches["whale_vol_multiplier"] = _wt["whale_vol_multiplier"]
-            patches["whale_min_value_bn"]   = _wt["whale_min_value_bn"]
-            findings.append(f"  → Data-driven: vol_mult={_wt['whale_vol_multiplier']}, "
-                            f"min_val={_wt['whale_min_value_bn']}Bn "
-                            f"({_wt['confidence']} confidence)")
-        else:
-            patches["whale_vol_multiplier"] = 1.5
-            patches["whale_min_value_bn"]   = 0.2
-            findings.append("  → Fallback: vol_mult=1.5, min_val=0.2Bn (insufficient data)")
+    # ── Basic metrics (V1) ────────────────────────────────────────────────────
+    avg_conv  = (sum(w.get("conviction", 0) for w in whale_results) / total
+                 if total else 0)
+    ema_align = [w for w in whale_results
+                 if w.get("ema_trend") == "BULLISH" and "BUY" in w.get("direction","")]
 
-    elif total == 0 and cycle == "BEAR_TREND":
-        grade = "A"
-        findings.append("✅ Zero alerts = BENAR — BEAR_TREND, scanner defensif, melindungi modal")
+    # ── Sesi B: Advanced quality metrics ─────────────────────────────────────
+    # 1. Smart whale count (SMART + LIKELY_SMART)
+    smart_whales = [w for w in whale_results
+                    if w.get("whale_quality") in ("SMART", "LIKELY_SMART")]
+    pct_smart    = len(smart_whales) / total * 100 if total else 0
 
-    elif total > WHALE_THRESHOLDS["excess_alerts_threshold"]:
-        grade = "C"
-        findings.append(f"🟡 WARN: {total} alerts is too noisy — too many false signals")
-        findings.append("  → Raising vol_multiplier to filter noise")
-        patches["whale_vol_multiplier"] = 3.0
+    # 2. Hitung barang quality — high control_score = supply terpusat
+    high_ctrl    = [w for w in whale_results if (w.get("control_score") or 0) >= 6]
+    pct_ctrl     = len(high_ctrl) / total * 100 if total else 0
 
-    elif avg_conv < WHALE_THRESHOLDS["min_conviction_target"] and total > 0:
-        # Bear market = low conviction is CORRECT behavior = A
-        if cycle in ("BEAR_TREND","BEAR_CONSOLIDATION","SANGAT_SEPI"):
-            findings.append(f"✅ Bear market: conviction {avg_conv:.1f}/10 wajar, scanner defensif benar")
+    # 3. Institutional footprint — OB zone + VP value area
+    ob_zone      = [w for w in whale_results if w.get("in_ob_zone") or w.get("near_ob_zone")]
+    vp_value     = [w for w in whale_results if w.get("vp_near_val") or w.get("vp_in_value")]
+    pct_ob_vp    = len(set(w.get("ticker","") for w in ob_zone + vp_value)) / total * 100 if total else 0
+
+    # 4. Pengeringan detected
+    peng_count   = sum(1 for w in whale_results if w.get("pengeringan_detected"))
+    pct_peng     = peng_count / total * 100 if total else 0
+
+    # 5. Free float tight (supply terpusat = lebih mudah naik)
+    tight_ff     = [w for w in whale_results if (w.get("free_float") or 100) <= 15]
+    pct_tight_ff = len(tight_ff) / total * 100 if total else 0
+
+    # 6. Sector distribution — cek konsentrasi
+    from collections import Counter
+    sector_counts = Counter(w.get("sector", "OTHER") for w in whale_results)
+    top_sector    = sector_counts.most_common(1)[0] if sector_counts else ("?", 0)
+    pct_top_sector= top_sector[1] / total * 100 if total else 0
+    sector_concentrated = pct_top_sector > 40 and total >= 5
+
+    # ── Quality Score (Sesi B) ────────────────────────────────────────────────
+    # Komponen (maks 10):
+    # 2pt: avg_conviction >= 6
+    # 2pt: % smart whale >= 40%
+    # 2pt: % dengan OB/VP footprint >= 30%
+    # 1pt: % pengeringan >= 20%
+    # 1pt: % control_score tinggi >= 30%
+    # 1pt: % free_float ketat >= 15%
+    # 1pt: EMA aligned >= 30%
+    q_score  = 0
+    q_score += 2 if avg_conv >= 6 else (1 if avg_conv >= 4 else 0)
+    q_score += 2 if pct_smart >= 40 else (1 if pct_smart >= 20 else 0)
+    q_score += 2 if pct_ob_vp >= 30 else (1 if pct_ob_vp >= 15 else 0)
+    q_score += 1 if pct_peng >= 20 else 0
+    q_score += 1 if pct_ctrl >= 30 else 0
+    q_score += 1 if pct_tight_ff >= 15 else 0
+    q_score += 1 if (len(ema_align)/total*100 >= 30 if total else False) else 0
+
+    # ── Grade dari quality score ──────────────────────────────────────────────
+    if is_bear:
+        if total == 0:
+            grade = "A"
+            findings.append("✅ Zero alerts = BENAR — bear regime, scanner defensif.")
+        elif total <= 5 and avg_conv >= 5:
+            grade = "A"
+            findings.append(f"✅ Bear regime: {total} sinyal selektif, conv {avg_conv:.1f}/10 — benar.")
         else:
             grade = "C"
-            findings.append(f"🟡 WARN: Avg conviction {avg_conv:.1f}/10 — signals lack quality")
-            findings.append("  → Tightening min_value_bn to filter low-quality signals")
-            patches["whale_min_value_bn"] = 0.8
+            findings.append(f"⚠ Bear regime tapi {total} alerts — filter terlalu loose.")
+            _wt = _derive_optimal_thresholds(cycle)
+            patches["whale_vol_multiplier"] = _wt["whale_vol_multiplier"]
+            patches["whale_min_value_bn"]   = _wt["whale_min_value_bn"]
+
+    elif total == 0:
+        grade = "D"
+        findings.append(f"🔴 FAIL: Zero whale alerts di {cycle} — threshold terlalu tinggi.")
+        _wt = _derive_optimal_thresholds(cycle)
+        patches["whale_vol_multiplier"] = _wt["whale_vol_multiplier"]
+        patches["whale_min_value_bn"]   = _wt["whale_min_value_bn"]
+        findings.append(f"  → {'Data-driven' if _wt['data_driven'] else 'Fallback'}: "
+                        f"vol_mult={_wt['whale_vol_multiplier']}, "
+                        f"min_val={_wt['whale_min_value_bn']}Bn")
+
+    elif total > WHALE_THRESHOLDS["excess_alerts_threshold"]:
+        grade = "B" if q_score >= 6 else "C"
+        findings.append(f"🟡 {total} alerts (noisy) — quality score {q_score}/10.")
+        if q_score < 6:
+            patches["whale_vol_multiplier"] = 3.0
+            findings.append("  → Raising vol_multiplier untuk filter noise.")
 
     else:
-        grade = "A"
-        findings.append(f"✅ Whale scan healthy: {total} alerts, {len(ema_align)} best setups, "
-                        f"avg conviction {avg_conv:.1f}/10")
+        # Normal range: grade dari quality score
+        if q_score >= 8:   grade = "A+"
+        elif q_score >= 6: grade = "A"
+        elif q_score >= 4: grade = "B"
+        elif q_score >= 2: grade = "C"
+        else:              grade = "D"
 
-    # Bear market special: check if recovery signals exist
-    if cycle in ("BEAR_TREND","BEAR_CONSOLIDATION"):
+    # ── Findings detail (Sesi B) ──────────────────────────────────────────────
+    if total > 0:
+        findings.append(
+            f"📊 {total} alerts | conv {avg_conv:.1f}/10 | "
+            f"quality {q_score}/10 | {len(ema_align)} EMA-aligned"
+        )
+        if pct_smart >= 20:
+            findings.append(f"  🧠 Smart whale: {len(smart_whales)}/{total} ({pct_smart:.0f}%) — "
+                            f"institutional footprint kuat")
+        elif pct_smart < 10 and total >= 5:
+            findings.append(f"  ⚠ Smart whale rendah: {pct_smart:.0f}% — "
+                            f"banyak DUMB/UNCERTAIN signals")
+
+        if pct_ob_vp >= 20:
+            findings.append(f"  🎯 OB/VP zone: {pct_ob_vp:.0f}% setup di demand zone — "
+                            f"entry quality tinggi")
+
+        if pct_peng >= 20:
+            findings.append(f"  💧 Pengeringan: {peng_count}/{total} saham ({pct_peng:.0f}%) — "
+                            f"akumulasi diam-diam terdeteksi")
+
+        if pct_ctrl >= 30:
+            findings.append(f"  🔒 Control score tinggi: {len(high_ctrl)}/{total} ({pct_ctrl:.0f}%) — "
+                            f"supply terpusat, potensi naik besar")
+
+        if pct_tight_ff >= 15:
+            findings.append(f"  📌 Free float ketat: {len(tight_ff)}/{total} ({pct_tight_ff:.0f}%) — "
+                            f"sedikit lot beredar = mudah naik")
+
+        if sector_concentrated:
+            findings.append(f"  📂 Sektor dominan: {top_sector[0]} ({pct_top_sector:.0f}%) — "
+                            f"rotasi sektor sedang terjadi")
+
+    # Recovery check di bear
+    if is_bear and total > 0:
         recovery = [w for w in whale_results
                     if "BUY" in w.get("direction","")
-                    and w.get("pct_from_52w_high",0) < -15]
+                    and (w.get("pct_from_52w_high") or 0) < -15]
         if recovery:
-            findings.append(f"🌅 Recovery signals: {len(recovery)} beaten-down stocks with whale buying")
-        else:
-            findings.append("⏳ No recovery signals yet — continue monitoring")
+            findings.append(f"  🌅 Recovery signals: {len(recovery)} saham beaten-down + whale buying")
 
-    return {"grade": grade, "findings": findings, "patches": patches,
-            "total": total, "ema_aligned": len(ema_align),
-            "avg_conviction": round(avg_conv, 1)}
+    # Low conviction non-bear
+    if not is_bear and total > 0 and avg_conv < WHALE_THRESHOLDS["min_conviction_target"]:
+        findings.append(f"  ⚠ Avg conviction {avg_conv:.1f}/10 rendah — "
+                        f"tighten min_value_bn untuk filter kualitas.")
+        if "whale_min_value_bn" not in patches:
+            patches["whale_min_value_bn"] = 0.8
+
+    return {
+        "grade":           grade,
+        "findings":        findings,
+        "patches":         patches,
+        "total":           total,
+        "ema_aligned":     len(ema_align),
+        "avg_conviction":  round(avg_conv, 1),
+        "quality_score":   q_score,
+        "pct_smart":       round(pct_smart, 1),
+        "pct_ob_vp":       round(pct_ob_vp, 1),
+        "pct_pengeringan": round(pct_peng, 1),
+        "pct_ctrl":        round(pct_ctrl, 1),
+        "pct_tight_ff":    round(pct_tight_ff, 1),
+        "top_sector":      top_sector[0] if top_sector else "?",
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -531,7 +644,13 @@ def _analyze_whale_performance() -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _bench_data_feed(cfg) -> dict:
-    from core.data_feed import get_ihsg_regime
+    from core.data_feed import get_idx_universe, get_ihsg_regime
+    std = STANDARDS["data_feed"]
+    _, elapsed, mem, err = _measure(lambda: (get_idx_universe(), get_ihsg_regime()))
+    sev = _get_severity(elapsed, std["max_s"])
+    return {"agent": "data_feed", "elapsed": elapsed, "mem_mb": mem,
+            "severity": sev, "pass": sev == "PASS", "issues": [err] if err else []}
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Data-Driven Threshold Engine (Sesi C)
