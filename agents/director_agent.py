@@ -39,6 +39,157 @@ import pandas as pd
 
 from core.data_feed import get_ihsg_regime
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Data-Driven Threshold Engine (Sesi C)
+# Baca historical WR per regime dari trade data → derive optimal thresholds
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _derive_optimal_thresholds(current_regime: str) -> dict:
+    """
+    Sesi C: Derive optimal min_score dan whale_vol_multiplier
+    berbasis historical WR per regime dari trade log.
+
+    Logic:
+    - Load closed real trades dengan signal_score + regime_tag
+    - Hitung WR per (regime × score_bucket)
+    - Cari min_score terendah yang masih menghasilkan WR ≥ 50%
+    - Bandingkan dengan defaults hardcoded
+
+    Returns dict:
+      {
+        'min_score':            int,   # optimal untuk regime ini
+        'whale_vol_multiplier': float, # optimal untuk regime ini
+        'whale_min_value_bn':   float,
+        'confidence':           str,   # HIGH/MEDIUM/LOW/INSUFFICIENT
+        'basis':                str,   # penjelasan dasar keputusan
+        'data_driven':          bool,  # True jika dari data, False jika fallback
+      }
+    """
+    # Hardcoded fallbacks (regime-based, tetap dipakai jika data tidak cukup)
+    REGIME_DEFAULTS = {
+        "BULL_TREND":        {"min_score": 3, "whale_vol_mult": 3.0, "whale_val_bn": 1.0},
+        "BULL_CONSOLIDATION":{"min_score": 4, "whale_vol_mult": 2.5, "whale_val_bn": 0.8},
+        "TRANSITION":        {"min_score": 5, "whale_vol_mult": 2.0, "whale_val_bn": 0.5},
+        "BEAR_CONSOLIDATION":{"min_score": 6, "whale_vol_mult": 1.5, "whale_val_bn": 0.3},
+        "BEAR_TREND":        {"min_score": 7, "whale_vol_mult": 1.2, "whale_val_bn": 0.2},
+        "UNKNOWN":           {"min_score": 4, "whale_vol_mult": 2.5, "whale_val_bn": 0.5},
+    }
+    fallback = REGIME_DEFAULTS.get(current_regime, REGIME_DEFAULTS["UNKNOWN"])
+
+    # Load trade data
+    if not DB_PATH.exists():
+        return {**fallback,
+                "confidence": "INSUFFICIENT",
+                "basis": "No trade data — using regime defaults",
+                "data_driven": False}
+
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.row_factory = sqlite3.Row
+        trades = conn.execute("""            SELECT outcome, signal_score, regime_tag,
+                   entry_price, sl_price
+            FROM manual_trades
+            WHERE outcome IN ('WIN','LOSS','BREAKEVEN')
+            AND signal_score IS NOT NULL
+            ORDER BY exit_date DESC
+        """).fetchall()
+        conn.close()
+        trades = [dict(t) for t in trades]
+    except Exception as e:
+        logger.debug(f"[Director] threshold derive: {e}")
+        return {**fallback,
+                "confidence": "INSUFFICIENT",
+                "basis": f"DB error: {e}",
+                "data_driven": False}
+
+    if len(trades) < 10:
+        return {**fallback,
+                "confidence": "INSUFFICIENT",
+                "basis": f"Only {len(trades)} trades — need 10+ for data-driven thresholds",
+                "data_driven": False}
+
+    # ── Derive optimal min_score ──────────────────────────────────────────────
+    # Strategi: cari min_score terendah yang menghasilkan WR ≥ 50%
+    # di regime yang relevan (atau semua regime jika data per-regime tidak cukup)
+    regime_trades = [t for t in trades
+                     if t.get("regime_tag") == current_regime]
+    analysis_trades = regime_trades if len(regime_trades) >= 5 else trades
+    confidence = "HIGH" if len(regime_trades) >= 10 else \
+                 "MEDIUM" if len(regime_trades) >= 5 else \
+                 "LOW"
+
+    # Hitung WR per score threshold: "jika min_score = X, WR = ?"
+    best_min_score  = fallback["min_score"]  # start dari fallback
+    best_wr_at_score = 0.0
+    score_analysis  = {}
+
+    for threshold in range(1, 9):
+        filtered = [t for t in analysis_trades
+                    if (t.get("signal_score") or 0) >= threshold]
+        if len(filtered) < 3:
+            break
+        wins = sum(1 for t in filtered if t.get("outcome") == "WIN")
+        wr   = wins / len(filtered) * 100
+        score_analysis[threshold] = {"n": len(filtered), "wr": round(wr, 1)}
+
+        # Target: WR ≥ 50% dengan sample size ≥ 3
+        # Cari threshold terendah yang masih achieve target
+        if wr >= 50 and threshold <= best_min_score:
+            best_min_score   = threshold
+            best_wr_at_score = wr
+
+    # Jika tidak ada threshold yang achieve 50%, ambil yang paling mendekati
+    if best_wr_at_score == 0 and score_analysis:
+        # Ambil threshold yang menghasilkan WR tertinggi
+        best_t = max(score_analysis, key=lambda x: score_analysis[x]["wr"])
+        best_min_score   = best_t
+        best_wr_at_score = score_analysis[best_t]["wr"]
+
+    # Clamp: jangan terlalu loose atau terlalu tight
+    _fallback_ms  = fallback["min_score"]
+    # Max deviation dari fallback: +/- 2
+    best_min_score = max(_fallback_ms - 2, min(_fallback_ms + 2, best_min_score))
+
+    # ── Derive whale_vol_multiplier ───────────────────────────────────────────
+    # Logic sederhana: jika regime bull dan data menunjukkan banyak win
+    # di score rendah, bisa lower vol threshold untuk lebih banyak signal.
+    # Jika win rate rendah, raise vol threshold untuk filter.
+    overall_wr = sum(1 for t in analysis_trades
+                     if t.get("outcome") == "WIN") / len(analysis_trades) * 100 \
+                 if analysis_trades else 0
+
+    base_vol_mult = fallback["whale_vol_mult"]
+    if overall_wr >= 60 and len(analysis_trades) >= 5:
+        # Profitable → bisa sedikit lebih loose (lebih banyak signal)
+        derived_vol_mult = max(1.5, base_vol_mult - 0.5)
+    elif overall_wr <= 35 and len(analysis_trades) >= 5:
+        # Unprofitable → lebih ketat
+        derived_vol_mult = min(4.0, base_vol_mult + 0.5)
+    else:
+        derived_vol_mult = base_vol_mult
+
+    # Build basis string
+    regime_note = (f"dari {len(regime_trades)} {current_regime} trades"
+                   if len(regime_trades) >= 5
+                   else f"dari {len(trades)} all-regime trades (data {current_regime} belum cukup)")
+    basis = (
+        f"min_score={best_min_score} (WR {best_wr_at_score:.0f}% at threshold, {regime_note}); "
+        f"vol_mult={derived_vol_mult:.1f} (overall WR {overall_wr:.0f}%)"
+    )
+
+    return {
+        "min_score":            best_min_score,
+        "whale_vol_multiplier": round(derived_vol_mult, 1),
+        "whale_min_value_bn":   fallback["whale_val_bn"],
+        "confidence":           confidence,
+        "basis":                basis,
+        "data_driven":          True,
+        "score_analysis":       score_analysis,
+        "overall_wr":           round(overall_wr, 1),
+        "n_regime_trades":      len(regime_trades),
+        "n_total_trades":       len(trades),
+    }
+
 LOGS_DIR        = Path(__file__).parent.parent / "logs"
 REPORT_FILE     = LOGS_DIR / "director_report.md"
 BENCH_FILE      = LOGS_DIR / "agent_benchmarks.json"
@@ -252,16 +403,37 @@ def _analyze_ema_performance() -> dict:
                     grade = "F"
                     findings.append(f"🚨 CRITICAL: Win rate {win_rate*100:.0f}% — BELOW FLOOR ({EMA_THRESHOLDS['win_rate_poor']*100:.0f}%)")
                     findings.append("  → Director mandate: STOP live trading. Paper trade until 10 wins.")
-                    patches["min_score"] = EMA_THRESHOLDS["min_score_tight"]
+                    # Sesi C: data-driven threshold — derive dari actual trade history
+                    _thresholds = _derive_optimal_thresholds(cycle)
+                    if _thresholds["data_driven"]:
+                        patches["min_score"] = _thresholds["min_score"]
+                        findings.append(f"  → Data-driven min_score={_thresholds['min_score']} "
+                                        f"(confidence: {_thresholds['confidence']}, {_thresholds['basis']})")
+                    else:
+                        patches["min_score"] = EMA_THRESHOLDS["min_score_tight"]
+                        findings.append(f"  → Fallback min_score={EMA_THRESHOLDS['min_score_tight']} (insufficient data)")
 
                 elif win_rate < EMA_THRESHOLDS["win_rate_acceptable"]:
                     grade = "C"
                     findings.append(f"🟡 WARN: Win rate {win_rate*100:.0f}% — needs improvement")
-                    findings.append("  → Tightening min_score to 4/6")
-                    patches["min_score"] = 4
+                    # Sesi C: data-driven threshold
+                    _thresholds = _derive_optimal_thresholds(cycle)
+                    if _thresholds["data_driven"] and _thresholds["confidence"] in ("HIGH", "MEDIUM"):
+                        patches["min_score"] = _thresholds["min_score"]
+                        findings.append(f"  → Data-driven min_score={_thresholds['min_score']} "
+                                        f"({_thresholds['confidence']} confidence, {_thresholds['overall_wr']:.0f}% WR at threshold)")
+                    else:
+                        patches["min_score"] = 4
+                        findings.append("  → Fallback: Tightening min_score to 4")
 
                 elif win_rate >= EMA_THRESHOLDS["win_rate_excellent"]:
                     findings.append(f"✅ Win rate excellent: {win_rate*100:.0f}% | Avg R: {avg_r:.2f}")
+                    # Sesi C: jika WR excellent, coba loosening threshold
+                    _thresholds = _derive_optimal_thresholds(cycle)
+                    if _thresholds["data_driven"] and _thresholds["min_score"] < 3:
+                        patches["min_score"] = _thresholds["min_score"]
+                        findings.append(f"  → Data-driven loosening min_score={_thresholds['min_score']} "
+                                        f"(WR excellent, {_thresholds['basis']})")
 
                 if avg_r < 0 and len(rows) >= 5:
                     grade = "F" if grade != "F" else grade
@@ -301,10 +473,18 @@ def _analyze_whale_performance() -> dict:
     if total == 0 and cycle not in ("BEAR_TREND",):
         grade = "D"
         findings.append(f"🔴 FAIL: Zero whale alerts in {cycle} market — thresholds too high")
-        findings.append("  → Director auto-patching: lowering vol_multiplier")
-        # This patches the whale scanner's default for next run
-        patches["whale_vol_multiplier"] = 1.5
-        patches["whale_min_value_bn"]   = 0.2
+        # Sesi C: data-driven whale threshold
+        _wt = _derive_optimal_thresholds(cycle)
+        if _wt["data_driven"]:
+            patches["whale_vol_multiplier"] = _wt["whale_vol_multiplier"]
+            patches["whale_min_value_bn"]   = _wt["whale_min_value_bn"]
+            findings.append(f"  → Data-driven: vol_mult={_wt['whale_vol_multiplier']}, "
+                            f"min_val={_wt['whale_min_value_bn']}Bn "
+                            f"({_wt['confidence']} confidence)")
+        else:
+            patches["whale_vol_multiplier"] = 1.5
+            patches["whale_min_value_bn"]   = 0.2
+            findings.append("  → Fallback: vol_mult=1.5, min_val=0.2Bn (insufficient data)")
 
     elif total == 0 and cycle == "BEAR_TREND":
         grade = "A"
@@ -351,7 +531,162 @@ def _analyze_whale_performance() -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _bench_data_feed(cfg) -> dict:
-    from core.data_feed import get_ihsg_regime, get_idx_universe
+    from core.data_feed import get_ihsg_regime
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Data-Driven Threshold Engine (Sesi C)
+# Baca historical WR per regime dari trade data → derive optimal thresholds
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _derive_optimal_thresholds(current_regime: str) -> dict:
+    """
+    Sesi C: Derive optimal min_score dan whale_vol_multiplier
+    berbasis historical WR per regime dari trade log.
+
+    Logic:
+    - Load closed real trades dengan signal_score + regime_tag
+    - Hitung WR per (regime × score_bucket)
+    - Cari min_score terendah yang masih menghasilkan WR ≥ 50%
+    - Bandingkan dengan defaults hardcoded
+
+    Returns dict:
+      {
+        'min_score':            int,   # optimal untuk regime ini
+        'whale_vol_multiplier': float, # optimal untuk regime ini
+        'whale_min_value_bn':   float,
+        'confidence':           str,   # HIGH/MEDIUM/LOW/INSUFFICIENT
+        'basis':                str,   # penjelasan dasar keputusan
+        'data_driven':          bool,  # True jika dari data, False jika fallback
+      }
+    """
+    # Hardcoded fallbacks (regime-based, tetap dipakai jika data tidak cukup)
+    REGIME_DEFAULTS = {
+        "BULL_TREND":        {"min_score": 3, "whale_vol_mult": 3.0, "whale_val_bn": 1.0},
+        "BULL_CONSOLIDATION":{"min_score": 4, "whale_vol_mult": 2.5, "whale_val_bn": 0.8},
+        "TRANSITION":        {"min_score": 5, "whale_vol_mult": 2.0, "whale_val_bn": 0.5},
+        "BEAR_CONSOLIDATION":{"min_score": 6, "whale_vol_mult": 1.5, "whale_val_bn": 0.3},
+        "BEAR_TREND":        {"min_score": 7, "whale_vol_mult": 1.2, "whale_val_bn": 0.2},
+        "UNKNOWN":           {"min_score": 4, "whale_vol_mult": 2.5, "whale_val_bn": 0.5},
+    }
+    fallback = REGIME_DEFAULTS.get(current_regime, REGIME_DEFAULTS["UNKNOWN"])
+
+    # Load trade data
+    if not DB_PATH.exists():
+        return {**fallback,
+                "confidence": "INSUFFICIENT",
+                "basis": "No trade data — using regime defaults",
+                "data_driven": False}
+
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.row_factory = sqlite3.Row
+        trades = conn.execute("""            SELECT outcome, signal_score, regime_tag,
+                   entry_price, sl_price
+            FROM manual_trades
+            WHERE outcome IN ('WIN','LOSS','BREAKEVEN')
+            AND signal_score IS NOT NULL
+            ORDER BY exit_date DESC
+        """).fetchall()
+        conn.close()
+        trades = [dict(t) for t in trades]
+    except Exception as e:
+        logger.debug(f"[Director] threshold derive: {e}")
+        return {**fallback,
+                "confidence": "INSUFFICIENT",
+                "basis": f"DB error: {e}",
+                "data_driven": False}
+
+    if len(trades) < 10:
+        return {**fallback,
+                "confidence": "INSUFFICIENT",
+                "basis": f"Only {len(trades)} trades — need 10+ for data-driven thresholds",
+                "data_driven": False}
+
+    # ── Derive optimal min_score ──────────────────────────────────────────────
+    # Strategi: cari min_score terendah yang menghasilkan WR ≥ 50%
+    # di regime yang relevan (atau semua regime jika data per-regime tidak cukup)
+    regime_trades = [t for t in trades
+                     if t.get("regime_tag") == current_regime]
+    analysis_trades = regime_trades if len(regime_trades) >= 5 else trades
+    confidence = "HIGH" if len(regime_trades) >= 10 else \
+                 "MEDIUM" if len(regime_trades) >= 5 else \
+                 "LOW"
+
+    # Hitung WR per score threshold: "jika min_score = X, WR = ?"
+    best_min_score  = fallback["min_score"]  # start dari fallback
+    best_wr_at_score = 0.0
+    score_analysis  = {}
+
+    for threshold in range(1, 9):
+        filtered = [t for t in analysis_trades
+                    if (t.get("signal_score") or 0) >= threshold]
+        if len(filtered) < 3:
+            break
+        wins = sum(1 for t in filtered if t.get("outcome") == "WIN")
+        wr   = wins / len(filtered) * 100
+        score_analysis[threshold] = {"n": len(filtered), "wr": round(wr, 1)}
+
+        # Target: WR ≥ 50% dengan sample size ≥ 3
+        # Cari threshold terendah yang masih achieve target
+        if wr >= 50 and threshold <= best_min_score:
+            best_min_score   = threshold
+            best_wr_at_score = wr
+
+    # Jika tidak ada threshold yang achieve 50%, ambil yang paling mendekati
+    if best_wr_at_score == 0 and score_analysis:
+        # Ambil threshold yang menghasilkan WR tertinggi
+        best_t = max(score_analysis, key=lambda x: score_analysis[x]["wr"])
+        best_min_score   = best_t
+        best_wr_at_score = score_analysis[best_t]["wr"]
+
+    # Clamp: jangan terlalu loose atau terlalu tight
+    _fallback_ms  = fallback["min_score"]
+    # Max deviation dari fallback: +/- 2
+    best_min_score = max(_fallback_ms - 2, min(_fallback_ms + 2, best_min_score))
+
+    # ── Derive whale_vol_multiplier ───────────────────────────────────────────
+    # Logic sederhana: jika regime bull dan data menunjukkan banyak win
+    # di score rendah, bisa lower vol threshold untuk lebih banyak signal.
+    # Jika win rate rendah, raise vol threshold untuk filter.
+    overall_wr = sum(1 for t in analysis_trades
+                     if t.get("outcome") == "WIN") / len(analysis_trades) * 100 \
+                 if analysis_trades else 0
+
+    base_vol_mult = fallback["whale_vol_mult"]
+    if overall_wr >= 60 and len(analysis_trades) >= 5:
+        # Profitable → bisa sedikit lebih loose (lebih banyak signal)
+        derived_vol_mult = max(1.5, base_vol_mult - 0.5)
+    elif overall_wr <= 35 and len(analysis_trades) >= 5:
+        # Unprofitable → lebih ketat
+        derived_vol_mult = min(4.0, base_vol_mult + 0.5)
+    else:
+        derived_vol_mult = base_vol_mult
+
+    # Build basis string
+    regime_note = (f"dari {len(regime_trades)} {current_regime} trades"
+                   if len(regime_trades) >= 5
+                   else f"dari {len(trades)} all-regime trades (data {current_regime} belum cukup)")
+    basis = (
+        f"min_score={best_min_score} (WR {best_wr_at_score:.0f}% at threshold, {regime_note}); "
+        f"vol_mult={derived_vol_mult:.1f} (overall WR {overall_wr:.0f}%)"
+    )
+
+    return {
+        "min_score":            best_min_score,
+        "whale_vol_multiplier": round(derived_vol_mult, 1),
+        "whale_min_value_bn":   fallback["whale_val_bn"],
+        "confidence":           confidence,
+        "basis":                basis,
+        "data_driven":          True,
+        "score_analysis":       score_analysis,
+        "overall_wr":           round(overall_wr, 1),
+        "n_regime_trades":      len(regime_trades),
+        "n_total_trades":       len(trades),
+    }
+
+
+def _bench_data_feed(cfg) -> dict:
+    from core.data_feed import get_idx_universe, get_ihsg_regime
     std = STANDARDS["data_feed"]
     _, elapsed, mem, err = _measure(lambda: (get_idx_universe(), get_ihsg_regime()))
     sev = _get_severity(elapsed, std["max_s"])
@@ -949,6 +1284,43 @@ def run_director(config, full=False) -> str:
 
     # 5. Write mandates
     _write_mandates(benchmarks, ema_analysis, whale_analysis, regime, study.get("history",{}))
+
+    # Sesi C: Data-driven threshold check — run setelah mandates
+    # Derive optimal thresholds dan bandingkan dengan current config
+    try:
+        _dt = _derive_optimal_thresholds(cycle)
+        if _dt["data_driven"]:
+            from config.strategy_config import StrategyConfig
+            _cfg = StrategyConfig.load()
+            _needs_patch = (
+                abs(_cfg.min_score - _dt["min_score"]) >= 1 or
+                abs(_cfg.whale_vol_multiplier - _dt["whale_vol_multiplier"]) >= 0.3
+            )
+            if _needs_patch and _dt["confidence"] in ("HIGH", "MEDIUM"):
+                patch_reason = (
+                    f"Data-driven threshold update ({_dt['confidence']} confidence): "
+                    f"{_dt['basis']}"
+                )
+                _save_autopatch({
+                    "min_score":            _dt["min_score"],
+                    "whale_vol_multiplier": _dt["whale_vol_multiplier"],
+                    "whale_min_value_bn":   _dt["whale_min_value_bn"],
+                }, patch_reason)
+                all_patches.update({
+                    "min_score":            _dt["min_score"],
+                    "whale_vol_multiplier": _dt["whale_vol_multiplier"],
+                })
+                print(f"[Director] Data-driven patch: min_score={_dt['min_score']}, "
+                      f"vol_mult={_dt['whale_vol_multiplier']} "
+                      f"({_dt['confidence']} confidence, {_dt['n_regime_trades']} {cycle} trades)")
+            elif not _needs_patch:
+                print(f"[Director] Thresholds optimal — no patch needed "
+                      f"(current min_score={_cfg.min_score}, "
+                      f"data suggests {_dt['min_score']})")
+        else:
+            print(f"[Director] Threshold derive: {_dt['basis']}")
+    except Exception as _e:
+        logger.debug(f"[Director] data-driven threshold: {_e}")
 
     elapsed = (datetime.now() - start).seconds
     grades  = f"EMA:{ema_analysis['grade']} Whale:{whale_analysis['grade']}"
