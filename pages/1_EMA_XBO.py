@@ -1066,8 +1066,8 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
             df_table, hide_index=True,
             column_config={
                 "Score":  st.column_config.NumberColumn("Score", format="%d/8"),
-                "Close":  st.column_config.NumberColumn("Close", format="Rp%,.0"),
-                "EMA13d": st.column_config.NumberColumn("EMA13d", format="Rp%,.0"),
+                "Close":  st.column_config.NumberColumn("Close", format="Rp%,.0f"),
+                "EMA13d": st.column_config.NumberColumn("EMA13d", format="Rp%,.0f"),
                 "Vol×":   st.column_config.NumberColumn("Vol×",  format="%.2f×"),
                 "RS%":    st.column_config.NumberColumn("RS%",   format="%+.1f%%"),
                 "MCF":    st.column_config.NumberColumn("MCF",   format="%d/10"),
