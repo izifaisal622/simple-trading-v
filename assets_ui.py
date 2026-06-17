@@ -66,7 +66,7 @@ SIG_COLORS = {
     "VOL_SPIKE_UP":     "#F0B429",
     "DISTRIBUTION":     "#EF4444",
     "BLOCK_SELL":       "#FB8C00",
-    # Money Flow signals
+    # War Room signals
     "WHALE_ACCUMULATION": "#00FF66",
     "INSTITUTIONAL_BUY":  "#60A5FA",
     "RETAIL_MOMENTUM":    "#FBBF24",
@@ -496,7 +496,8 @@ section[data-testid="stSidebar"] > div:first-child {{
   border-color: var(--accent-border) !important;
 }}
 .stExpander details summary {{
-  padding: var(--sp-3) var(--sp-4) !important;
+  padding: var(--sp-3) calc(var(--sp-4) + 1.4em) var(--sp-3) var(--sp-4) !important;
+  position: relative !important;
 }}
 .stExpander summary p, .stExpander summary span {{
   font-family: 'Share Tech Mono', monospace !important;
@@ -504,13 +505,26 @@ section[data-testid="stSidebar"] > div:first-child {{
   letter-spacing: 0.06em !important;
   color: var(--text-primary) !important;
 }}
-.stExpander [data-testid="stExpanderToggleIcon"] svg {{
-  color: rgba(0,255,102,0.5) !important;
-  fill: rgba(0,255,102,0.5) !important;
+/* Native toggle icon dimatikan total — sumber bug "_arrow_down" mentah
+   (ligature font Material Symbols gagal load di beberapa environment,
+   sehingga teks ikon tampil literal alih-alih jadi glyph). Diganti
+   tanda ▼/▲ berbasis karakter biasa yang selalu render tanpa font khusus. */
+.stExpander [data-testid="stExpanderToggleIcon"] {{
+  display: none !important;
 }}
-.stExpander details[open] [data-testid="stExpanderToggleIcon"] svg {{
-  color: var(--accent) !important;
-  fill: var(--accent) !important;
+.stExpander details summary::after {{
+  content: '▼';
+  position: absolute;
+  right: var(--sp-4);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--text-xs);
+  color: rgba(0,255,102,0.5);
+  pointer-events: none;
+}}
+.stExpander details[open] summary::after {{
+  content: '▲';
+  color: var(--accent);
 }}
 
 /* ══════════════════════════════════════

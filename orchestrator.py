@@ -401,7 +401,7 @@ def main():
             import json as _json
             from datetime import datetime as _dt
 
-            print("\n[Flow] Starting Money Flow scan...")
+            print("\n[Flow] Starting War Room scan...")
             scanner  = FlowScanner()
             universe = [t + ".JK" for t in get_dynamic_universe()]
             results  = scanner.scan(tickers=universe, max_workers=8)
