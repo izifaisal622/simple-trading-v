@@ -508,8 +508,18 @@ section[data-testid="stSidebar"] > div:first-child {{
 /* Native toggle icon dimatikan total — sumber bug "_arrow_down" mentah
    (ligature font Material Symbols gagal load di beberapa environment,
    sehingga teks ikon tampil literal alih-alih jadi glyph). Diganti
-   tanda ▼/▲ berbasis karakter biasa yang selalu render tanpa font khusus. */
+   tanda ▼/▲ berbasis karakter biasa yang selalu render tanpa font khusus.
+   8.6.4: selector lama (stExpanderToggleIcon) ternyata tidak match lagi
+   di environment user — kemungkinan testid berubah di versi Streamlit
+   yang lebih baru (tidak ada requirements.txt yang pin versi Streamlit
+   di repo ini, jadi versi tiap environment bisa beda). Tambah selector
+   stIconMaterial sebagai fallback, di-scope ke dalam summary expander
+   saja supaya tidak ikut menyembunyikan icon material lain di luar
+   expander kalau ada yang dipakai di tempat lain. */
 .stExpander [data-testid="stExpanderToggleIcon"] {{
+  display: none !important;
+}}
+.stExpander details summary [data-testid="stIconMaterial"] {{
   display: none !important;
 }}
 .stExpander details summary::after {{
