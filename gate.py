@@ -286,8 +286,7 @@ st.markdown(f"""
     <div class="hero-content">
       <div class="hero-eyebrow">BREAKOUT DETECTION</div>
       <div class="hero-title">EMA<span class="accent">-XBO</span></div>
-      <div class="hero-desc">Dual-timeframe EMA crossover scanner.<br>Weekly trend · Daily entry · MCF confirm.</div>
-      {bear_html}
+      <div class="hero-desc">Dual-timeframe EMA crossover scanner.<br>Weekly trend · Daily entry · MCF confirm.</div>{bear_html}
       <div class="hero-stats">
         <span class="stat-chip" style="color:#00ff66;border-color:rgba(0,255,102,.25)"><span class="ctr" data-n="{ema_n}">{ema_n}</span> SETUPS</span>
         <span class="stat-chip" style="color:#4a9eff;border-color:rgba(74,158,255,.2)">SCORE 1–7</span>
