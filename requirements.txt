@@ -1,0 +1,23 @@
+# Dipin per v8.6.6 untuk stop version-drift bug (lihat changelog 8.6.4 — bug
+# "_arrow_down" expander icon kemungkinan besar disebabkan testid Streamlit
+# berubah antar versi karena sebelumnya TIDAK ADA file ini sama sekali).
+#
+# pandas SENGAJA dipin ke 2.x, bukan 3.x (latest stable saat ini 3.0.3):
+# pandas 3.0 breaking changes (copy-on-write permanen default, banyak API
+# deprecated dihapus) berisiko merusak codebase ini yang ditulis dengan idiom
+# pandas 2.x, dan tidak ada test suite di repo untuk verifikasi kompatibilitas.
+#
+# CATATAN: pin ini adalah baseline best-guess berdasarkan latest-stable PyPI
+# per 2026-06-17, BUKAN dijamin sama dengan versi yang sedang Anda pakai
+# sekarang. Cek versi aktual Anda dulu dengan `pip freeze | grep -iE
+# "streamlit|pandas|numpy|yfinance|pytz|requests"` sebelum run
+# `pip install -r requirements.txt` — kalau beda jauh dari yang sudah
+# terbukti jalan di environment Anda, sesuaikan pin di sini ke versi itu,
+# jangan langsung percaya pin ini.
+
+streamlit==1.58.0
+pandas==2.3.3
+numpy==2.4.6
+yfinance==1.4.1
+pytz==2026.2
+requests==2.34.2
