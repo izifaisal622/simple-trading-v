@@ -1095,6 +1095,7 @@ def _trading_summary_row(w: dict) -> str:
         wait_reasons = []
         if pct_f > 20:        wait_reasons.append(f"harga masih {pct_f:.0f}% above floor")
         if ema_tr == "MIXED": wait_reasons.append("EMA mixed — tunggu konfirmasi")
+        if ema_tr == "BEARISH": wait_reasons.append("EMA bearish — tunggu reversal")
         if not peng:          wait_reasons.append("belum ada pengeringan")
         if ff_vol < 1.0:      wait_reasons.append(f"vol lemah {ff_vol:.1f}×")
         wait_str = " · ".join(wait_reasons) if wait_reasons else "setup belum matang"
