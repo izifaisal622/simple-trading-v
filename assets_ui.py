@@ -1056,7 +1056,7 @@ def render_regime_bar(cycle: str, ihsg: float, mom_4w: float,
         bear_html +
         '<div class="regime-bar" style="--rc:' + rc + '">' +
         '<span style="color:' + rc + ';font-family:Orbitron,monospace;font-size:var(--text-base);font-weight:700;letter-spacing:0.06em">⬤ ' + cycle + '</span>' +
-        '<span class="r-label">IHSG <b>' + ('%,.0f' % ihsg) + '</b></span>' +
+        '<span class="r-label">IHSG <b>' + ('{:,.0f}'.format(ihsg)) + '</b></span>' +
         '<span class="r-label">2W <b style="color:' + mc2 + '">' + ('%+.1f%%' % mom_2w) + '</b></span>' +
         '<span class="r-label">4W <b style="color:' + mc4 + '">' + ('%+.1f%%' % mom_4w) + '</b></span>' +
         from_low_html +
