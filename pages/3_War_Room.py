@@ -88,11 +88,16 @@ def _fetch_regional() -> dict:
     for name, sym in tickers.items():
         try:
             df = yf.download(sym, period="5d", interval="1d", progress=False, auto_adjust=True)
-            if df is not None and len(df) >= 2:
-                last  = float(df["Close"].iloc[-1])
-                prev  = float(df["Close"].iloc[-2])
-                chg   = (last - prev) / prev * 100
-                result[name] = {"last": last, "chg": round(chg, 2)}
+            if df is None or len(df) < 2:
+                result[name] = {"last": 0, "chg": 0}
+                continue
+            # Flatten MultiIndex columns (yfinance baru return MultiIndex)
+            if hasattr(df.columns, "get_level_values") and isinstance(df.columns[0], tuple):
+                df.columns = df.columns.get_level_values(0)
+            last  = float(df["Close"].iloc[-1])
+            prev  = float(df["Close"].iloc[-2])
+            chg   = (last - prev) / prev * 100
+            result[name] = {"last": last, "chg": round(chg, 2)}
         except Exception:
             result[name] = {"last": 0, "chg": 0}
     return result
@@ -188,25 +193,34 @@ try:
 except Exception:
     pass
 
-def _health_color(pct_to_sl: float, pct_to_tp1: float) -> tuple:
+def _health_color(pct_to_sl: float, pct_to_tp1: float, exit_urgency: str = "") -> tuple:
     """
     Traffic light berdasarkan jarak ke SL dan TP1.
     P03-W1: NEAR_TP1 dibedakan secara visual dari HEALTHY
     P03-X1: handle case harga sudah DI BAWAH SL (pct_to_sl negatif)
+    Opsi-2: exit_urgency dari ExitEngine override warna card jika lebih kritis
     """
     # P03-X1: SL sudah terlewat (harga < SL) — emergency state
     if pct_to_sl <= 0:
-        return "#7F1D1D", "🚨 SL TERLEWAT"   # dark red = exit sekarang
+        return "#7F1D1D", "🚨 SL TERLEWAT"
     elif pct_to_sl <= 3:
-        return "#EF4444", "🔴 NEAR SL"       # exit / tighten SL
+        return "#EF4444", "🔴 NEAR SL"
     elif pct_to_sl <= 8:
-        return "#F0B429", "🟡 WATCH"          # pantau, jangan tambah
+        return "#F0B429", "🟡 WATCH"
     elif pct_to_tp1 is not None and pct_to_tp1 <= 5:
-        return "#60A5FA", "🔵 NEAR TP1"       # biru = pertimbangkan partial exit
+        return "#60A5FA", "🔵 NEAR TP1"
     elif pct_to_tp1 is not None and pct_to_tp1 <= 12:
-        return "#00FF66", "🟢 ON TRACK"       # hijau = biarkan jalan
+        # Opsi-2: ExitEngine CRITICAL override card hijau → merah
+        if exit_urgency == "CRITICAL":
+            return "#EF4444", "🔴 EXIT SIGNAL"
+        return "#00FF66", "🟢 ON TRACK"
     else:
-        return "#00FF66", "🟢 HEALTHY"        # hijau = hold, TP masih jauh
+        # Opsi-2: ExitEngine override card HEALTHY
+        if exit_urgency == "CRITICAL":
+            return "#EF4444", "🔴 EXIT SIGNAL"
+        if exit_urgency == "WARNING":
+            return "#F0B429", "🟡 WATCH"
+        return "#00FF66", "🟢 HEALTHY"
 
 def _fetch_position_data(ticker: str) -> dict:
     """Fetch current price + EMA data untuk satu posisi."""
@@ -236,12 +250,14 @@ def _fetch_position_data(ticker: str) -> dict:
 
 # Manual position input
 with st.expander("➕ TAMBAH POSISI MANUAL", expanded=not _open_trades):
-    _ma1, _ma2, _ma3, _ma4, _ma5 = st.columns(5)
+    _ma1, _ma2, _ma3, _ma4, _ma5, _ma6 = st.columns(6)
     with _ma1: _man_ticker = st.text_input("Ticker", placeholder="BBCA", key="man_ticker").upper()
     with _ma2: _man_entry  = st.number_input("Entry (Rp)", 0.0, step=10.0, key="man_entry")
     with _ma3: _man_sl     = st.number_input("SL (Rp)", 0.0, step=10.0, key="man_sl")
     with _ma4: _man_tp1    = st.number_input("TP1 (Rp)", 0.0, step=10.0, key="man_tp1")
     with _ma5: _man_tp2    = st.number_input("TP2 (Rp)", 0.0, step=10.0, key="man_tp2")
+    with _ma6: _man_edate  = st.date_input("Tanggal Entry", value=date.today(),
+                                            max_value=date.today(), key="man_edate")
     if st.button("💾 SIMPAN & TRACK", key="btn_save_pos"):
         if _man_ticker and _man_entry > 0 and _man_sl > 0:
             try:
@@ -251,6 +267,7 @@ with st.expander("➕ TAMBAH POSISI MANUAL", expanded=not _open_trades):
                     entry_price = _man_entry,
                     sl_price    = _man_sl,
                     tp1_price   = _man_tp1,
+                    entry_date  = _man_edate.strftime("%Y-%m-%d"),
                     notes       = f"tp2={_man_tp2}" if _man_tp2 > 0 else "",
                 )
                 st.success(f"✅ {_man_ticker} tersimpan (ID #{_tid})")
@@ -335,7 +352,6 @@ else:
             except Exception:
                 pass
 
-        _health_c, _health_lbl = _health_color(_pct_to_sl, _pct_to_tp1)
         _pnl_col = "#00FF66" if _pnl_pct >= 0 else "#EF4444"
 
         # Pre-build colors for SL/TP1 cells — avoid nested ternary inside f-string
@@ -360,6 +376,28 @@ else:
             '<span style="color:#EF4444;font-size:var(--text-2xs)">EMA ⚠</span>'
         )
         _vol_col = "#00FF66" if _vol_r >= 1.5 else "#F0B429" if _vol_r >= 0.8 else "#EF4444"
+
+        # Opsi-2: baca exit_signals dari session_state untuk ticker ini
+        _cached_sigs  = st.session_state.get("exit_signals", [])
+        _ticker_sigs  = [s for s in _cached_sigs if s.ticker == _t]
+        _exit_urgency = ""
+        _exit_badges  = ""
+        if _ticker_sigs:
+            _urg_order   = {"CRITICAL": 0, "WARNING": 1, "INFO": 2}
+            _ticker_sigs.sort(key=lambda s: _urg_order.get(s.urgency, 3))
+            _exit_urgency = _ticker_sigs[0].urgency  # worst urgency
+            _badge_parts  = []
+            _badge_colors = {"CRITICAL": "#EF4444", "WARNING": "#F0B429", "INFO": "#4ADE80"}
+            for _s in _ticker_sigs:
+                _bc  = _badge_colors.get(_s.urgency, "#64748B")
+                _bp  = '<span style="background:' + _bc + '22;border:1px solid ' + _bc + '66;'
+                _bp += 'border-radius:3px;padding:1px 6px;font-family:Orbitron,monospace;'
+                _bp += 'font-size:var(--text-2xs);font-weight:700;color:' + _bc + ';margin-left:4px">'
+                _bp += _s.exit_type + '</span>'
+                _badge_parts.append(_bp)
+            _exit_badges = " ".join(_badge_parts)
+
+        _health_c, _health_lbl = _health_color(_pct_to_sl, _pct_to_tp1, _exit_urgency)
 
         with _pos_cols[_idx % 3]:
             st.markdown(f"""
@@ -419,6 +457,7 @@ padding:0.8rem 1rem;margin-bottom:0.6rem">
     <span>SL <b style="color:#EF4444">Rp{_sl:,.0f}</b></span>
     <span>Vol <b style="color:{_vol_col}">{_vol_r:.1f}×</b></span>
     {_ema_badge}
+    {_exit_badges}
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -524,7 +563,7 @@ else:
 
                 if _df is not None and _entry > 0 and _sl > 0:
                     # P03-W2: derive actual holding days dari entry_date → hari ini
-                    _holding_est = 10  # default fallback
+                    _holding_est = 14  # default fallback (2 minggu — lebih realistis dari 10)
                     if _edate:
                         try:
                             from datetime import date as _date

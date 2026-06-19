@@ -149,7 +149,7 @@ class ExitEngine:
                 ))
 
             # ── Priority 4: ATR Trailing Stop ─────────────────────────────────
-            peak_price = _f(high.iloc[-20:].max()) if len(high) >= 20 else last_close
+            peak_price = _f(high.iloc[-60:].max()) if len(high) >= 60 else _f(high.max())
             trail_sl   = round(peak_price - 2.0 * atr14, 0)
 
             if last_close < trail_sl and gain_pct < 5.0:
