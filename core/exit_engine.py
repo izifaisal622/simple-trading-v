@@ -82,10 +82,11 @@ class ExitEngine:
             volume    = df["Volume"]
             high      = df["High"]
 
-            last_close = _f(close.iloc[-1])
-            last_vol   = _f(volume.iloc[-1])
-            vol_ma20   = _f(volume.rolling(20).mean().iloc[-1])
-            ema13      = _f(close.ewm(span=13, adjust=False).mean().iloc[-1])
+            last_close   = _f(close.iloc[-1])
+            last_vol     = _f(volume.iloc[-1])
+            vol_ma20     = _f(volume.rolling(20).mean().iloc[-1])
+            ema13_series = close.ewm(span=13, adjust=False).mean()
+            ema13        = _f(ema13_series.iloc[-1])
 
             # ── Holding days ──────────────────────────────────────────────────
             try:
@@ -134,9 +135,15 @@ class ExitEngine:
                     reason_code   = "TP1_HIT",
                 ))
 
-            # ── Priority 3: EMA13 Breakdown ───────────────────────────────────
-            ema_exit = round(ema13 * 0.98, 0)
-            if last_close < ema_exit:
+            # ── Priority 3: EMA13 Breakdown ────────────────────────────────────────────
+            # FIX 8.7.6: guard is_new_break — hanya fire jika candle sebelumnya
+            # masih di atas ema_exit. Eliminasi false positive untuk posisi yang
+            # dibuka saat harga sudah di bawah EMA13 sejak hari pertama entry.
+            ema_exit      = round(ema13 * 0.98, 0)
+            ema_exit_prev = round(_f(ema13_series.iloc[-2]) * 0.98, 0) if len(ema13_series) >= 2 else ema_exit
+            prev_close    = _f(close.iloc[-2]) if len(close) >= 2 else last_close
+            is_new_break  = prev_close >= ema_exit_prev
+            if last_close < ema_exit and is_new_break:
                 signals.append(ExitSignal(
                     ticker        = ticker,
                     exit_type     = "EMA_BREAK",
