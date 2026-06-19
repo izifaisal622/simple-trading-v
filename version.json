@@ -1,8 +1,9 @@
 {
-  "version": "8.8.2",
+  "version": "8.8.3",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-19",
   "changelog": [
+    "8.8.3 — FIX: data_feed.py + pages/1_EMA_XBO.py — universe fetch rate limit; [1] EXCLUDED_TICKERS diperluas 4→29 ticker (suspended/delisted/no-data); IDX_FULL 150→126 ticker valid termasuk BBCA BBRI kembali; [2] _batch_download chunk 40→15 + delay 1s→3s + retry individual per ticker gagal; [3] Round 3 fallback sequential+delay 1s (dari ThreadPoolExecutor parallel yang justru trigger throttle); [4] UI progress indicator estimasi 5-10 menit agar user tidak tutup tab",
     "8.8.2 — FIX: pages/3_War_Room.py — tambah 'data per YYYY-MM-DD' di footer position card; root cause gap HEALTHY→EMA_BREAK: bukan bug logic tapi yfinance daily close tidak include post-market price (660) sampai hari berikutnya — card dan exit engine keduanya pakai data yang sama (close kemarin), bukan harga real-time; label transparansi agar user tahu harga di card adalah harga penutupan bukan live",
     "8.8.1 — CHORE: bump_version.py — tambah GitHub Release creation via API; --token arg atau env GH_TOKEN; tanpa token tetap jalan (tag push) dengan warning",
     "8.8.0 — CHORE: rewrite bump_version.py — auto-commit+push+tag, single-digit rollover (8.7.9→8.8.0 bukan 8.7.10)",
