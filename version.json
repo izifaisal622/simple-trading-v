@@ -1,8 +1,14 @@
 {
-  "version": "8.7.3",
+  "version": "8.7.9",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-19",
   "changelog": [
+    "8.7.9 — REDESIGN: single_stock_agent _compute_overall() — two-axis scoring system (EMA Score 0-50 × Whale Score 0-50 → grade via 2×2 matrix); eliminasi kontradiksi Follow Whale vs Stock Analysis; EMA+Whale kuat=A, EMA kuat only=B, Whale kuat only=C (MONITOR), keduanya lemah=D/F; bobot baru: EMA signal max 20, whale quality max 30, conviction max 12, pengeringan max 8; hapus Early Stage patch 8.7.7",
+    "8.7.8 — FIX: pages/4_Stock_Analysis.py — StreamlitInvalidNumberFormatError: format='%.0' (hilang huruf f) di 4 st.number_input (j_entry/j_sl/j_tp1/close_price); crash menyebabkan false 'Missing Submit Button' warning meski button ada di dalam with st.form block",
+    "8.7.7 — FIX: [1] whale_scanner lookback 90d→200d agar EMA89 konvergen (90d tidak cukup untuk warm-up EMA89 → false BULLISH); [2] single_stock_agent Whale Early Stage bonus +15 pts: conviction>=7 + pengeringan + AT/NEAR_FLOOR + bukan distribusi → Grade D→C (digantikan oleh redesign 8.7.9)",
+    "8.7.6 — FIX: core/exit_engine.py EMA_BREAK false positive — tambah guard is_new_break: signal hanya fire jika candle sebelumnya masih di atas ema_exit_prev; eliminasi kasus posisi dibuka di bawah EMA13 yang terus-menerus dapat CRITICAL; refactor ema13 scalar → ema13_series",
+    "8.7.5 — FIX: core/exit_engine.py TRAIL_HIT false positive — peak_price sebelumnya dari high.iloc[-60:].max() (blind 60 candle), bisa mencakup high sebelum posisi dibuka → trail_sl > entry → false CRITICAL; fix: filter df.index >= entry_date sebelum .max()",
+    "8.7.4 — FIX: trade_logger.py log_trade() — tambah parameter entry_date (default='') dengan fallback ke datetime.now(); War Room dan Page 01 EMA XBO keduanya pass entry_date= tapi signature tidak punya parameter ini → TypeError",
     "8.7.3 — FIX: assets_ui.py — visibilitas sidebar dan widget labels: .sb-nav-label (NAVIGATION/MARKET/SYSTEM) + .sb-stat (REGIME/LAST SCAN/IDX·LONG ONLY) + stWidgetLabel (Ticker/Entry/SL/TP1/TP2/Tanggal Entry) + DATA•TODAY inline — semua dari var(--text-dim)=#374151 naik ke #94A3B8",
     "8.7.2 — FIX: pages/3_War_Room.py — visibilitas text: label card (HARGA/P&L/SL/TP1/TP2/HARI) #374151→#94A3B8; value HARI/TP2/pesan exit/verdict desc #94A3B8/#64748B→#CBD5E1; footer card Entry·SL·Vol, label pre-market, regional tile, exit signal section semua naik dari var(--text-dim) ke #94A3B8 atau #CBD5E1",
     "8.7.1 — FIX: pages/3_War_Room.py — [A] GAP-1: form TAMBAH POSISI MANUAL tambah Tanggal Entry (6 kolom), pass ke log_trade; [A] GAP-2: holding_days_est fallback 10→14; [A] GAP-4: peak window ATR trail 20→60 candle (exit_engine.py); [FETCH] _fetch_regional() flatten MultiIndex yfinance — fix semua regional tampil 0; [B] Opsi-2: _health_color() terima exit_urgency dari cached session_state exit_signals — CRITICAL override card border+label jadi merah/EXIT SIGNAL, WARNING jadi kuning/WATCH; badge exit_type (TRAIL_HIT dll) muncul di footer card jika ExitEngine pernah dirun",
