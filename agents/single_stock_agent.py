@@ -521,6 +521,26 @@ def _compute_overall(a: StockAnalysis):
         pts += 4
         reasons.append(f"◈ MSCI MEDIUM T-{a.msci_t_minus}")
 
+    # ── Whale Early Stage bonus (Opsi B) ─────────────────────────────────────
+    # Setup: EMA belum signal (NONE/CORRECTING) tapi whale sudah akumulasi
+    # dengan conviction tinggi + pengeringan + dekat floor.
+    # Tanpa bonus ini, signal=NONE langsung hilang 30 pts EMA → Grade D,
+    # padahal secara whale framework ini adalah EARLY ACCUMULATION yang valid.
+    # Bonus max 15 pts → cukup untuk naik dari D ke C (MONITOR), tidak lebih.
+    # Guard: tidak fire jika ada distribusi/sell-off (whale_ok sudah cek itu).
+    _early_accum = (
+        a.whale_ok
+        and a.signal in ("NONE", "CORRECTING", "DEEP_CORRECT")
+        and a.conviction >= 7
+        and a.pengeringan
+        and a.entry_zone in ("AT_FLOOR", "NEAR_FLOOR")
+        and a.activity_type not in ("DISTRIBUSI", "SELL_OFF")
+    )
+    if _early_accum:
+        _early_bonus = 15
+        pts += _early_bonus
+        reasons.append(f"🐋 Early accumulation: conviction {a.conviction}/10 + pengeringan + {a.entry_zone}")
+
     # ── Clamp & grade ─────────────────────────────────────────────────────────
     a.overall_score = max(0, min(100, int(pts)))
 

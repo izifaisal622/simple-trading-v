@@ -1110,7 +1110,7 @@ class WhaleScanner:
                  vol_multiplier: float = None,
                  min_value_bn:   float = None,
                  ma_period:      int   = 20,
-                 lookback:       str   = "90d"):
+                 lookback:       str   = "200d"):  # FIX 8.7.7: 90d → 200d agar EMA89 konvergen
         # Apply director auto-patch (only if config has been customized)
         # If vol_multiplier/min_value_bn not explicitly passed,
         # let adapt_to_market() set optimal values for current regime
