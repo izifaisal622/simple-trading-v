@@ -97,6 +97,22 @@ def _fetch_with_backup(ticker: str, period: str, interval: str) -> Optional[pd.D
         return df_backup
 
     logger.warning(f"[DataFeed] {ticker} ALL sources failed")
+
+    # ── Auto-blacklist setelah 2x ALL sources failed ──────────────────────────
+    # Guard: 1x bisa rate limit. 2x = kemungkinan besar delisted/suspended.
+    base = ticker.replace(".JK", "")
+    _FAIL_COUNTS[base] = _FAIL_COUNTS.get(base, 0) + 1
+    if _FAIL_COUNTS[base] >= 2 and base not in DELISTED_TICKERS:
+        DELISTED_TICKERS.add(base)
+        _save_delisted(DELISTED_TICKERS, _FAIL_COUNTS)
+        logger.warning(
+            f"[DataFeed] {base} di-blacklist otomatis (ALL sources failed 2x) "
+            f"→ disimpan ke delisted_tickers.json"
+        )
+    elif _FAIL_COUNTS[base] == 1:
+        # Simpan counter tapi belum blacklist
+        _save_delisted(DELISTED_TICKERS, _FAIL_COUNTS)
+
     return None
 
 
@@ -336,25 +352,33 @@ EXCLUDED_TICKERS = {
 # Disimpan di logs/delisted_tickers.json agar persistent antar session.
 _DELISTED_FILE = Path(__file__).resolve().parent.parent / "logs" / "delisted_tickers.json"
 
-def _load_delisted() -> set:
+def _load_delisted() -> tuple:
+    """Return (delisted_set, fail_counter_dict)."""
     try:
         if not _DELISTED_FILE.exists():
-            return set()
-        return set(json.loads(_DELISTED_FILE.read_text(encoding="utf-8")).get("tickers", []))
+            return set(), {}
+        data = json.loads(_DELISTED_FILE.read_text(encoding="utf-8"))
+        return set(data.get("tickers", [])), data.get("fail_counts", {})
     except Exception:
-        return set()
+        return set(), {}
 
-def _save_delisted(tickers: set) -> None:
+def _save_delisted(tickers: set, fail_counts: dict = None) -> None:
     try:
         _DELISTED_FILE.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "tickers":     sorted(tickers),
+            "fail_counts": fail_counts or {},
+            "note": "Auto-populated saat ALL sources failed >= 2x. Edit manual jika salah."
+        }
         _DELISTED_FILE.write_text(
-            json.dumps({"tickers": sorted(tickers)}, indent=2),
+            json.dumps(payload, indent=2),
             encoding="utf-8",
         )
     except Exception as exc:
         logger.debug(f"[DataFeed] delisted save failed: {exc}")
 
-DELISTED_TICKERS: set = _load_delisted()
+_delisted_raw, _FAIL_COUNTS = _load_delisted()
+DELISTED_TICKERS: set = _delisted_raw
 
 IDX_FULL = [
     "AALI","ACES","ADHI","ADRO","AGII","AKRA","AMRT","ANTM","ARNA","ASII",
@@ -594,6 +618,9 @@ class DataFeed:
         base_ticker = ticker.replace(".JK", "")
         if base_ticker in EXCLUDED_TICKERS:
             logger.warning(f"[DataFeed] {ticker} in EXCLUDED_TICKERS")
+        if base_ticker in DELISTED_TICKERS:
+            logger.debug(f"[DataFeed] {ticker} in DELISTED_TICKERS — skip fetch")
+            return None
 
         _period      = period   or self.period
         _interval    = interval or self.timeframe
