@@ -1,8 +1,9 @@
 {
-  "version": "8.8.0",
+  "version": "8.8.1",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-19",
   "changelog": [
+    "8.8.1 — CHORE: bump_version.py — tambah GitHub Release creation via API; --token arg atau env GH_TOKEN; tanpa token tetap jalan (tag push) dengan warning",
     "8.8.0 — CHORE: rewrite bump_version.py — auto-commit+push+tag, single-digit rollover (8.7.9→8.8.0 bukan 8.7.10)",
     "8.7.9 — REDESIGN: single_stock_agent _compute_overall() — two-axis scoring system (EMA Score 0-50 × Whale Score 0-50 → grade via 2×2 matrix); eliminasi kontradiksi Follow Whale vs Stock Analysis; EMA+Whale kuat=A, EMA kuat only=B, Whale kuat only=C (MONITOR), keduanya lemah=D/F; bobot baru: EMA signal max 20, whale quality max 30, conviction max 12, pengeringan max 8; hapus Early Stage patch 8.7.7",
     "8.7.8 — FIX: pages/4_Stock_Analysis.py — StreamlitInvalidNumberFormatError: format='%.0' (hilang huruf f) di 4 st.number_input (j_entry/j_sl/j_tp1/close_price); crash menyebabkan false 'Missing Submit Button' warning meski button ada di dalam with st.form block",
