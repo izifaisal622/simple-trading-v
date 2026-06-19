@@ -149,7 +149,15 @@ class ExitEngine:
                 ))
 
             # ── Priority 4: ATR Trailing Stop ─────────────────────────────────
-            peak_price = _f(high.iloc[-60:].max()) if len(high) >= 60 else _f(high.max())
+            # FIX 8.7.5: peak diambil sejak entry_date, bukan 60 candle blind
+            # Sebelumnya high.iloc[-60:].max() bisa mencakup high historis sebelum posisi dibuka
+            # → trail_sl > entry_price → TRAIL_HIT CRITICAL false positive untuk posisi baru
+            try:
+                _entry_ts  = pd.to_datetime(entry_date)
+                _high_since = high[df.index >= _entry_ts]
+                peak_price  = _f(_high_since.max()) if not _high_since.empty else last_close
+            except Exception:
+                peak_price  = _f(high.iloc[-60:].max()) if len(high) >= 60 else _f(high.max())
             trail_sl   = round(peak_price - 2.0 * atr14, 0)
 
             if last_close < trail_sl and gain_pct < 5.0:
