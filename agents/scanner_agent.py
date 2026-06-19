@@ -234,7 +234,49 @@ class ScannerAgent:
 
         return r
 
-    def daily_scan(self, mode: str = "full") -> list:
+    # ── Checkpoint file untuk resume scan ────────────────────────────────────
+    _CHECKPOINT_FILE = LOGS_DIR / "scan_checkpoint.json"
+
+    def _ckpt_load(self) -> dict:
+        """Load checkpoint. Return empty dict jika tidak ada atau beda hari."""
+        try:
+            if not self._CHECKPOINT_FILE.exists():
+                return {}
+            ckpt = json.loads(self._CHECKPOINT_FILE.read_text(encoding="utf-8"))
+            today = datetime.now().strftime("%Y-%m-%d")
+            if ckpt.get("date") != today:
+                logger.info("[Scanner] Checkpoint dari hari lain — mulai fresh")
+                return {}
+            return ckpt
+        except Exception:
+            return {}
+
+    def _ckpt_save(self, ckpt: dict) -> None:
+        """Simpan checkpoint ke file — atomic write agar tidak corrupt."""
+        try:
+            tmp = self._CHECKPOINT_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(ckpt, default=str), encoding="utf-8")
+            tmp.replace(self._CHECKPOINT_FILE)
+        except Exception as exc:
+            logger.debug(f"[Scanner] checkpoint save failed: {exc}")
+
+    def daily_scan(
+        self,
+        mode: str = "full",
+        progress_cb=None,   # callback(done: int, total: int, ticker: str, found: int)
+    ) -> list:
+        """
+        Sequential scan dengan checkpoint/resume.
+
+        progress_cb dipanggil setelah setiap ticker selesai:
+            progress_cb(done=10, total=179, ticker="BBCA", found=3)
+        Caller (Streamlit page) bisa update UI dari callback ini.
+
+        Resume: jika scan hari ini sudah sebagian selesai (crash/interrupt),
+        ticker yang sudah di-scan akan di-skip. Hasil sebelumnya digabung.
+        """
+        import time
+
         regime_data  = get_ihsg_regime()
         cycle        = regime_data.get("cycle", "UNKNOWN")
         ihsg_bullish = cycle in (
@@ -245,26 +287,67 @@ class ScannerAgent:
         universe = get_dynamic_universe() if mode == "full" else get_idx_universe(mode)
         logger.info(f"[Scanner] Regime: {cycle} | Universe: {len(universe)} | Bull: {ihsg_bullish}")
 
-        logger.info("[Scanner] Fetching weekly data (3y)...")
-        weekly_batch = self.feed.fetch_batch(universe, max_workers=8)
-        self._cache  = {k: _flatten_multiindex(v) for k, v in weekly_batch.items()}
+        # ── Load checkpoint (resume jika ada) ────────────────────────────────
+        ckpt         = self._ckpt_load()
+        done_tickers = set(ckpt.get("done", []))
+        results      = ckpt.get("results", [])
+        pending      = [t for t in universe if t not in done_tickers]
 
-        logger.info("[Scanner] Fetching daily data (60d)...")
-        daily_batch   = self.feed_d.fetch_batch(universe, max_workers=8)
-        self._cache_d = {k: _flatten_multiindex(v) for k, v in daily_batch.items()}
+        if done_tickers:
+            logger.info(
+                f"[Scanner] Resume: {len(done_tickers)} sudah selesai, "
+                f"{len(pending)} sisa dari {len(universe)} total"
+            )
+        else:
+            logger.info(f"[Scanner] Fresh scan: {len(universe)} tickers")
 
-        results: list = []
-        with ThreadPoolExecutor(max_workers=12) as exe:
-            fut_map = {exe.submit(self._scan_ticker, t, cycle): t for t in universe}
-            for fut in as_completed(fut_map):
+        # ── Fetch batch hanya untuk pending tickers ───────────────────────────
+        if pending:
+            logger.info(f"[Scanner] Fetching weekly data untuk {len(pending)} ticker...")
+            weekly_batch = self.feed.fetch_batch(pending, max_workers=4)
+            self._cache.update({k: _flatten_multiindex(v) for k, v in weekly_batch.items()})
+
+            logger.info(f"[Scanner] Fetching daily data untuk {len(pending)} ticker...")
+            daily_batch = self.feed_d.fetch_batch(pending, max_workers=4)
+            self._cache_d.update({k: _flatten_multiindex(v) for k, v in daily_batch.items()})
+
+        # ── Sequential scan dengan checkpoint per ticker ──────────────────────
+        total = len(universe)
+        for ticker in pending:
+            try:
+                r = self._scan_ticker(ticker, cycle)
+                if r is not None:
+                    results.append(r)
+            except Exception as exc:
+                logger.debug(f"[Scanner] {ticker}: {exc}")
+
+            done_tickers.add(ticker)
+            done_count = len(done_tickers)
+
+            # Simpan checkpoint setiap ticker
+            self._ckpt_save({
+                "date":    datetime.now().strftime("%Y-%m-%d"),
+                "total":   total,
+                "done":    sorted(done_tickers),
+                "results": results,
+                "status":  "in_progress",
+            })
+
+            # Progress callback untuk UI
+            if progress_cb:
                 try:
-                    r = fut.result()
-                    if r is not None:
-                        results.append(r)
-                except Exception as exc:
-                    logger.debug(f"[Scanner] {fut_map[fut]}: {exc}")
+                    progress_cb(
+                        done=done_count,
+                        total=total,
+                        ticker=ticker,
+                        found=len(results),
+                    )
+                except Exception:
+                    pass
 
-        # Sort: STRONG_BREAKOUT → BREAKOUT → WATCHLIST → score desc
+            logger.debug(f"[Scanner] {done_count}/{total} — {ticker}")
+
+        # ── Sort hasil ────────────────────────────────────────────────────────
         _sig_rank = {"STRONG_BREAKOUT": 0, "BREAKOUT": 1, "WATCHLIST": 2}
         results.sort(key=lambda x: (
             _sig_rank.get(x.get("signal", ""), 3),
@@ -272,6 +355,15 @@ class ScannerAgent:
         ))
 
         self.save_results(results, regime_data)
+
+        # Tandai checkpoint selesai
+        self._ckpt_save({
+            "date":    datetime.now().strftime("%Y-%m-%d"),
+            "total":   total,
+            "done":    sorted(done_tickers),
+            "results": results,
+            "status":  "complete",
+        })
 
         n_strong  = sum(1 for r in results if r.get("signal") == "STRONG_BREAKOUT")
         n_bo      = sum(1 for r in results if r.get("signal") == "BREAKOUT")

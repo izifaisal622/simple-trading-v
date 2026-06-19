@@ -315,7 +315,21 @@ def _merge_incremental(
 # UNIVERSE LISTS  (unchanged from V4)
 # ─────────────────────────────────────────────────────────────────────────────
 
-EXCLUDED_TICKERS = {"SRIL", "WSKT", "BKSL", "MPPA"}
+# Ticker yang dikecualikan dari scan:
+# - Confirmed delisted atau suspended >24 bulan per Jun 2026
+# - WIKA: suspended KSEI + gagal bayar obligasi
+# - BUMI, ENRG, DEWA: suspended panjang + financial distress
+# - KJEN, HEAL, NISP, LEAD, FIRE, WIFI, WOOD, PSKT: tidak ada data yfinance
+EXCLUDED_TICKERS = {
+    # Original
+    "SRIL", "WSKT", "BKSL", "MPPA",
+    # Suspended/delisted confirmed Jun 2026
+    "WIKA", "BUMI", "ENRG", "DEWA",
+    # Tidak ada data yfinance (suspended/private/ticker error)
+    "KJEN", "HEAL", "LEAD", "FIRE", "WIFI", "WOOD",
+    "RATU", "TRIO", "ZINC", "LABA", "BOAT", "HILL", "ARKO", "CARE",
+    "AXIO", "MITI", "RAJA", "OMRE", "BUVA", "KIJA", "FLMC",
+}
 
 # ── Delisted ticker registry ──────────────────────────────────────────────────
 # Auto-populated saat fetch_dynamic_movers mendeteksi "possibly delisted".
@@ -729,20 +743,45 @@ class DataFeed:
                 return out
 
             def _batch_download(ticker_list: list, p: str) -> dict:
-                """Chunk menjadi grup 40 untuk hindari Yahoo rate limit."""
+                """
+                Chunk menjadi grup kecil dengan delay untuk hindari Yahoo rate limit.
+                FIX 8.8.3: chunk 15 (dari 40) + delay 3s antar chunk + retry individual
+                untuk ticker yang gagal di batch.
+                """
                 import time
-                _CHUNK = 40
+                _CHUNK      = 15   # Lebih kecil dari 40 — Yahoo lebih toleran
+                _CHUNK_DELAY = 3.0  # Detik antar chunk — cukup untuk reset throttle
                 out = {}
                 chunks = [ticker_list[i:i+_CHUNK] for i in range(0, len(ticker_list), _CHUNK)]
+                logger.info(f"[DataFeed] batch_download: {len(ticker_list)} tickers → {len(chunks)} chunks @ {_CHUNK} each")
                 for idx, chunk in enumerate(chunks):
                     if idx > 0:
-                        time.sleep(1)  # jeda antar chunk hindari throttle
+                        time.sleep(_CHUNK_DELAY)
                     try:
                         raw = yf.download(
                             " ".join(chunk), period=p, interval=_interval,
                             progress=False, auto_adjust=True, group_by="ticker"
                         )
-                        out.update(_extract_from_raw(raw, chunk))
+                        chunk_result = _extract_from_raw(raw, chunk)
+                        out.update(chunk_result)
+                        failed_in_chunk = [t for t in chunk if t not in chunk_result]
+                        if failed_in_chunk:
+                            logger.debug(f"[DataFeed] chunk {idx+1}: {len(failed_in_chunk)} gagal → retry individual")
+                            time.sleep(1.0)
+                            for t in failed_in_chunk:
+                                try:
+                                    raw_single = yf.download(
+                                        t, period=p, interval=_interval,
+                                        progress=False, auto_adjust=True
+                                    )
+                                    if raw_single is not None and len(raw_single) >= 20:
+                                        if isinstance(raw_single.columns, pd.MultiIndex):
+                                            raw_single.columns = raw_single.columns.get_level_values(0)
+                                        out[t] = raw_single
+                                except Exception:
+                                    pass
+                                time.sleep(0.5)
+                        logger.debug(f"[DataFeed] chunk {idx+1}/{len(chunks)}: {len(chunk_result)}/{len(chunk)} OK")
                     except Exception as exc:
                         logger.debug(f"[DataFeed] batch chunk {idx+1}/{len(chunks)}: {exc}")
                 return out
@@ -758,20 +797,18 @@ class DataFeed:
                     missing = [t for t in needs_full if t not in batch_res]
 
             if missing:
-                # [FD-2 FIX] Gunakan _period bukan hardcode "1y".
-                # Untuk weekly feed (_period="3y"), "1y" hanya ~52 bar —
-                # di bawah threshold konvergensi EMA89 weekly (89 bar ~1.7 tahun).
-                logger.info(f"[DataFeed] batch round 3: {len(missing)} → individual {_period}")
-                with ThreadPoolExecutor(max_workers=max_workers) as exe:
-                    fut_map = {exe.submit(self.fetch, t, _period, _interval): t for t in missing}
-                    for fut in as_completed(fut_map):
-                        t = fut_map[fut]
-                        try:
-                            df = fut.result()
-                            if df is not None:
-                                batch_res[t] = df
-                        except Exception as exc:
-                            logger.debug(f"[DataFeed] round3 {t}: {exc}")
+                # FIX 8.8.3: Round 3 sequential dengan delay 1s per ticker
+                # ThreadPoolExecutor parallel di sini justru trigger throttle lebih parah
+                import time as _time
+                logger.info(f"[DataFeed] batch round 3: {len(missing)} → sequential individual {_period}")
+                for t in missing:
+                    try:
+                        df = self.fetch(t, _period, _interval)
+                        if df is not None:
+                            batch_res[t] = df
+                    except Exception as exc:
+                        logger.debug(f"[DataFeed] round3 {t}: {exc}")
+                    _time.sleep(1.0)  # 1s antar request — hindari throttle
 
             for t, df in batch_res.items():
                 if df is not None and len(df) >= 20:
@@ -1096,23 +1133,34 @@ def fetch_dynamic_movers(max_tickers: int = _MOVERS_MAX) -> list:
 
 def get_dynamic_universe(include_movers: bool = True) -> list:
     """
-    Merged universe: IDX_FULL (static) + top movers (dynamic), deduplicated, capped.
+    Dynamic universe dari idx_pool.json (LQ45+IDX80+IDXKompas100+IDXGrowth30+midcap).
+    Fallback ke IDX_FULL jika file tidak ada.
 
-    Args:
-        include_movers: set False to skip dynamic fetch (e.g. offline mode).
-
-    Returns list of bare tickers (no .JK suffix).
+    FIX 8.8.4: ganti hardcode IDX_FULL 126 ticker dengan pool JSON 179 ticker.
+    Pool di-update manual di data/idx_pool.json saat ada IPO baru / delisting.
     """
-    base    = list(IDX_FULL)
-    movers  = fetch_dynamic_movers() if include_movers else []
+    # ── Load dari idx_pool.json ───────────────────────────────────────────────
+    _pool_file = Path(__file__).resolve().parent.parent / "data" / "idx_pool.json"
+    pool_tickers = []
+    if _pool_file.exists():
+        try:
+            _pool_data   = json.loads(_pool_file.read_text(encoding="utf-8"))
+            pool_tickers = _pool_data.get("tickers", [])
+            # Buang yang ada di EXCLUDED_TICKERS
+            pool_tickers = [t for t in pool_tickers if t not in EXCLUDED_TICKERS]
+            logger.info(f"[Universe] idx_pool.json: {len(pool_tickers)} ticker valid")
+        except Exception as exc:
+            logger.warning(f"[Universe] idx_pool.json load failed: {exc} → fallback IDX_FULL")
 
-    # Movers first so they get priority in ordering (scanner sorts by signal anyway)
-    combined = list(dict.fromkeys(movers + base))[:_UNIVERSE_CAP]  # movers priority
-    new_tickers = [t for t in movers if t not in set(IDX_FULL)]
+    base = pool_tickers if pool_tickers else list(IDX_FULL)
 
+    # ── Tambah movers dari hari ini (opsional) ────────────────────────────────
+    movers = fetch_dynamic_movers() if include_movers else []
+    new_tickers = [t for t in movers if t not in set(base)]
     if new_tickers:
-        logger.info(f"[Universe] +{len(new_tickers)} new tickers from movers: {new_tickers}")
+        logger.info(f"[Universe] +{len(new_tickers)} movers baru: {new_tickers}")
 
+    combined = list(dict.fromkeys(movers + base))[:_UNIVERSE_CAP]
     return combined
 
 

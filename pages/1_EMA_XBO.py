@@ -646,38 +646,86 @@ with ci:
     </p>""", unsafe_allow_html=True)
 
 if run_scan:
-    with st.spinner("◈ SCANNING IDX UNIVERSE — V4 OPTIMIZED..."):
+    # ── Progress UI untuk long-running scan ──────────────────────────────────
+    from agents.scanner_agent import ScannerAgent
+    from config.strategy_config import StrategyConfig
+    from core.data_feed import get_ihsg_regime
+
+    # Cek apakah ada checkpoint hari ini (resume)
+    import json as _json
+    from pathlib import Path as _Path
+    from datetime import datetime as _dt
+    _ckpt_file  = _Path("logs/scan_checkpoint.json")
+    _ckpt       = {}
+    _is_resume  = False
+    if _ckpt_file.exists():
         try:
-            from config.strategy_config import StrategyConfig
-            from agents.scanner_agent   import ScannerAgent
-            from core.data_feed         import get_ihsg_regime
-            cfg     = StrategyConfig.load()
-            scanner = ScannerAgent(cfg)
-            results = scanner.daily_scan()
-            regime_ = get_ihsg_regime()
-            # Merge: preserve whale_results dari scan sebelumnya
-            existing = {}
-            if RESULTS_FILE.exists():
-                try: existing = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
-                except Exception: pass
-            existing.update({
-                "date":        datetime.now().strftime("%Y-%m-%d"),
-                "scan_date":   datetime.now().strftime("%Y-%m-%d"),
-                "regime":      regime_,
-                "ema_total":   len(results),
-                "universe":    len(results),
-                "ema_results": results,
-            })
-            # Preserve whale keys if not updated this session
-            existing.setdefault("whale_results", [])
-            existing.setdefault("whale_total", 0)
-            existing.setdefault("whale_context", {})
-            RESULTS_FILE.write_text(json.dumps(existing, default=str, indent=2), encoding="utf-8")
-            st.success(f"✅ Scan selesai: {len(results)} setups ditemukan.")
-            st.rerun()
-        except Exception as e:
-            st.error(f"Error: {e}")
-            import traceback; traceback.print_exc()
+            _ckpt = _json.loads(_ckpt_file.read_text(encoding="utf-8"))
+            if _ckpt.get("date") == _dt.now().strftime("%Y-%m-%d") and _ckpt.get("status") == "in_progress":
+                _is_resume = True
+        except Exception:
+            pass
+
+    _resume_label = " (RESUME)" if _is_resume else ""
+    st.info(
+        f"◈ **SCANNING IDX UNIVERSE{_resume_label}** — ~179 ticker · "
+        "Rate-limit safe mode · **Jangan tutup atau refresh tab ini.**",
+        icon="⏳"
+    )
+
+    # Progress bar + status placeholder
+    _prog_bar  = st.progress(0, text="Memulai scan...")
+    _prog_text = st.empty()
+
+    try:
+        cfg     = StrategyConfig.load()
+        scanner = ScannerAgent(cfg)
+
+        def _on_progress(done: int, total: int, ticker: str, found: int):
+            pct  = done / total if total > 0 else 0
+            eta_s = int((total - done) * 4)  # estimasi 4 detik per ticker
+            eta_m = eta_s // 60
+            eta_s = eta_s % 60
+            _prog_bar.progress(
+                pct,
+                text=f"◈ {done}/{total} — {ticker} — {found} signal ditemukan"
+            )
+            _prog_text.markdown(
+                f"<span style='font-family:monospace;font-size:0.8rem;color:#94A3B8'>"
+                f"Selesai: **{done}** / {total} ticker · "
+                f"Signal: **{found}** · "
+                f"ETA: ~{eta_m}m {eta_s:02d}s"
+                f"</span>",
+                unsafe_allow_html=True,
+            )
+
+        results = scanner.daily_scan(progress_cb=_on_progress)
+        _prog_bar.progress(1.0, text="✓ Scan selesai!")
+        _prog_text.empty()
+        regime_ = get_ihsg_regime()
+        # Merge: preserve whale_results dari scan sebelumnya
+        existing = {}
+        if RESULTS_FILE.exists():
+            try: existing = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
+            except Exception: pass
+        existing.update({
+            "date":        datetime.now().strftime("%Y-%m-%d"),
+            "scan_date":   datetime.now().strftime("%Y-%m-%d"),
+            "regime":      regime_,
+            "ema_total":   len(results),
+            "universe":    len(results),
+            "ema_results": results,
+        })
+        # Preserve whale keys if not updated this session
+        existing.setdefault("whale_results", [])
+        existing.setdefault("whale_total", 0)
+        existing.setdefault("whale_context", {})
+        RESULTS_FILE.write_text(json.dumps(existing, default=str, indent=2), encoding="utf-8")
+        st.success(f"✅ Scan selesai: {len(results)} setups ditemukan.")
+        st.rerun()
+    except Exception as e:
+        st.error(f"Error: {e}")
+        import traceback; traceback.print_exc()
 
 # Results
 if ema_results:
