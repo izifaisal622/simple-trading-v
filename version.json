@@ -1,8 +1,9 @@
 {
-  "version": "8.8.6",
+  "version": "8.8.7",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-19",
   "changelog": [
+    "8.8.7 — FIX: remove ASTRA+MFIN dari idx_pool.json (confirmed delisted/no-data dari terminal); FREN+MASA sudah di 8.8.6; pool: 178→176 ticker",
     "8.8.6 — FIX: core/data_feed.py auto-blacklist ticker gagal fetch; fail counter per ticker disimpan ke logs/delisted_tickers.json; blacklist otomatis setelah ALL sources failed >= 2x (1x bisa rate limit, 2x = kemungkinan delisted/suspended); fetch() skip DELISTED_TICKERS tanpa network call; _save_delisted extended untuk support fail_counts dict; logs/delisted_tickers.json di-gitignore (lokal per machine); remove FREN+MASA dari idx_pool.json (confirmed delisted dari screenshot)",
     "8.8.5 — FEAT: War Room Mover Alert — fetch ringan Close+Vol 5 hari dari pool 180 ticker; activity_score = vol_ratio*0.5 + abs(pct_5d)*0.3 + abs(pct_1d)*0.2; top 15 ditampilkan dengan badge IN SCAN jika sudah ada di hasil scan hari ini; cache 30 menit; manual trigger tombol CEK MOVER; tidak mengubah scan logic — pure informational early attention; tambah BUKK ke idx_pool.json",
     "8.8.4 — FEAT: dynamic universe 179 ticker + scan checkpoint/resume + live progress UI; [1] data/idx_pool.json: pool 179 ticker LQ45+IDX80+IDXKompas100+IDXGrowth30+midcap dikurasi Jun2026; [2] get_dynamic_universe() baca idx_pool.json, fallback IDX_FULL; [3] scanner_agent daily_scan: sequential+checkpoint per ticker ke logs/scan_checkpoint.json, resume otomatis jika crash/interrupt hari yang sama, progress_cb callback; [4] EMA_XBO page: progress bar live + ETA + auto-detect resume; scan 179 ticker ~12 menit, crash tidak mulai dari awal",

@@ -1,7 +1,7 @@
 {
   "version": "2026-06",
   "description": "IDX Dynamic Universe \u2014 LQ45+IDX80+IDXKompas100+IDXGrowth30+midcap liquid, dikurasi Jun 2026",
-  "total": 178,
+  "total": 176,
   "tickers": [
     "AALI",
     "ACES",
@@ -21,7 +21,6 @@
     "ASII",
     "ASRI",
     "ASSA",
-    "ASTRA",
     "AUTO",
     "BABP",
     "BACA",
@@ -121,7 +120,6 @@
     "MDKA",
     "MEDC",
     "MERK",
-    "MFIN",
     "MIDI",
     "MIKA",
     "MKPI",
