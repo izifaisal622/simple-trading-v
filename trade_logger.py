@@ -89,11 +89,13 @@ def log_trade(
     mcf_score:    int   = 0,          # NEW V4
     strategy:     str   = "EMA_XBO",
     notes:        str   = "",
+    entry_date:   str   = "",         # FIX 8.7.4: support custom entry date
 ) -> int:
     """
     Catat trade baru yang DIBUKA.
     Mengembalikan trade_id untuk digunakan saat close_trade().
     """
+    entry_date_val = entry_date if entry_date else datetime.now().strftime("%Y-%m-%d")
     init_db()
     conn = sqlite3.connect(str(DB_PATH))
     cur = conn.execute("""
@@ -103,7 +105,7 @@ def log_trade(
         VALUES (?,?,?,?,?,?,?,?,?,?,?)
     """, (
         ticker,
-        datetime.now().strftime("%Y-%m-%d"),
+        entry_date_val,
         entry_price,
         sl_price,
         "OPEN",
