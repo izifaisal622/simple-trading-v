@@ -1,8 +1,9 @@
 {
-  "version": "8.8.4",
+  "version": "8.8.5",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-19",
   "changelog": [
+    "8.8.5 — FEAT: War Room Mover Alert — fetch ringan Close+Vol 5 hari dari pool 180 ticker; activity_score = vol_ratio*0.5 + abs(pct_5d)*0.3 + abs(pct_1d)*0.2; top 15 ditampilkan dengan badge IN SCAN jika sudah ada di hasil scan hari ini; cache 30 menit; manual trigger tombol CEK MOVER; tidak mengubah scan logic — pure informational early attention; tambah BUKK ke idx_pool.json",
     "8.8.4 — FEAT: dynamic universe 179 ticker + scan checkpoint/resume + live progress UI; [1] data/idx_pool.json: pool 179 ticker LQ45+IDX80+IDXKompas100+IDXGrowth30+midcap dikurasi Jun2026; [2] get_dynamic_universe() baca idx_pool.json, fallback IDX_FULL; [3] scanner_agent daily_scan: sequential+checkpoint per ticker ke logs/scan_checkpoint.json, resume otomatis jika crash/interrupt hari yang sama, progress_cb callback; [4] EMA_XBO page: progress bar live + ETA + auto-detect resume; scan 179 ticker ~12 menit, crash tidak mulai dari awal",
     "8.8.3 — FIX: data_feed.py + pages/1_EMA_XBO.py — universe fetch rate limit; [1] EXCLUDED_TICKERS diperluas 4→29 ticker (suspended/delisted/no-data); IDX_FULL 150→126 ticker valid termasuk BBCA BBRI kembali; [2] _batch_download chunk 40→15 + delay 1s→3s + retry individual per ticker gagal; [3] Round 3 fallback sequential+delay 1s (dari ThreadPoolExecutor parallel yang justru trigger throttle); [4] UI progress indicator estimasi 5-10 menit agar user tidak tutup tab",
     "8.8.2 — FIX: pages/3_War_Room.py — tambah 'data per YYYY-MM-DD' di footer position card; root cause gap HEALTHY→EMA_BREAK: bukan bug logic tapi yfinance daily close tidak include post-market price (660) sampai hari berikutnya — card dan exit engine keduanya pakai data yang sama (close kemarin), bukan harga real-time; label transparansi agar user tahu harga di card adalah harga penutupan bukan live",

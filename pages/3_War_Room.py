@@ -180,6 +180,164 @@ border-radius:var(--r-sm);padding:0.5rem 0.7rem;text-align:center">
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
+# SECTION 1.5 — MOVER ALERT (semi-dynamic dari pool 180 ticker)
+# Fetch ringan: Close + Volume 5 hari untuk semua ticker di pool
+# Tampilkan top mover hari ini sebagai early attention signal
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("<br>", unsafe_allow_html=True)
+sec_head("◆ MOVER ALERT — POOL HARI INI")
+
+@st.cache_data(ttl=1800)  # cache 30 menit — cukup untuk satu sesi pagi
+def _fetch_movers() -> list:
+    """
+    Fetch Close + Volume 5 hari untuk semua ticker di idx_pool.json.
+    Return list of dicts sorted by activity_score desc.
+    activity_score = vol_ratio * 0.5 + abs(pct_5d) * 0.3 + abs(pct_1d) * 0.2
+    """
+    import yfinance as yf
+    import json as _json
+    from pathlib import Path as _Path
+
+    pool_file = _Path(__file__).parent.parent / "data" / "idx_pool.json"
+    if not pool_file.exists():
+        return []
+    tickers = _json.loads(pool_file.read_text())["tickers"]
+    full    = [t + ".JK" for t in tickers]
+
+    try:
+        raw = yf.download(
+            " ".join(full),
+            period="1mo", interval="1d",
+            progress=False, auto_adjust=True,
+            group_by="ticker",
+        )
+    except Exception:
+        return []
+
+    results = []
+    for t in tickers:
+        tk = t + ".JK"
+        try:
+            if isinstance(raw.columns, pd.MultiIndex):
+                if tk not in raw.columns.get_level_values(0):
+                    continue
+                df = raw[tk].dropna(how="all")
+            else:
+                df = raw.dropna(how="all")
+            if df is None or len(df) < 5:
+                continue
+
+            close  = df["Close"]
+            volume = df["Volume"]
+
+            last_close  = float(close.iloc[-1])
+            prev_close  = float(close.iloc[-2])
+            close_5d    = float(close.iloc[-6]) if len(close) >= 6 else float(close.iloc[0])
+            last_vol    = float(volume.iloc[-1])
+            vol_ma20    = float(volume.rolling(20).mean().iloc[-1])
+
+            pct_1d  = (last_close - prev_close) / prev_close * 100 if prev_close > 0 else 0
+            pct_5d  = (last_close - close_5d)   / close_5d   * 100 if close_5d > 0  else 0
+            vol_r   = last_vol / vol_ma20 if vol_ma20 > 0 else 0
+
+            activity = vol_r * 0.5 + abs(pct_5d) * 0.3 + abs(pct_1d) * 0.2
+
+            results.append({
+                "ticker":    t,
+                "close":     last_close,
+                "pct_1d":    pct_1d,
+                "pct_5d":    pct_5d,
+                "vol_ratio": vol_r,
+                "activity":  activity,
+            })
+        except Exception:
+            continue
+
+    results.sort(key=lambda x: x["activity"], reverse=True)
+    return results
+
+# ── Render Mover Alert ────────────────────────────────────────────────────────
+_col_refresh, _col_info = st.columns([1, 4])
+with _col_refresh:
+    _do_mover = st.button("◉ CEK MOVER", key="mover_refresh", use_container_width=True)
+with _col_info:
+    st.markdown(
+        "<span style='font-family:Share Tech Mono,monospace;font-size:0.75rem;"
+        "color:#475569'>Fetch ringan Close+Vol 5 hari dari pool 180 ticker · "
+        "Cache 30 menit · Bukan sinyal entry — hanya early attention</span>",
+        unsafe_allow_html=True
+    )
+
+if _do_mover or st.session_state.get("mover_loaded"):
+    st.session_state["mover_loaded"] = True
+    with st.spinner("Fetching mover data..."):
+        _movers = _fetch_movers()
+
+    if _movers:
+        # Tampilkan top 15
+        _top15    = _movers[:15]
+        _in_scan  = set()
+        try:
+            import json as _j
+            from pathlib import Path as _pp
+            _rf = _pp(__file__).parent.parent / "logs" / "daily_results.json"
+            if _rf.exists():
+                _rd = _j.loads(_rf.read_text())
+                _in_scan = {r.get("ticker","").replace(".JK","")
+                            for r in _rd.get("ema_results", [])}
+        except Exception:
+            pass
+
+        # Build HTML rows
+        _rows_html = ""
+        for m in _top15:
+            t        = m["ticker"]
+            pct1     = m["pct_1d"]
+            pct5     = m["pct_5d"]
+            volr     = m["vol_ratio"]
+            close    = m["close"]
+            act      = m["activity"]
+            in_scan  = t in _in_scan
+
+            _p1col   = "#22C55E" if pct1 >= 0 else "#EF4444"
+            _p5col   = "#22C55E" if pct5 >= 0 else "#EF4444"
+            _vcol    = "#F59E0B" if volr >= 2 else ("#22C55E" if volr >= 1 else "#64748B")
+            _scan_badge = (
+                "<span style='background:#166534;color:#4ADE80;padding:1px 6px;"
+                "border-radius:4px;font-size:0.65rem'>IN SCAN</span>"
+                if in_scan else ""
+            )
+
+            _rows_html += f"""
+<div style="display:flex;align-items:center;gap:0.6rem;padding:5px 8px;
+border-bottom:1px solid #1E293B;font-family:Share Tech Mono,monospace">
+  <span style="color:#E2E8F0;font-weight:700;min-width:3.5rem">{t}</span>
+  <span style="color:#94A3B8;font-size:0.75rem">Rp{close:,.0f}</span>
+  <span style="color:{_p1col};font-size:0.75rem;min-width:4rem">{pct1:+.1f}% 1d</span>
+  <span style="color:{_p5col};font-size:0.75rem;min-width:4rem">{pct5:+.1f}% 5d</span>
+  <span style="color:{_vcol};font-size:0.75rem;min-width:4rem">vol {volr:.1f}x</span>
+  <span style="color:#475569;font-size:0.65rem">act {act:.1f}</span>
+  {_scan_badge}
+</div>"""
+
+        st.markdown(f"""
+<div style="background:#0F172A;border:1px solid #1E293B;border-radius:8px;
+padding:0;overflow:hidden;margin-bottom:1rem">
+  <div style="background:#1E293B;padding:6px 12px;display:flex;gap:2rem;
+  font-family:Share Tech Mono,monospace;font-size:0.7rem;color:#64748B">
+    <span>TICKER</span><span>HARGA</span><span>1 HARI</span>
+    <span>5 HARI</span><span>VOLUME</span><span>ACTIVITY SCORE</span>
+  </div>
+  {_rows_html}
+</div>
+<p style="font-family:Share Tech Mono,monospace;font-size:0.65rem;color:#334155;
+margin:0">Top 15 dari {len(_movers)} ticker berhasil di-fetch · 
+Sorted by activity score · IN SCAN = sudah ada di hasil scan hari ini</p>
+""", unsafe_allow_html=True)
+    else:
+        st.warning("Tidak ada data mover — coba lagi atau cek koneksi.")
+
+# ══════════════════════════════════════════════════════════════════════════════
 # SECTION 2 — POSITION HEALTH
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("<br>", unsafe_allow_html=True)
@@ -240,10 +398,11 @@ def _fetch_position_data(ticker: str) -> dict:
         vol_ma = float(volume.rolling(20).mean().iloc[-1])
         last_v = float(volume.iloc[-1])
         atr14  = float((df["High"] - df["Low"]).rolling(14).mean().iloc[-1])
+        data_date = str(df.index[-1])[:10]
         return {
             "last": last, "ema13": ema13, "ema89": ema89,
             "vol_ratio": round(last_v / vol_ma, 2) if vol_ma > 0 else 0,
-            "atr14": atr14, "df": df,
+            "atr14": atr14, "df": df, "data_date": data_date,
         }
     except Exception:
         return {}
@@ -333,9 +492,10 @@ else:
                 st.session_state[_cache_key] = _fetch_position_data(_t)
         _pdata = st.session_state.get(_cache_key, {})
 
-        _last    = _pdata.get("last", 0)
-        _ema13   = _pdata.get("ema13", 0)
-        _vol_r   = _pdata.get("vol_ratio", 0)
+        _last      = _pdata.get("last", 0)
+        _ema13     = _pdata.get("ema13", 0)
+        _vol_r     = _pdata.get("vol_ratio", 0)
+        _data_date = _pdata.get("data_date", "")
 
         # Kalkulasi posisi
         _pnl_pct    = ((_last - _entry) / _entry * 100) if _entry > 0 and _last > 0 else 0
@@ -458,6 +618,7 @@ padding:0.8rem 1rem;margin-bottom:0.6rem">
     <span>Vol <b style="color:{_vol_col}">{_vol_r:.1f}×</b></span>
     {_ema_badge}
     {_exit_badges}
+    {f'<span style="color:#475569">data per {_data_date}</span>' if _data_date else ""}
   </div>
 </div>
 """, unsafe_allow_html=True)
