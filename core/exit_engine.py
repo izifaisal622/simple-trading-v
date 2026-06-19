@@ -89,9 +89,9 @@ class ExitEngine:
 
             # ── Holding days ──────────────────────────────────────────────────
             try:
-                entry_dt  = pd.to_datetime(entry_date)
-                last_dt   = df.index[-1]
-                held_days = int((last_dt - entry_dt).days)
+                from datetime import date as _dt_date
+                _entry_d  = pd.to_datetime(entry_date).date()
+                held_days = (_dt_date.today() - _entry_d).days
             except Exception:
                 held_days = 0
 
@@ -152,7 +152,7 @@ class ExitEngine:
             peak_price = _f(high.iloc[-20:].max()) if len(high) >= 20 else last_close
             trail_sl   = round(peak_price - 2.0 * atr14, 0)
 
-            if last_close < trail_sl and last_close < entry_price * 1.05:
+            if last_close < trail_sl and gain_pct < 5.0:
                 signals.append(ExitSignal(
                     ticker        = ticker,
                     exit_type     = "TRAIL_HIT",

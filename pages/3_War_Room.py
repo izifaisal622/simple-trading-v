@@ -509,7 +509,9 @@ else:
                 if _tp1 == 0 and _entry > 0 and _sl > 0:
                     _tp1 = _entry + 2 * (_entry - _sl)
                 if _tp2 == 0:
-                    _tp2 = _tp1 * 1.05
+                    # TP2 fallback: entry + 4×risk (lebih realistis dari tp1*1.05)
+                    _risk = _entry - _sl if _entry > 0 and _sl > 0 else 0
+                    _tp2 = (_entry + 4 * _risk) if _risk > 0 else _tp1 * 1.15
 
                 # Ambil df dari cache jika ada, fetch jika tidak
                 _pdata = st.session_state.get(f"pos_data_{_t}", {})
