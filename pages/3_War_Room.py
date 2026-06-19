@@ -125,25 +125,25 @@ padding:0.8rem 1.2rem;margin-bottom:0.5rem;
 display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
   <div>
     <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
-    color:var(--text-dim);letter-spacing:0.15em">MARKET REGIME</div>
+    color:#94A3B8;letter-spacing:0.15em">MARKET REGIME</div>
     <div style="font-family:Orbitron,monospace;font-size:var(--text-xl);
     font-weight:900;color:{_verdict_col}">{_verdict_lbl}</div>
   </div>
   <div style="border-left:1px solid rgba(255,255,255,0.08);padding-left:1.5rem">
     <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-    color:var(--text-muted)">{cycle}</div>
+    color:#CBD5E1">{cycle}</div>
     <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-    color:#94A3B8;margin-top:2px">{_verdict_desc}</div>
+    color:#CBD5E1;margin-top:2px">{_verdict_desc}</div>
   </div>
   <div style="border-left:1px solid rgba(255,255,255,0.08);padding-left:1.5rem">
     <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
-    color:var(--text-dim)">IHSG</div>
+    color:#94A3B8">IHSG</div>
     <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-base);
     color:#E2E8F0;font-weight:700">{ihsg:,.0f}</div>
   </div>
   <div style="border-left:1px solid rgba(255,255,255,0.08);padding-left:1.5rem">
     <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
-    color:var(--text-dim)">MOM 4W</div>
+    color:#94A3B8">MOM 4W</div>
     <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-base);
     color:{_mom_col};font-weight:700">{mom_4w:+.1f}%</div>
   </div>
@@ -171,7 +171,7 @@ if _regional:
 <div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);
 border-radius:var(--r-sm);padding:0.5rem 0.7rem;text-align:center">
   <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
-  color:var(--text-dim);letter-spacing:0.1em">{_rname}</div>
+  color:#94A3B8;letter-spacing:0.1em">{_rname}</div>
   <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
   color:#E2E8F0;font-weight:700">{_rlast:,.0f}</div>
   <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
@@ -413,46 +413,46 @@ padding:0.8rem 1rem;margin-bottom:0.6rem">
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin-bottom:0.5rem">
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">HARGA</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">HARGA</div>
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#E2E8F0;font-weight:700">
         {f"Rp{_last:,.0f}" if _last else "—"}
       </div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">P&L</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">P&L</div>
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:{_pnl_col};font-weight:700">
         {f"{_pnl_pct:+.1f}%" if _last else "—"}
       </div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">→ SL</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">→ SL</div>
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
       color:{_sl_col}">
         {f"TERLEWAT" if _pct_to_sl <= 0 else f"{_pct_to_sl:.1f}%" if _last else "—"}
       </div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">→ TP1</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">→ TP1</div>
       <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
       color:{_tp1_col}">
         {f"{_pct_to_tp1:.1f}%" if _last and _tp1 else "—"}
       </div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">→ TP2</div>
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#64748B">
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">→ TP2</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#94A3B8">
         {f"Rp{_tp2:,.0f}" if _tp2 else "—"}
       </div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:var(--text-dim)">HARI</div>
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#94A3B8">
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">HARI</div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#CBD5E1">
         {_holding_days_str}
       </div>
     </div>
   </div>
   <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
-  color:var(--text-dim);display:flex;gap:0.8rem;align-items:center">
+  color:#94A3B8;display:flex;gap:0.8rem;align-items:center">
     <span>Entry <b style="color:#E2E8F0">Rp{_entry:,.0f}</b></span>
     <span>SL <b style="color:#EF4444">Rp{_sl:,.0f}</b></span>
     <span>Vol <b style="color:{_vol_col}">{_vol_r:.1f}×</b></span>
@@ -518,7 +518,7 @@ _EXIT_ICON = {
 
 if not _open_trades:
     st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-    color:var(--text-dim)">Tidak ada posisi open. Tambah posisi di atas untuk mulai monitoring.</p>""",
+    color:#94A3B8">Tidak ada posisi open. Tambah posisi di atas untuk mulai monitoring.</p>""",
     unsafe_allow_html=True)
 else:
     _run_exit = st.button("⟳ EVALUASI EXIT SIGNALS", key="btn_exit_eval",
@@ -612,7 +612,7 @@ border-radius:var(--r-md);padding:0.8rem 1.2rem">
 border-radius:var(--r-sm);padding:0.5rem 1rem;margin-bottom:0.8rem;
 font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
 display:flex;gap:1.5rem;align-items:center">
-  <span style="color:var(--text-dim)">EXIT SIGNALS</span>
+  <span style="color:#94A3B8">EXIT SIGNALS</span>
   <span style="color:#EF4444;font-weight:700">🔴 CRITICAL: {_n_critical}</span>
   <span style="color:#F0B429;font-weight:700">🟡 WARNING: {_n_warning}</span>
   <span style="color:#4ADE80;font-weight:700">🟢 INFO: {_n_info}</span>
@@ -639,17 +639,17 @@ padding:0.65rem 1rem;margin-bottom:0.5rem">
     padding:1px 8px;font-family:Orbitron,monospace;font-size:var(--text-2xs);
     font-weight:700;color:{_ac}">{_sig.action}</span>
     <span style="margin-left:auto;font-family:Share Tech Mono,monospace;
-    font-size:var(--text-xs);color:var(--text-dim)">
+    font-size:var(--text-xs);color:#94A3B8">
     Harga Rp{_sig.current_price:,.0f} · Trigger Rp{_sig.trigger_price:,.0f}
     </span>
   </div>
   <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-  color:#94A3B8;line-height:1.6">{_sig.message}</div>
+  color:#CBD5E1;line-height:1.6">{_sig.message}</div>
 </div>
 """, unsafe_allow_html=True)
     else:
         st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-        color:var(--text-dim)">Klik "EVALUASI EXIT SIGNALS" untuk run exit engine.</p>""",
+        color:#94A3B8">Klik "EVALUASI EXIT SIGNALS" untuk run exit engine.</p>""",
         unsafe_allow_html=True)
 
 # ── Performance summary footer ────────────────────────────────────────────────
@@ -689,4 +689,4 @@ try:
         color:var(--text-muted);margin-top:0.3rem">{_note}</p>""", unsafe_allow_html=True)
 except Exception:
     st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-    color:var(--text-dim)">Trade logger tidak tersedia.</p>""", unsafe_allow_html=True)
+    color:#94A3B8">Trade logger tidak tersedia.</p>""", unsafe_allow_html=True)
