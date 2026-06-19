@@ -424,141 +424,149 @@ def _run_msci(a: StockAnalysis):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Overall grade computation
+# Overall grade computation — Two-Axis System v8.7.9
 # ─────────────────────────────────────────────────────────────────────────────
+# Arsitektur: EMA Score (0-50) × Whale Score (0-50) → Grade via matrix 2×2
+#
+# Prinsip:
+#   EMA  Kuat (≥25) + Whale Kuat (≥25) → A  (konfirmasi penuh)
+#   EMA  Kuat       + Whale Lemah       → B  (teknikal bagus, tapi tanpa smart money)
+#   EMA  Lemah      + Whale Kuat (≥25)  → C  (whale early, tunggu EMA)
+#   Keduanya Lemah                      → D/F
+#
+# Konvergensi dengan Follow Whale:
+#   Follow Whale ENTRY VALID → Whale Score hampir pasti ≥25 → minimal Grade C
+#   Tidak ada lagi kontradiksi "FW bilang masuk, SA bilang hindari"
 
 def _compute_overall(a: StockAnalysis):
     reasons = []
-    pts     = 0   # 0–100
 
-    # ── EMA-XBO component (max 40 pts) ──────────────────────────────────────
-    # Signal base
+    # ════════════════════════════════════════════════════════════════════════
+    # AXIS 1 — EMA SCORE (0–50)
+    # ════════════════════════════════════════════════════════════════════════
+    ema_pts = 0
+
+    # Signal base: max 20 (BREAKOUT tidak lagi mendominasi 30% total)
     sig_pts = {
-        "BREAKOUT": 30, "WATCHLIST": 22, "CORRECTING": 12,
-        "DEEP_CORRECT": 6, "NONE": 0,
+        "BREAKOUT": 20, "WATCHLIST": 15, "CORRECTING": 8,
+        "DEEP_CORRECT": 4, "NONE": 0,
     }.get(a.signal, 0)
-    pts += sig_pts
-    if a.signal in ("BREAKOUT","WATCHLIST"):
+    ema_pts += sig_pts
+    if a.signal in ("BREAKOUT", "WATCHLIST"):
         reasons.append(f"EMA signal: {a.signal}")
 
-    # Score bonus (each point above 3 = +2)
-    score_bonus = max(0, (a.ema_score - 3) * 2)
-    pts += min(score_bonus, 10)
+    # Score bonus: max 8
+    ema_pts += min(max(0, (a.ema_score - 3) * 2), 8)
     if a.ema_score >= 5:
-        reasons.append(f"EMA score tinggi: {a.ema_score}/7")
+        reasons.append(f"EMA score: {a.ema_score}/7")
 
-    # Dual timeframe bonus
+    # Dual timeframe
     if a.dual_confirmed:
-        pts += 5
+        ema_pts += 5
         reasons.append("Dual-timeframe confirmed")
     elif a.daily_ok:
-        pts += 2
+        ema_pts += 2
 
     # MCF
     if a.mcf_entry_ok and not a.mcf_bear_blocked:
-        mcf_bonus = min(a.mcf_score, 5)
-        pts += mcf_bonus
+        ema_pts += min(a.mcf_score, 5)
         if a.mcf_score >= 8:
             reasons.append(f"MCF tinggi: {a.mcf_score}/10")
     elif a.mcf_bear_blocked:
-        pts -= 5
+        ema_pts -= 5
         reasons.append("⛔ MCF bear-blocked")
 
-    # RS
+    # RS vs IHSG
     if a.rs_vs_ihsg > 5:
-        pts += 3
+        ema_pts += 3
         reasons.append(f"RS vs IHSG: +{a.rs_vs_ihsg:.1f}%")
     elif a.rs_vs_ihsg < -5:
-        pts -= 3
+        ema_pts -= 3
+
+    # MSCI bonus masuk ke EMA axis (konfirmasi teknikal institusional)
+    if a.msci_active and a.msci_alert_level == "HIGH_CONVICTION":
+        ema_pts += 8
+        reasons.append(f"★ MSCI HIGH CONVICTION T-{a.msci_t_minus}")
+    elif a.msci_active and a.msci_alert_level == "MEDIUM":
+        ema_pts += 4
+        reasons.append(f"◈ MSCI MEDIUM T-{a.msci_t_minus}")
 
     # Regime penalty
     if a.regime_tag == "WATCHLIST_ONLY":
-        pts -= 10
+        ema_pts -= 10
         reasons.append("Regime BEAR — entry berisiko")
 
-    # ── Whale component (max 35 pts) ─────────────────────────────────────────
+    ema_pts = max(0, min(50, ema_pts))
+
+    # ════════════════════════════════════════════════════════════════════════
+    # AXIS 2 — WHALE SCORE (0–50)
+    # ════════════════════════════════════════════════════════════════════════
+    whale_pts = 0
+
     if a.whale_ok:
-        # Quality
-        q_pts = {"SMART": 25, "LIKELY_SMART": 18, "UNCERTAIN": 8, "DUMB": 2, "—": 0}.get(a.whale_quality, 0)
-        pts += q_pts
+        # Quality: max 30 (SMART naik karena whale adalah half the story)
+        q_pts = {"SMART": 30, "LIKELY_SMART": 22, "UNCERTAIN": 10, "DUMB": 2, "—": 0}.get(a.whale_quality, 0)
+        whale_pts += q_pts
         if a.whale_quality in ("SMART", "LIKELY_SMART"):
-            reasons.append(f"Whale quality: {a.whale_quality}")
+            reasons.append(f"Whale: {a.whale_quality}")
 
-        # Conviction
-        conv_pts = min(a.conviction * 1.5, 10)
-        pts += conv_pts
+        # Conviction: max 12
+        whale_pts += min(a.conviction * 1.5, 12)
         if a.conviction >= 7:
-            reasons.append(f"Whale conviction: {a.conviction}/10")
+            reasons.append(f"Conviction: {a.conviction}/10")
 
-        # Pengeringan bonus
+        # Pengeringan: max 8
         if a.pengeringan:
-            pts += min(a.peng_strength * 2, 5)
-            reasons.append("Pengeringan terdeteksi")
+            whale_pts += min(a.peng_strength * 2, 8)
+            reasons.append("Pengeringan aktif")
 
-        # At floor bonus
+        # Floor bonus: max 7
         if a.entry_zone == "AT_FLOOR":
-            pts += 5
-            reasons.append("Harga di floor price")
+            whale_pts += 7
+            reasons.append("Harga di floor")
         elif a.entry_zone == "NEAR_FLOOR":
-            pts += 2
+            whale_pts += 3
 
         # Penalties
         if a.harga_terlalu_jauh:
-            pts -= 8
-            reasons.append("⚠ Harga terlalu jauh dari floor")
+            whale_pts -= 8
+            reasons.append("⚠ Terlalu jauh dari floor")
         if a.market_sepi:
-            pts -= 5
+            whale_pts -= 5
             reasons.append("⚠ Market sepi")
-        if a.activity_type in ("DISTRIBUSI","SELL_OFF"):
-            pts -= 15
-            reasons.append("🔴 Distribusi / sell-off terdeteksi")
+        if a.activity_type in ("DISTRIBUSI", "SELL_OFF"):
+            whale_pts -= 20
+            reasons.append("🔴 Distribusi / sell-off")
 
-    # ── MSCI bonus ────────────────────────────────────────────────────────────
-    if a.msci_active and a.msci_alert_level == "HIGH_CONVICTION":
-        pts += 8
-        reasons.append(f"★ MSCI HIGH CONVICTION T-{a.msci_t_minus}")
-    elif a.msci_active and a.msci_alert_level == "MEDIUM":
-        pts += 4
-        reasons.append(f"◈ MSCI MEDIUM T-{a.msci_t_minus}")
+    whale_pts = max(0, min(50, whale_pts))
 
-    # ── Whale Early Stage bonus (Opsi B) ─────────────────────────────────────
-    # Setup: EMA belum signal (NONE/CORRECTING) tapi whale sudah akumulasi
-    # dengan conviction tinggi + pengeringan + dekat floor.
-    # Tanpa bonus ini, signal=NONE langsung hilang 30 pts EMA → Grade D,
-    # padahal secara whale framework ini adalah EARLY ACCUMULATION yang valid.
-    # Bonus max 15 pts → cukup untuk naik dari D ke C (MONITOR), tidak lebih.
-    # Guard: tidak fire jika ada distribusi/sell-off (whale_ok sudah cek itu).
-    _early_accum = (
-        a.whale_ok
-        and a.signal in ("NONE", "CORRECTING", "DEEP_CORRECT")
-        and a.conviction >= 7
-        and a.pengeringan
-        and a.entry_zone in ("AT_FLOOR", "NEAR_FLOOR")
-        and a.activity_type not in ("DISTRIBUSI", "SELL_OFF")
-    )
-    if _early_accum:
-        _early_bonus = 15
-        pts += _early_bonus
-        reasons.append(f"🐋 Early accumulation: conviction {a.conviction}/10 + pengeringan + {a.entry_zone}")
+    # ════════════════════════════════════════════════════════════════════════
+    # MATRIX GRADE — two-axis, definisi "longgar"
+    # Whale Kuat = whale_pts ≥ 25 (threshold dikalibrasi: UNCERTAIN+conv7+peng+near = ~27)
+    # EMA  Kuat  = ema_pts   ≥ 25 (threshold: BREAKOUT=20 + score bonus ≥5 = 25)
+    # ════════════════════════════════════════════════════════════════════════
+    _ema_kuat   = ema_pts   >= 25
+    _whale_kuat = whale_pts >= 25
 
-    # ── Clamp & grade ─────────────────────────────────────────────────────────
-    a.overall_score = max(0, min(100, int(pts)))
-
-    s = a.overall_score
-    if s >= 75:
+    if _ema_kuat and _whale_kuat:
         a.grade = "A"
-        a.action_label = "ENTRY NOW" if a.signal in ("BREAKOUT","WATCHLIST") else "STRONG WATCH"
-    elif s >= 55:
+        a.action_label = "ENTRY NOW" if a.signal in ("BREAKOUT", "WATCHLIST") else "STRONG WATCH"
+    elif _ema_kuat and not _whale_kuat:
         a.grade = "B"
         a.action_label = "WATCHLIST KUAT"
-    elif s >= 35:
+    elif not _ema_kuat and _whale_kuat:
         a.grade = "C"
-        a.action_label = "MONITOR"
-    elif s >= 15:
-        a.grade = "D"
-        a.action_label = "TERLALU DINI"
+        a.action_label = "MONITOR — tunggu EMA konfirmasi"
     else:
-        a.grade = "F"
-        a.action_label = "HINDARI / TIDAK LAYAK"
+        # Keduanya lemah — gradasi D vs F berdasarkan total
+        _total = ema_pts + whale_pts
+        if _total >= 15:
+            a.grade = "D"
+            a.action_label = "TERLALU DINI"
+        else:
+            a.grade = "F"
+            a.action_label = "HINDARI / TIDAK LAYAK"
 
-    a.grade_reasons = reasons[:6]  # max 6 reasons
+    # overall_score untuk display progress bar (0–100)
+    a.overall_score = min(100, ema_pts + whale_pts)
+    a.grade_reasons = reasons[:6]
