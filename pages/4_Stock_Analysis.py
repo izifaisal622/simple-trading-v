@@ -504,10 +504,10 @@ with tab_journal:
     with st.form("journal_form", clear_on_submit=True):
         jc1, jc2 = st.columns(2, gap="small")
         with jc1:
-            j_entry = st.number_input("Entry Price", value=float(r.entry_price or r.close or 0), step=1.0, format="%.0")
-            j_sl    = st.number_input("Stop Loss", value=float(r.sl_price or 0), step=1.0, format="%.0")
+            j_entry = st.number_input("Entry Price", value=float(r.entry_price or r.close or 0), step=1.0, format="%.0f")
+            j_sl    = st.number_input("Stop Loss", value=float(r.sl_price or 0), step=1.0, format="%.0f")
         with jc2:
-            j_tp1   = st.number_input("TP1", value=float(r.tp1_price or 0), step=1.0, format="%.0")
+            j_tp1   = st.number_input("TP1", value=float(r.tp1_price or 0), step=1.0, format="%.0f")
             j_notes = st.text_input("Notes (opsional)", placeholder="Setup notes, catalyst, dll", label_visibility="visible")
         # Pre-flight gate: disabled jika checklist belum pass dan belum di-override
         _btn_label = "◈ LOG PAPER TRADE" if _pf_entry_allowed else f"⛔ LOG DIBLOKIR ({8-_pf_pass_count} kriteria gagal)"
@@ -566,7 +566,7 @@ with tab_journal:
             with cc1:
                 close_id = st.selectbox("Trade ID", [t["id"] for t in open_trades], format_func=lambda x: f"#{x} {next(t['ticker'] for t in open_trades if t['id']==x)}")
             with cc2:
-                close_price = st.number_input("Exit Price", value=0.0, step=1.0, format="%.0")
+                close_price = st.number_input("Exit Price", value=0.0, step=1.0, format="%.0f")
             with cc3:
                 close_reason = st.selectbox("Alasan", ["MANUAL","SL_HIT","TP1_HIT","TP2_HIT","TIME_STOP"])
             close_btn = st.form_submit_button("✓ TUTUP TRADE")
