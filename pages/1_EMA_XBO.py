@@ -12,7 +12,7 @@ import streamlit as st
 import pandas as pd
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -832,7 +832,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
 
             # P01-B: Inline outcome logging — satu klik dari breakout card
             with st.expander(f"📝 LOG TRADE — {ticker}", expanded=False):
-                _oc1, _oc2, _oc3, _oc4 = st.columns(4)
+                _oc1, _oc2, _oc3, _oc4, _oc5 = st.columns(5)
                 with _oc1:
                     _log_entry = st.number_input("Entry Price", value=float(r.get("close", 0)),
                                                   step=10.0, key=f"log_entry_{ticker}")
@@ -840,9 +840,13 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                     _log_sl = st.number_input("SL Price", value=float(r.get("sl_price", 0)),
                                                step=10.0, key=f"log_sl_{ticker}")
                 with _oc3:
+                    _log_entry_date = st.date_input("Tanggal Entry", value=date.today(),
+                                                     max_value=date.today(),
+                                                     key=f"log_edate_{ticker}")
+                with _oc4:
                     _log_outcome = st.selectbox("Outcome", ["OPEN", "WIN", "LOSS", "BREAKEVEN"],
                                                  key=f"log_out_{ticker}")
-                with _oc4:
+                with _oc5:
                     _log_exit = st.number_input("Exit Price (0=skip)", value=0.0,
                                                  step=10.0, key=f"log_exit_{ticker}")
                 _log_notes = st.text_input("Notes (opsional)", key=f"log_note_{ticker}",
@@ -873,6 +877,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                             entry_price  = _log_entry,
                             sl_price     = _log_sl,
                             tp1_price    = _tp1_val,
+                            entry_date   = _log_entry_date.strftime("%Y-%m-%d"),
                             signal_type  = r.get("signal", "BREAKOUT"),
                             signal_score = int(r.get("score", 0)),
                             regime_tag   = r.get("regime_tag", ""),
