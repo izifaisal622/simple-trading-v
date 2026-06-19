@@ -1,8 +1,9 @@
 {
-  "version": "8.7.2",
+  "version": "8.7.3",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-19",
   "changelog": [
+    "8.7.3 — FIX: assets_ui.py — visibilitas sidebar dan widget labels: .sb-nav-label (NAVIGATION/MARKET/SYSTEM) + .sb-stat (REGIME/LAST SCAN/IDX·LONG ONLY) + stWidgetLabel (Ticker/Entry/SL/TP1/TP2/Tanggal Entry) + DATA•TODAY inline — semua dari var(--text-dim)=#374151 naik ke #94A3B8",
     "8.7.2 — FIX: pages/3_War_Room.py — visibilitas text: label card (HARGA/P&L/SL/TP1/TP2/HARI) #374151→#94A3B8; value HARI/TP2/pesan exit/verdict desc #94A3B8/#64748B→#CBD5E1; footer card Entry·SL·Vol, label pre-market, regional tile, exit signal section semua naik dari var(--text-dim) ke #94A3B8 atau #CBD5E1",
     "8.7.1 — FIX: pages/3_War_Room.py — [A] GAP-1: form TAMBAH POSISI MANUAL tambah Tanggal Entry (6 kolom), pass ke log_trade; [A] GAP-2: holding_days_est fallback 10→14; [A] GAP-4: peak window ATR trail 20→60 candle (exit_engine.py); [FETCH] _fetch_regional() flatten MultiIndex yfinance — fix semua regional tampil 0; [B] Opsi-2: _health_color() terima exit_urgency dari cached session_state exit_signals — CRITICAL override card border+label jadi merah/EXIT SIGNAL, WARNING jadi kuning/WATCH; badge exit_type (TRAIL_HIT dll) muncul di footer card jika ExitEngine pernah dirun",
     "8.7.0 — FIX: core/exit_engine.py + pages/3_War_Room.py — [1] TRAIL_HIT guard: ganti `last_close < entry_price*1.05` → `gain_pct < 5.0` (eliminasi false positive CRITICAL saat posisi profit >5% tapi trailing tertembus); [2] held_days: ganti `df.index[-1]` → `date.today()` untuk konsistensi dengan display card di Section 2 (df.index[-1] bisa under-count saat weekend/holiday); [3] TP2 fallback: ganti `_tp1*1.05` → `entry + 4×risk` (tp1*1.05 terlalu dekat dengan TP1, trigger TP2_HIT hampir bersamaan dengan TP1_HIT)",

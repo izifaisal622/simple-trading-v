@@ -430,7 +430,7 @@ section[data-testid="stSidebar"] > div:first-child {{
   font-family: 'Share Tech Mono', monospace !important;
   font-size: var(--text-2xs) !important;
   letter-spacing: 0.2em !important;
-  color: var(--text-dim) !important;
+  color: #94A3B8 !important;
   text-transform: uppercase !important;
 }}
 [data-testid="stMetricValue"] > div {{
@@ -626,7 +626,7 @@ label[data-testid="stWidgetLabel"] span {{
   font-family: 'Share Tech Mono', monospace !important;
   font-size: var(--text-2xs) !important;
   letter-spacing: 0.16em !important;
-  color: var(--text-dim) !important;
+  color: #94A3B8 !important;
   text-transform: uppercase !important;
 }}
 
@@ -876,13 +876,13 @@ hr {{
 .sb-nav-label {{
   font-family: 'Share Tech Mono', monospace;
   font-size: var(--text-2xs); letter-spacing: 0.24em;
-  color: var(--text-dim);
+  color: #94A3B8;
   padding: var(--sp-3) var(--sp-3) var(--sp-1);
   text-transform: uppercase;
 }}
 .sb-stat {{
   font-family: 'Share Tech Mono', monospace;
-  font-size: var(--text-xs); color: var(--text-dim);
+  font-size: var(--text-xs); color: #94A3B8;
   padding: 3px var(--sp-4);
   line-height: 1.8;
 }}
@@ -985,7 +985,7 @@ def render_sidebar(page: str, ema_total: int = 0, whale_total: int = 0,
             elif delta == 1: stale = '<span style="color:var(--c-warning);font-size:var(--text-xs)">● YESTERDAY</span>'
             else:            stale = f'<span style="color:var(--c-danger);font-size:var(--text-xs)">⚠ {delta}D AGO</span>'
             st.markdown(f"""<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
-            color:var(--text-dim);padding:2px 0 0 4px">DATA {stale}</div>""",
+            color:#94A3B8;padding:2px 0 0 4px">DATA {stale}</div>""",
             unsafe_allow_html=True)
     except Exception:
         pass
@@ -997,7 +997,7 @@ def render_sidebar(page: str, ema_total: int = 0, whale_total: int = 0,
     <div class="sb-stat">EMA SIGNALS <b>{ema_total}</b></div>
     <div class="sb-stat">WHALE ALERTS <b>{whale_total}</b></div>
     <p class="sb-nav-label" style="margin-top:var(--sp-4)">System</p>
-    <div class="sb-stat" style="color:var(--text-dim);font-size:var(--text-2xs);letter-spacing:0.1em">
+    <div class="sb-stat" style="color:#94A3B8;font-size:var(--text-2xs);letter-spacing:0.1em">
       IDX · LONG ONLY · HENGKY METHOD
     </div>
     """, unsafe_allow_html=True)
