@@ -160,14 +160,17 @@ def _run_ema_xbo(a: StockAnalysis, ticker: str):
     from config.strategy_config import StrategyConfig
 
     cfg  = StrategyConfig.load()
-    feed = DataFeed(timeframe="1wk", period="3y")
-    feed_d = DataFeed(timeframe="1d",  period="60d")
+    feed   = DataFeed(timeframe="1wk", period="3y")
+    feed_1y = DataFeed(timeframe="1wk", period="1y")
+    feed_d  = DataFeed(timeframe="1d",  period="60d")
 
-    # Fetch data
-    df   = feed.fetch(ticker)
+    # Fetch data — fallback ke 1y jika 3y tidak cukup (saham baru/illiquid)
+    df = feed.fetch(ticker)
+    if df is None or len(df) < 30:
+        df = feed_1y.fetch(ticker)
     df_d = feed_d.fetch(ticker)
 
-    if df is None or len(df) < 30:
+    if df is None or len(df) < 10:
         a.error = f"Data mingguan tidak cukup untuk {ticker}"
         return
 
