@@ -42,7 +42,7 @@ except Exception:
 
 _ = (TEXT_MUTED, TEXT_DIM, score_badge, vp_zone_pill, signal_badge, SIG_COLORS)  # template vars
 st.set_page_config(
-    page_title="Alert Watch — STV6",
+    page_title="Alert Watch — STV9",
     page_icon="🔔",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -151,9 +151,9 @@ cycle, ihsg, mom_4w, breadth, scan_date = _regime()
 render_sidebar("Alert Watch", regime=cycle, scan_date=scan_date)
 import json as _jv, pathlib as _pv
 try:
-    _ver_accent = "V" + _jv.loads((_pv.Path(__file__).parent.parent/"version.json").read_text())["version"]
+    _ver_accent = "V" + _jv.loads((_pv.Path(__file__).parent.parent/"version.json").read_text())["version"].split(".")[0]
 except Exception:
-    _ver_accent = "V6"
+    _ver_accent = "V9"
 render_page_header(
     eyebrow  = "◆ MODULE 05 · REAL-TIME ALERT WATCH · " + _ver_accent,
     title    = "SIMPLE TRADING ",

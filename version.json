@@ -1,7 +1,8 @@
 {
-  "version": "9.0.4",
+  "version": "9.0.5",
   "date": "2026-06-20",
   "changelog": [
+    "9.0.5 — FIX: hero banner version dinamis dari version.json di 4 page (EMA_XBO/Follow_Whale/Stock_Pick/Alert_Watch) — ambil major version saja (.split(\".\")[0]); fallback V6→V9; page_title STV6→STV9",
     "9.0.4 — CHORE: rename semua referensi Simple Trading V6/V7 → V9 di seluruh file; hapus field codename dari version.json dan patcher.py",
     "9.0.3 — FIX: hero banner version dinamis dari version.json di 4 page (EMA_XBO/Follow_Whale/Alert_Watch/Stock_Pick) — ambil major version saja (.split('.')[0]); fallback V6→V9",
     "9.0.2 — FIX: hero banner version dinamis dari version.json di 4 page (EMA_XBO/Follow_Whale/Alert_Watch/Stock_Pick) — ambil major version saja (.split('.')[0]); fallback V6→V9",

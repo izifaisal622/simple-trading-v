@@ -216,9 +216,9 @@ with st.sidebar:
 # ── Page header ───────────────────────────────────────────────────────────────
 import json as _j; from pathlib import Path as _Pv
 try:
-    _ver_accent = "V" + _j.loads((_Pv(__file__).parent.parent/"version.json").read_text())["version"]
+    _ver_accent = "V" + _j.loads((_Pv(__file__).parent.parent/"version.json").read_text())["version"].split(".")[0]
 except Exception:
-    _ver_accent = "V6"
+    _ver_accent = "V9"
 
 render_page_header(
     eyebrow  = "◆ MODULE 02 · SMART MONEY TRACKING",

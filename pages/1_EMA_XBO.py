@@ -591,9 +591,9 @@ with st.sidebar:
 # Page header
 import json as _jv, pathlib as _pv
 try:
-    _ver_accent = "V" + _jv.loads((_pv.Path(__file__).parent.parent/"version.json").read_text())["version"]
+    _ver_accent = "V" + _jv.loads((_pv.Path(__file__).parent.parent/"version.json").read_text())["version"].split(".")[0]
 except Exception:
-    _ver_accent = "V6"
+    _ver_accent = "V9"
 
 render_page_header(
     eyebrow  = "◆ MODULE 01 · BREAKOUT DETECTION",
