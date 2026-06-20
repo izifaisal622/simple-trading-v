@@ -37,7 +37,7 @@ st.markdown(get_page_css("dashboard"), unsafe_allow_html=True)
 
 # ── Version ───────────────────────────────────────────────────────────────────
 try:
-    _ver_accent = "V" + json.loads((ROOT / "version.json").read_text(encoding="utf-8"))["version"]
+    _ver_accent = "V" + json.loads((ROOT / "version.json").read_text(encoding="utf-8"))["version"].split(".")[0]
 except Exception:
     _ver_accent = "V?"
 

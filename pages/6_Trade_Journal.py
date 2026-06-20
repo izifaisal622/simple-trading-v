@@ -31,7 +31,7 @@ st.markdown(get_page_css("dashboard"), unsafe_allow_html=True)
 # ─── version badge ────────────────────────────────────────────────────────────
 try:
     _vj  = json.loads((ROOT / "version.json").read_text(encoding="utf-8"))
-    _ver = _vj.get("version", "?")
+    _ver = _vj.get("version", "9").split(".")[0]
 except Exception:
     _ver = "?"
 
