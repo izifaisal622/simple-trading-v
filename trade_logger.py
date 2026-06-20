@@ -20,9 +20,27 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
+# ── Database path — di luar repo agar tidak terpengaruh git pull/rollover ──
+# Windows: C:\Users\<username>\AppData\Local\SimpleTrading\trade_log.db
+# Fallback ke logs/ lokal jika APPDATA tidak tersedia (Linux/Mac dev environment)
+import os as _os
+_APPDATA = _os.environ.get("APPDATA") or _os.environ.get("HOME", "")
+if _APPDATA:
+    _STV_DATA_DIR = Path(_APPDATA) / "SimpleTrading"
+else:
+    _STV_DATA_DIR = Path(__file__).parent / "logs"
+_STV_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+DB_PATH  = _STV_DATA_DIR / "trade_log.db"
 LOGS_DIR = Path(__file__).parent / "logs"
-DB_PATH  = LOGS_DIR / "trade_log.db"
 LOGS_DIR.mkdir(exist_ok=True)
+
+# ── Migrasi otomatis: jika DB lama ada di logs/, pindahkan ke lokasi baru ──
+_OLD_DB = LOGS_DIR / "trade_log.db"
+if _OLD_DB.exists() and not DB_PATH.exists():
+    import shutil as _shutil
+    _shutil.copy2(str(_OLD_DB), str(DB_PATH))
+    print(f"[TradeLogger] DB migrated: {_OLD_DB} → {DB_PATH}")
 
 
 def init_db():
