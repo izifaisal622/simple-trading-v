@@ -1,8 +1,9 @@
 {
-  "version": "8.9.4",
+  "version": "8.9.5",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-20",
   "changelog": [
+    "8.9.5 — FIX: War Room position card — nested f-string menyebabkan HTML tag 'data per' ter-render sebagai teks; pre-build _data_date_badge sebelum inject ke f-string utama",
     "8.9.4 — FIX CRITICAL: whale_scanner _analyze_ticker ValueError ambiguous truth value — fix 8.9.1 introduce bug: pakai 'or' antara DataFrame objects yang invalid di pandas (df or df raise ValueError); akibat: 0 dari 191 ticker berhasil dianalisis, whale scan return 0 total; fix: ganti or-chain dengan is None check eksplisit per variasi key",
     "8.9.3 — FIX: trade_logger.py DB_PATH pindah ke AppData\\SimpleTrading\\trade_log.db (Windows) — sebelumnya di logs/ yang di-gitignore sehingga data hilang saat git pull/rollover; sekarang DB di luar repo, tidak terpengaruh git apapun; auto-migrasi: jika DB lama ada di logs/ dan DB baru belum ada, otomatis copy ke lokasi baru; fallback ke logs/ untuk dev environment non-Windows",
     "8.9.2 — FIX: single_stock_agent overall_score dikalibrasi agar correlated dengan grade band; sebelumnya ema_pts+whale_pts (max 100) → Grade A bisa dapat 60 (misleading); sekarang A=80-100, B=60-79, C=40-59, D=20-39, F=0-19; contoh BSSR: 60.5→94 (Grade A); bonus dalam tiap band dari kelebihan ema/whale di atas threshold",
