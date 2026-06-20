@@ -1484,12 +1484,36 @@ class WhaleScanner:
             print(f"[Whale] ⚠️ {ctx.get('market_status')} → scanning for AWARENESS + recovery WL only")
 
         # Batch pre-fetch all data at once
+        # FIX 8.9.0: max_workers 30→4 untuk hindari HTTP 401 Invalid Crumb
+        # (Yahoo expire session saat >10 request paralel simultan)
         print(f"[Whale] Batch downloading {len(tickers)} tickers...")
         import time as _time
         _t0 = _time.time()
         self._data_cache = self.feed.fetch_batch(
-            tickers, max_workers=30, period=self.lookback, interval="1d"
+            tickers, max_workers=4, period=self.lookback, interval="1d"
         )
+
+        # Retry ticker yang gagal (kemungkinan 401 crumb expired)
+        _missing = [t for t in tickers if t not in self._data_cache]
+        if _missing:
+            print(f"[Whale] Retry {len(_missing)} ticker yang gagal (crumb refresh)...")
+            _time.sleep(3)  # jeda untuk Yahoo reset session
+            import yfinance as _yf
+            for _t in _missing:
+                try:
+                    _df = _yf.download(
+                        _t + ".JK", period=self.lookback, interval="1d",
+                        progress=False, auto_adjust=True
+                    )
+                    if _df is not None and len(_df) >= 20:
+                        if hasattr(_df.columns, "get_level_values"):
+                            _df.columns = _df.columns.get_level_values(0)
+                        self._data_cache[_t] = _df
+                except Exception:
+                    pass
+                _time.sleep(0.5)
+            print(f"[Whale] Retry selesai: {len(self._data_cache)} ticker tersedia")
+
         print(f"[Whale] Data ready: {len(self._data_cache)} tickers in {_time.time()-_t0:.0f}s")
 
         results: List[dict] = []

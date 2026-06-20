@@ -1,8 +1,9 @@
 {
-  "version": "8.8.9",
+  "version": "8.9.0",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-20",
   "changelog": [
+    "8.9.0 — FIX: whale_scanner fetch_batch max_workers 30→4 + retry on HTTP 401 Invalid Crumb; root cause: 30 request paralel simultan menyebabkan Yahoo expire session crumb di tengah scan; fix: turunkan parallelism ke 4 (konsisten dengan scanner_agent) + retry ticker gagal setelah jeda 3s untuk Yahoo reset session",
     "8.8.9 — FIX: SMRU delisted — remove dari idx_pool.json + tambah ke EXCLUDED_TICKERS",
     "8.8.8 — FIX: tambah ASTRA+FREN+MFIN+MASA ke EXCLUDED_TICKERS di data_feed.py — sebelumnya hanya di delisted_tickers.json (lokal, tidak di-commit); EXCLUDED_TICKERS adalah hardcode yang persist di repo sehingga install baru tidak akan fetch ticker ini",
     "8.8.7 — FIX: remove ASTRA+MFIN dari idx_pool.json (confirmed delisted/no-data dari terminal); FREN+MASA sudah di 8.8.6; pool: 178→176 ticker",
