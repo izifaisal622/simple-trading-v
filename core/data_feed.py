@@ -345,6 +345,8 @@ EXCLUDED_TICKERS = {
     "KJEN", "HEAL", "LEAD", "FIRE", "WIFI", "WOOD",
     "RATU", "TRIO", "ZINC", "LABA", "BOAT", "HILL", "ARKO", "CARE",
     "AXIO", "MITI", "RAJA", "OMRE", "BUVA", "KIJA", "FLMC",
+    # Confirmed no-data dari terminal Jun 2026
+    "ASTRA", "FREN", "MFIN", "MASA",
 }
 
 # ── Delisted ticker registry ──────────────────────────────────────────────────

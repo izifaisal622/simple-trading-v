@@ -1,8 +1,9 @@
 {
-  "version": "8.8.7",
+  "version": "8.8.8",
   "codename": "AI-CHALLENGE-V1",
-  "date": "2026-06-19",
+  "date": "2026-06-20",
   "changelog": [
+    "8.8.8 — FIX: tambah ASTRA+FREN+MFIN+MASA ke EXCLUDED_TICKERS di data_feed.py — sebelumnya hanya di delisted_tickers.json (lokal, tidak di-commit); EXCLUDED_TICKERS adalah hardcode yang persist di repo sehingga install baru tidak akan fetch ticker ini",
     "8.8.7 — FIX: remove ASTRA+MFIN dari idx_pool.json (confirmed delisted/no-data dari terminal); FREN+MASA sudah di 8.8.6; pool: 178→176 ticker",
     "8.8.6 — FIX: core/data_feed.py auto-blacklist ticker gagal fetch; fail counter per ticker disimpan ke logs/delisted_tickers.json; blacklist otomatis setelah ALL sources failed >= 2x (1x bisa rate limit, 2x = kemungkinan delisted/suspended); fetch() skip DELISTED_TICKERS tanpa network call; _save_delisted extended untuk support fail_counts dict; logs/delisted_tickers.json di-gitignore (lokal per machine); remove FREN+MASA dari idx_pool.json (confirmed delisted dari screenshot)",
     "8.8.5 — FEAT: War Room Mover Alert — fetch ringan Close+Vol 5 hari dari pool 180 ticker; activity_score = vol_ratio*0.5 + abs(pct_5d)*0.3 + abs(pct_1d)*0.2; top 15 ditampilkan dengan badge IN SCAN jika sudah ada di hasil scan hari ini; cache 30 menit; manual trigger tombol CEK MOVER; tidak mengubah scan logic — pure informational early attention; tambah BUKK ke idx_pool.json",
