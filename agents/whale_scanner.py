@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Whale Scanner (Hengky Adinata Method)
+Simple Trading V9 — Whale Scanner (Hengky Adinata Method)
 ===========================================================
 "Semua ada rumus. Hitung barang."
   — Hengky Adinata

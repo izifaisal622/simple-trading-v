@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Alert Watch (Module 04)
+Simple Trading V9 — Alert Watch (Module 04)
 ============================================
 Auto-check setiap 15 menit HANYA saat market IDX aktif.
 

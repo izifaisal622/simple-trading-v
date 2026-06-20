@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Ownership Agent
+Simple Trading V9 — Ownership Agent
 =====================================
 Phase 1: yfinance major_holders (free, quarterly)
 Phase 2: Static broker profiles (manual enrichment)

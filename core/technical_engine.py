@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Technical Engine V5 (Institutional Grade)
+Simple Trading V9 — Technical Engine V5 (Institutional Grade)
 ==============================================================
 UPGRADE V5 (Core Institutional):
 

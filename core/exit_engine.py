@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Exit Engine V4 (Institutional Grade)
+Simple Trading V9 — Exit Engine V4 (Institutional Grade)
 =========================================================
 UPGRADE V4:
 

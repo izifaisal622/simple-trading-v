@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Alert Watcher Agent V2 (Institutional)
+Simple Trading V9 — Alert Watcher Agent V2 (Institutional)
 ============================================================
 UPGRADE V2:
   • Removed unused Optional import

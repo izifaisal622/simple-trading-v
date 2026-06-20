@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Single Stock Analysis Agent
+Simple Trading V9 — Single Stock Analysis Agent
 ================================================
 Analisis mendalam untuk SATU saham tertentu.
 

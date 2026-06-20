@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Scanner Agent V5 (Institutional)
+Simple Trading V9 — Scanner Agent V5 (Institutional)
 ======================================================
 UPGRADE V5:
   • Removed unused SetupResult import

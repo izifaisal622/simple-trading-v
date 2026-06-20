@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — EMA XBO Dashboard V4
+Simple Trading V9 — EMA XBO Dashboard V4
 CHANGELOG V4 (Audit Fixes):
   - FIX CRITICAL: MCF JOIN override → ⛔ BEAR REGIME ketika regime_tag = WATCHLIST_ONLY
   - FIX HIGH    : Risk warning badge merah untuk sinyal dengan risk_pct > 15%

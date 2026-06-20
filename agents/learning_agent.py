@@ -1,5 +1,5 @@
 """
-Simple Trading V8 — Learning Agent V3 (Statistical Inference)
+Simple Trading V9 — Learning Agent V3 (Statistical Inference)
 =============================================================
 UPGRADE V3 — Sesi A Rewrite:
 

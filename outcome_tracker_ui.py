@@ -1,5 +1,5 @@
 """
-Simple Trading V6.3.2 — Outcome Tracker UI (Shared Component)
+Simple Trading V9.3.2 — Outcome Tracker UI (Shared Component)
 ==============================================================
 Digunakan oleh:
   - pages/1_EMA_XBO.py

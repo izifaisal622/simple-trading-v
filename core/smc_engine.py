@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — SMC Engine V2 (Institutional Grade)
+Simple Trading V9 — SMC Engine V2 (Institutional Grade)
 =========================================================
 UPGRADE V2:
 

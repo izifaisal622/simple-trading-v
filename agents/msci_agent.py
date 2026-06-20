@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — MSCI Rebalancing Agent
+Simple Trading V9 — MSCI Rebalancing Agent
 ==========================================
 Detects active MSCI/IDX index rebalancing windows dan cross-references
 dengan whale accumulation signals untuk menghasilkan HIGH CONVICTION alerts.

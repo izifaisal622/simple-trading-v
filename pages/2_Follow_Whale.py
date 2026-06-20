@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Follow Whale Dashboard V4
+Simple Trading V9 — Follow Whale Dashboard V4
 Hengky Adinata Method: Hitung Barang · Floor Price · Pengeringan · Smart Whale
 """
 import sys

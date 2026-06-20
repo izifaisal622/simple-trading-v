@@ -1,5 +1,5 @@
 """
-Simple Trading V7 — Flow Scanner Agent
+Simple Trading V9 — Flow Scanner Agent
 =======================================
 Scans for money flow using:
 - Primary: Stockbit broker net buy (via OwnershipAgent token)

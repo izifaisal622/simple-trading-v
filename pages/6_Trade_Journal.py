@@ -1,4 +1,4 @@
-"""Simple Trading V7 — Page 06: Trade Journal & Performance Evaluasi"""
+"""Simple Trading V9 — Page 06: Trade Journal & Performance Evaluasi"""
 import json
 import sys
 import sqlite3

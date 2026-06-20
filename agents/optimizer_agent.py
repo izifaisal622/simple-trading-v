@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Optimizer Agent V2 (Institutional)
+Simple Trading V9 — Optimizer Agent V2 (Institutional)
 =======================================================
 UPGRADE V2:
   • CRITICAL FIX: self.getattr(cfg,...) → getattr(self.cfg,...) — was NameError

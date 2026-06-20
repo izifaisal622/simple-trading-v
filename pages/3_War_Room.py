@@ -1,5 +1,5 @@
 """
-Simple Trading V8 — Page 03: War Room
+Simple Trading V9 — Page 03: War Room
 Position Monitor · Pre-Market Briefing · Exit Signal Engine
 
 Menggantikan Money Flow Scanner (top gainer) yang duplikat fungsi broker app.

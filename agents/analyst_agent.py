@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Analyst Agent V4 (Institutional Grade)
+Simple Trading V9 — Analyst Agent V4 (Institutional Grade)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Rules-based analysis. Zero API cost. Zero external dependency.
 

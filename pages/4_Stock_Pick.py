@@ -1,4 +1,4 @@
-"""Simple Trading V6 — Analisis Saham Spesifik"""
+"""Simple Trading V9 — Analisis Saham Spesifik"""
 import json, time
 from datetime import date
 from pathlib import Path

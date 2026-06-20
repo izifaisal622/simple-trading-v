@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Strategy Config
+Simple Trading V9 — Strategy Config
 Loads from config/settings.json with fallback defaults.
 Auto-patch from director is applied on top at runtime.
 """

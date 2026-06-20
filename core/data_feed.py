@@ -1,5 +1,5 @@
 """
-Simple Trading V7 — Data Feed V6 (Dynamic Universe)
+Simple Trading V9 — Data Feed V6 (Dynamic Universe)
 ====================================================
 UPGRADE V6:
 

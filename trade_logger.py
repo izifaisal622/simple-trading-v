@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Trade Logger
+Simple Trading V9 — Trade Logger
 CHANGELOG V4 (Audit Fixes):
   - FIX CRITICAL: Tambah sl_price kolom agar pnl_r bisa dihitung dengan benar
   - FIX CRITICAL: close_trade() kini hitung pnl_r menggunakan entry_price DAN sl_price

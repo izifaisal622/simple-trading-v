@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Paper Trade Journal Agent V2 (Institutional)
+Simple Trading V9 — Paper Trade Journal Agent V2 (Institutional)
 =================================================================
 UPGRADE V2:
   • Removed unused json, datetime.datetime, dataclass, asdict, field imports

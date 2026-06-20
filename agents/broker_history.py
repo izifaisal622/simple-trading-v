@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Broker History Agent V2 (Institutional)
+Simple Trading V9 — Broker History Agent V2 (Institutional)
 =============================================================
 UPGRADE V2:
   • Removed unused json import

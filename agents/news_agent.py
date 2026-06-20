@@ -1,5 +1,5 @@
 """
-Simple Trading V2 — News Edge Agent v2
+Simple Trading V9 — News Edge Agent v2
 ========================================
 Three-pillar scoring model:
   Pillar 1: Source credibility (0–40 pts)
