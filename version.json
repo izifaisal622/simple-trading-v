@@ -1,8 +1,9 @@
 {
-  "version": "8.9.6",
+  "version": "8.9.7",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-20",
   "changelog": [
+    "8.9.7 — UI: War Room regional cards redesign — lebih besar (min-height 90px, font 1.15rem), warna sentiment 4 tier (strong up/up/down/strong down) dengan border glow, arrow indicator ▲▼, DXY format 2 desimal",
     "8.9.6 — CHORE: War Room tab icon 🎯→⚔️",
     "8.9.5 — FIX: War Room position card — nested f-string menyebabkan HTML tag 'data per' ter-render sebagai teks; pre-build _data_date_badge sebelum inject ke f-string utama",
     "8.9.4 — FIX CRITICAL: whale_scanner _analyze_ticker ValueError ambiguous truth value — fix 8.9.1 introduce bug: pakai 'or' antara DataFrame objects yang invalid di pandas (df or df raise ValueError); akibat: 0 dari 191 ticker berhasil dianalisis, whale scan return 0 total; fix: ganti or-chain dengan is None check eksplisit per variasi key",

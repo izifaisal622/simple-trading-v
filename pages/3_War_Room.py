@@ -163,19 +163,33 @@ _regional = st.session_state.get("regional_data", {})
 if _regional:
     _rcols = st.columns(len(_regional))
     for (_rname, _rdata), _rcol in zip(_regional.items(), _rcols):
-        _rchg = _rdata.get("chg", 0)
+        _rchg  = _rdata.get("chg", 0)
         _rlast = _rdata.get("last", 0)
-        _rcol_color = "#00FF66" if _rchg >= 0 else "#EF4444"
+
+        # Warna & sentiment
+        if _rchg >= 1.0:
+            _clr = "#22C55E"; _bg = "rgba(34,197,94,0.08)"; _brd = "rgba(34,197,94,0.25)"; _arrow = "▲"
+        elif _rchg >= 0:
+            _clr = "#86EFAC"; _bg = "rgba(34,197,94,0.04)"; _brd = "rgba(34,197,94,0.12)"; _arrow = "▲"
+        elif _rchg >= -1.0:
+            _clr = "#FCA5A5"; _bg = "rgba(239,68,68,0.04)"; _brd = "rgba(239,68,68,0.12)"; _arrow = "▼"
+        else:
+            _clr = "#EF4444"; _bg = "rgba(239,68,68,0.10)"; _brd = "rgba(239,68,68,0.30)"; _arrow = "▼"
+
+        # Format angka — DXY pakai 2 desimal, yang lain bulat
+        _val_str = f"{_rlast:,.2f}" if _rname == "DXY" else f"{_rlast:,.0f}"
+
         with _rcol:
             st.markdown(f"""
-<div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);
-border-radius:var(--r-sm);padding:0.5rem 0.7rem;text-align:center">
-  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
-  color:#94A3B8;letter-spacing:0.1em">{_rname}</div>
-  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-  color:#E2E8F0;font-weight:700">{_rlast:,.0f}</div>
-  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-  color:{_rcol_color};font-weight:700">{_rchg:+.2f}%</div>
+<div style="background:{_bg};border:1px solid {_brd};border-radius:8px;
+padding:1rem 0.8rem;text-align:center;min-height:90px;
+display:flex;flex-direction:column;justify-content:center;gap:4px">
+  <div style="font-family:Share Tech Mono,monospace;font-size:0.65rem;
+  color:#64748B;letter-spacing:0.12em;text-transform:uppercase">{_rname}</div>
+  <div style="font-family:Share Tech Mono,monospace;font-size:1.15rem;
+  color:#F1F5F9;font-weight:700;line-height:1.1">{_val_str}</div>
+  <div style="font-family:Share Tech Mono,monospace;font-size:0.85rem;
+  color:{_clr};font-weight:700">{_arrow} {_rchg:+.2f}%</div>
 </div>
 """, unsafe_allow_html=True)
 
