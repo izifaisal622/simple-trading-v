@@ -346,7 +346,7 @@ EXCLUDED_TICKERS = {
     "RATU", "TRIO", "ZINC", "LABA", "BOAT", "HILL", "ARKO", "CARE",
     "AXIO", "MITI", "RAJA", "OMRE", "BUVA", "KIJA", "FLMC",
     # Confirmed no-data dari terminal Jun 2026
-    "ASTRA", "FREN", "MFIN", "MASA",
+    "ASTRA", "FREN", "MFIN", "MASA", "SMRU",
 }
 
 # ── Delisted ticker registry ──────────────────────────────────────────────────
