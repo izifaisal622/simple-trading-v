@@ -567,6 +567,34 @@ def _compute_overall(a: StockAnalysis):
             a.grade = "F"
             a.action_label = "HINDARI / TIDAK LAYAK"
 
-    # overall_score untuk display progress bar (0–100)
-    a.overall_score = min(100, ema_pts + whale_pts)
+    # ── overall_score — dikalibrasi agar correlated dengan grade ────────────
+    # Sebelumnya: ema_pts + whale_pts (max 100) → Grade A bisa dapat 60 saja
+    # Sekarang: score mencerminkan grade band sehingga A=80-100, B=60-79, dst
+    #
+    # Formula per grade:
+    #   A (EMA kuat + Whale kuat): base 80 + bonus dari kelebihan kedua axis
+    #   B (EMA kuat only)        : base 60 + bonus dari EMA
+    #   C (Whale kuat only)      : base 40 + bonus dari Whale
+    #   D                        : base 20 + proporsi total
+    #   F                        : base 0  + proporsi total
+    if a.grade == "A":
+        # Bonus dari kelebihan ema dan whale di atas threshold (25)
+        _bonus = min(20, (ema_pts - 25) + (whale_pts - 25))
+        a.overall_score = min(100, 80 + _bonus)
+    elif a.grade == "B":
+        # EMA kuat (>=25), whale lemah — range 60-79
+        _bonus = min(19, int((ema_pts - 25) / 25 * 15) + int(whale_pts / 25 * 4))
+        a.overall_score = min(79, 60 + _bonus)
+    elif a.grade == "C":
+        # Whale kuat (>=25), EMA lemah — range 40-59
+        _bonus = min(19, int((whale_pts - 25) / 25 * 15) + int(ema_pts / 25 * 4))
+        a.overall_score = min(59, 40 + _bonus)
+    elif a.grade == "D":
+        # Keduanya lemah, total >= 15 — range 20-39
+        _total = ema_pts + whale_pts
+        a.overall_score = min(39, 20 + int(_total / 50 * 19))
+    else:  # F
+        _total = ema_pts + whale_pts
+        a.overall_score = min(19, int(_total / 30 * 19))
+
     a.grade_reasons = reasons[:6]

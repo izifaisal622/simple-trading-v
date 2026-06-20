@@ -1,8 +1,9 @@
 {
-  "version": "8.9.1",
+  "version": "8.9.2",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-20",
   "changelog": [
+    "8.9.2 — FIX: single_stock_agent overall_score dikalibrasi agar correlated dengan grade band; sebelumnya ema_pts+whale_pts (max 100) → Grade A bisa dapat 60 (misleading); sekarang A=80-100, B=60-79, C=40-59, D=20-39, F=0-19; contoh BSSR: 60.5→94 (Grade A); bonus dalam tiap band dari kelebihan ema/whale di atas threshold",
     "8.9.1 — FIX: whale_scanner _analyze_ticker key mismatch — cache diisi dengan key tanpa .JK tapi lookup pakai .JK → cache miss → fallback fetch individual → HTTP 401 spam; fix: coba semua variasi key (base, base+.JK, original) sebelum fallback ke network fetch; eliminasi mayoritas 401 error di whale scan",
     "8.9.0 — FIX: whale_scanner fetch_batch max_workers 30→4 + retry on HTTP 401 Invalid Crumb; root cause: 30 request paralel simultan menyebabkan Yahoo expire session crumb di tengah scan; fix: turunkan parallelism ke 4 (konsisten dengan scanner_agent) + retry ticker gagal setelah jeda 3s untuk Yahoo reset session",
     "8.8.9 — FIX: SMRU delisted — remove dari idx_pool.json + tambah ke EXCLUDED_TICKERS",
