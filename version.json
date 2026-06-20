@@ -1,8 +1,10 @@
 {
-  "version": "9.0.1",
+  "version": "9.0.3",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-20",
   "changelog": [
+    "9.0.3 — FIX: hero banner version dinamis dari version.json di 4 page (EMA_XBO/Follow_Whale/Alert_Watch/Stock_Pick) — ambil major version saja (.split('.')[0]); fallback V6→V9",
+    "9.0.2 — FIX: hero banner version dinamis dari version.json di 4 page (EMA_XBO/Follow_Whale/Alert_Watch/Stock_Pick) — ambil major version saja (.split('.')[0]); fallback V6→V9",
     "9.0.1 — FEAT: [1] rename Stock Analysis→Stock Pick di page, sidebar, banner, file (4_Stock_Analysis.py→4_Stock_Pick.py); [2] COMPRESSING signal baru di technical_engine — EMA13<EMA89 tapi gap menyempit >=25% dalam 3 bar + EMA89 slope positif + EMA13 slope positif; scoring 11pts (antara WATCHLIST 15 dan CORRECTING 8); warna ungu #A78BFA; icon ◑; deteksi momentum reversal sebelum actual EMA cross terjadi",
     "9.0.0 — UI: Stock Analysis EMA200 info block warna #1E3A5F→#60A5FA (biru terang) agar teks lebih readable",
     "8.9.9 — FEAT: branching logic EMA200 berdasarkan data availability; jika weekly bars >= 150 → EMA200 reliable, dipakai dalam scoring dan display; jika < 150 → EMA200 di-skip sepenuhnya (tidak award, tidak hukum score), EMA89 jadi long-term anchor; warning merah diganti label biru informatif 'EMA200 N/A — EMA89 sebagai anchor'; saham baru/illiquid (SINI, CDIA) dapat analisis fair tanpa dihukum absennya EMA200",
