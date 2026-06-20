@@ -550,13 +550,16 @@ class EMABreakoutEngine:
                 score += 1
                 flags.append("Price>EMA89")
 
-            # (4) Price above EMA200 — only if reliable, skip untuk IPO
-            if not ipo_mode and last_close > last_ema200:
-                if ema200_reliable:
-                    score += 1
-                    flags.append("Price>EMA200")
-                else:
-                    flags.append("⚠ EMA200 unstable (<150 bars)")
+            # (4) Price above EMA200 — only if reliable
+            # Opsi 1: jika data < 150 bars weekly, EMA200 tidak reliable →
+            # skip sepenuhnya (tidak award, tidak flag negatif).
+            # EMA89 sudah cukup sebagai long-term anchor untuk saham baru.
+            if not ipo_mode and ema200_reliable and last_close > last_ema200:
+                score += 1
+                flags.append("Price>EMA200")
+            # EMA89 sebagai long-term anchor jika EMA200 tidak reliable
+            elif not ipo_mode and not ema200_reliable and last_close > last_ema89:
+                flags.append("Price>EMA89 (anchor, EMA200 N/A)")
 
             # (5) Box / consolidation
             if box_detected:

@@ -266,7 +266,7 @@ html += line(
     + "EMA89 " + B("Rp"+f"{r.ema89:,.0f}", "var(--text-secondary)") + " · "
     + "Gap " + B(f"{ema_gap:+.1f}%", GREEN if ema_gap>0 else RED) + " · "
     + "vs EMA13 " + B(f"{pct_vs13:+.1f}%", GREEN if pct_vs13>0 else RED)
-    + (" · EMA200 " + B("Rp"+f"{r.ema200:,.0f}", YELLOW if not r.ema200_reliable else "var(--text-secondary)") if r.ema200 else "")
+    + (" · EMA200 " + B(f"Rp{r.ema200:,.0f}", "var(--text-secondary)") if r.ema200 and r.ema200_reliable else (" · EMA200 " + B("N/A", "#475569") if r.ema200 else ""))
 )
 
 # Vol + score + RS line
@@ -295,7 +295,7 @@ if r.risk_pct > 25:
 elif r.risk_pct > 15:
     html += warn_block("⚠ RISK "+f"{r.risk_pct:.0f}%"+" — Hati-hati sizing. Kurangi ukuran posisi.", YELLOW)
 if not r.ema200_reliable:
-    html += warn_block("⚠ EMA200 tidak reliable — data weekly < 150 bars.", YELLOW)
+    html += warn_block("ℹ EMA200 tidak tersedia (data < 150 bar weekly) — EMA89 dipakai sebagai long-term anchor.", "#1E3A5F")
 
 # MCF line
 html += line(B("MCF") + " " + B(mcf_lbl, mcf_col))
