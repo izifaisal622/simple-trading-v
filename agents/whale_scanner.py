@@ -1180,14 +1180,15 @@ class WhaleScanner:
 
     def _analyze_ticker(self, ticker: str) -> Optional[dict]:
         try:
-            # FIX 8.9.1: coba semua variasi key — cache bisa simpan dengan atau tanpa .JK
+            # FIX 8.9.4: coba semua variasi key dengan is None check eksplisit
+            # JANGAN pakai `or` antar DataFrame — pandas raise ValueError ambiguous truth
             _base = ticker.replace(".JK", "")
-            df = (
-                self._data_cache.get(_base)
-                or self._data_cache.get(_base + ".JK")
-                or self._data_cache.get(ticker)
-            )
-            if df is None or (hasattr(df, '__len__') and len(df) == 0):
+            df = self._data_cache.get(_base)
+            if df is None:
+                df = self._data_cache.get(_base + ".JK")
+            if df is None:
+                df = self._data_cache.get(ticker)
+            if df is None:
                 # Hanya fallback fetch jika benar-benar tidak ada di cache
                 df = self.feed.fetch(ticker, period=self.lookback, interval="1d")
             if df is None or len(df) < self.ma_period + 20:
