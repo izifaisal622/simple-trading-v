@@ -4,7 +4,7 @@ from datetime import date
 from pathlib import Path
 import streamlit as st
 
-st.set_page_config(page_title="Stock Analysis — STV6", page_icon="📡",
+st.set_page_config(page_title="Stock Pick — STV6", page_icon="📡",
                    layout="wide", initial_sidebar_state="expanded")
 
 ROOT     = Path(__file__).parent.parent
@@ -72,14 +72,14 @@ def sec_div(label, color=None):
 
 # ── sidebar / header ──────────────────────────────────────────────────────────
 cycle, ihsg, mom_4w, breadth, scan_date = _regime()
-render_sidebar("Stock Analysis", regime=cycle, scan_date=scan_date)
+render_sidebar("Stock Pick", regime=cycle, scan_date=scan_date)
 import json as _jv, pathlib as _pv
 try:
     _ver_accent = "V" + _jv.loads((_pv.Path(__file__).parent.parent/"version.json").read_text())["version"]
 except Exception:
     _ver_accent = "V6"
 render_page_header(
-    eyebrow  = "◆ MODULE 04 · SINGLE STOCK ANALYSIS · " + _ver_accent,
+    eyebrow  = "◆ MODULE 04 · SINGLE STOCK PICK · " + _ver_accent,
     title    = "SIMPLE TRADING ",
     accent   = _ver_accent,
     subtitle = "◈ EMA-XBO · FOLLOW WHALE · RATING CARD · SMC ANALYSIS",

@@ -34,7 +34,7 @@ class StockAnalysis:
     error:   str = ""
 
     # ── EMA-XBO ─────────────────────────────────────────────────────────────
-    signal:           str   = "NONE"    # BREAKOUT / WATCHLIST / CORRECTING / DEEP_CORRECT
+    signal:           str   = "NONE"    # BREAKOUT / WATCHLIST / COMPRESSING / CORRECTING / DEEP_CORRECT
     ema_score:        int   = 0         # 0–7
     regime_tag:       str   = ""        # FULL / SELECTIVE / SPECULATIVE / WATCHLIST_ONLY
     cross_state:      str   = ""        # ABOVE / CROSSING / BELOW
@@ -451,8 +451,9 @@ def _compute_overall(a: StockAnalysis):
 
     # Signal base: max 20 (BREAKOUT tidak lagi mendominasi 30% total)
     sig_pts = {
-        "BREAKOUT": 20, "WATCHLIST": 15, "CORRECTING": 8,
+        "BREAKOUT": 20, "WATCHLIST": 15, "COMPRESSING": 11, "CORRECTING": 8,
         "DEEP_CORRECT": 4, "NONE": 0,
+        # COMPRESSING: antara CORRECTING dan WATCHLIST — gap EMA menyempit, reversal terbentuk
     }.get(a.signal, 0)
     ema_pts += sig_pts
     if a.signal in ("BREAKOUT", "WATCHLIST"):

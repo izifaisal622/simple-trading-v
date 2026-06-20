@@ -59,6 +59,7 @@ SIG_COLORS = {
     "BREAKOUT":         "#00FF66",
     "WATCHLIST":        "#F0B429",
     "CORRECTING":       "#FB8C00",
+    "COMPRESSING":      "#A78BFA",  # ungu — momentum reversal terbentuk
     "DEEP_CORRECT":     "#EF4444",
     "ACCUMULATION":     "#00FF66",
     "BLOCK_BUY":        "#60A5FA",
@@ -170,7 +171,7 @@ def signal_badge(signal: str) -> str:
     """Signal type badge with appropriate color and icon."""
     icons = {
         "STRONG_BREAKOUT": "🔥", "BREAKOUT": "◈", "WATCHLIST": "◎",
-        "CORRECTING": "○", "DEEP_CORRECT": "◌", "ACCUMULATION": "◈",
+        "CORRECTING": "○", "COMPRESSING": "◑", "DEEP_CORRECT": "◌", "ACCUMULATION": "◈",
         "BLOCK_BUY": "▲", "DISTRIBUTION": "▼", "BLOCK_SELL": "◌",
     }
     col = SIG_COLORS.get(signal, "#64748B")

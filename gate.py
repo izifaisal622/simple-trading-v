@@ -332,7 +332,7 @@ st.markdown(f"""
     <div class="hero-overlay"></div>
     <div class="module-tag">◈ MODULE 04</div>
     <div class="hero-content">
-      <div class="hero-eyebrow">SINGLE STOCK ANALYSIS</div>
+      <div class="hero-eyebrow">SINGLE STOCK PICK</div>
       <div class="hero-title">STOCK<span class="accent"> PICK</span></div>
       <div class="hero-desc">Input kode saham, analisis lengkap.<br>EMA-XBO + Whale + Grade A–F.</div>
       <div class="hero-stats">

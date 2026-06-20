@@ -635,7 +635,37 @@ class EMABreakoutEngine:
             elif cross_state == "ABOVE" and last_close < last_ema89:
                 signal = "DEEP_CORRECT"
             else:
-                signal = "NONE"
+                # ── Compression detection (EMA13 < EMA89 tapi gap menyempit) ──
+                # Kondisi: EMA13 di bawah EMA89, tapi:
+                # 1. Gap menyempit >= 30% dalam 3 bar terakhir (momentum reversal)
+                # 2. EMA89 slope masih positif (long-term trend intact)
+                # 3. EMA13 slope positif (short-term momentum mulai balik)
+                # Signal: COMPRESSING — antara CORRECTING dan WATCHLIST
+                _is_compressing = False
+                try:
+                    if (cross_state == "BELOW"
+                            and len(ema13_s) >= 4
+                            and len(ema89_s) >= 4):
+                        _gap_now   = last_ema89 - last_ema13
+                        _gap_3ago  = float(ema89_s.iloc[-4]) - float(ema13_s.iloc[-4])
+                        _ema89_slope = float(ema89_s.iloc[-1]) - float(ema89_s.iloc[-4])
+                        _ema13_slope = float(ema13_s.iloc[-1]) - float(ema13_s.iloc[-4])
+                        _gap_shrink  = (_gap_3ago - _gap_now) / max(_gap_3ago, 1)
+
+                        _is_compressing = (
+                            _gap_now    > 0            # EMA13 masih di bawah EMA89
+                            and _gap_shrink >= 0.25    # gap menyempit >= 25% dalam 3 bar
+                            and _ema89_slope >= 0      # EMA89 tidak turun
+                            and _ema13_slope > 0       # EMA13 mulai naik
+                        )
+                except Exception:
+                    pass
+
+                if _is_compressing:
+                    signal = "COMPRESSING"
+                    flags.append(f"Gap EMA menyempit {_gap_shrink*100:.0f}% dalam 3 bar")
+                else:
+                    signal = "NONE"
 
             # RS downgrade
             if signal == "BREAKOUT" and rs_sig == "WEAK":
