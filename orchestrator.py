@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Orchestrator
+Simple Trading V9 — Orchestrator
 Runs all agents in the correct order.
 Zero API cost. All analysis is local.
 
@@ -326,7 +326,7 @@ def _run_single_ticker(cfg, regime, ticker: str, no_llm: bool = False):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Simple Trading V6 Orchestrator")
+    parser = argparse.ArgumentParser(description="Simple Trading V9 Orchestrator")
     parser.add_argument("--clear-cache", action="store_true", help="Hapus disk cache data sebelum scan")
     parser.add_argument("--mode",
                         choices=["ema","whale","flow","director","learning","weekly","all","stats","study"],
@@ -357,7 +357,7 @@ def main():
             print("[Cache] Data cache cleared ✓")
 
     print(f"\n{'═'*60}")
-    print(f"  SIMPLE TRADING V6 — {datetime.now().strftime('%d %b %Y %H:%M')}")
+    print(f"  SIMPLE TRADING V9 — {datetime.now().strftime('%d %b %Y %H:%M')}")
     print(f"{'═'*60}\n")
 
     cfg = StrategyConfig.load()

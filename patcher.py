@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Patcher & Version Manager
+Simple Trading V9 — Patcher & Version Manager
 ==============================================
 Versioning scheme:  MAJOR.MINOR.PATCH
   MAJOR = 6  (generasi — tidak berubah)
@@ -54,7 +54,7 @@ def load_version() -> dict:
     try:
         return json.loads(VER_FILE.read_text(encoding="utf-8"))
     except Exception:
-        return {"version": f"{MAJOR}.1.1", "codename": "UNKNOWN", "date": str(date.today()), "changelog": []}
+        return {"version": f"{MAJOR}.1.1", "date": str(date.today()), "changelog": []}
 
 
 def save_version(data: dict):
@@ -101,9 +101,8 @@ def next_minor(ver_str: str) -> str:
 def cmd_current():
     v = load_version()
     ver = v.get("version", "?")
-    cd  = v.get("codename", "")
     dt  = v.get("date", "")
-    print(f"\n  Current: V{ver}  [{cd}]  {dt}")
+    print(f"\n  Current: V{ver}  {dt}")
     changelog = v.get("changelog", [])
     if changelog:
         print(f"\n  Changelog (last {min(5,len(changelog))}):")

@@ -1,11 +1,11 @@
-"""Simple Trading V6 — Gate (Main Hub)"""
+"""Simple Trading V9 — Gate (Main Hub)"""
 import json
 from datetime import datetime, timezone, timedelta, time as dtime
 from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as _components
 
-st.set_page_config(page_title="Simple Trading V7", page_icon="◈",
+st.set_page_config(page_title="Simple Trading V9", page_icon="◈",
                    layout="wide", initial_sidebar_state="collapsed")
 
 ROOT     = Path(__file__).parent
@@ -397,7 +397,7 @@ with st.expander(
 ):
     st.markdown(
         '<p style="font-family:Share Tech Mono,monospace;font-size:.58rem;color:#8b9ab0">'
-        'Extract ke folder Simple Trading V6, replace files, restart Streamlit.<br>'
+        'Extract ke folder Simple Trading V9, replace files, restart Streamlit.<br>'
         '<span style="color:#4b5563">Backup dibuat otomatis setiap kali halaman dibuka (sekali per versi per hari).</span>'
         '</p>',
         unsafe_allow_html=True)

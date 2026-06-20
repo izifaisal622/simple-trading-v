@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Director Agent (Strict AI Manager)
+Simple Trading V9 — Director Agent (Strict AI Manager)
 ========================================================
 The Director is the top-level supervisor of ALL agents.
 It monitors BOTH strategies (EMA XBO + Follow Whale).
@@ -957,7 +957,7 @@ def _write_mandates(benchmarks, ema_analysis, whale_analysis, regime, history) -
     sev_icon = {"PASS":"✅","WARN":"🟡","FAIL":"🔴","CRITICAL":"🚨","SKIP":"⚪"}
 
     lines = [
-        "# 🎖 Director Report — Simple Trading V6",
+        "# 🎖 Director Report — Simple Trading V9",
         f"*{today} | IHSG {ihsg:,.0f} | {cycle} | 4W {mom_4w:+.1f}%*",
         "",
         "---",
@@ -1085,7 +1085,7 @@ def _generate_playbook(ihsg, sectors, history, deep) -> str:
     today = datetime.now().strftime("%d %b %Y %H:%M")
     cycle = ihsg.get("cycle","?")
     lines = [
-        "# 📋 Edge Playbook — Simple Trading V6",
+        "# 📋 Edge Playbook — Simple Trading V9",
         f"*{today} | {'WEEKLY DEEP' if deep else 'Daily'} | Director-Approved*","",
         "## 🌏 Market Regime",
         f"- IHSG: {ihsg.get('ihsg',0):,.0f} | **{cycle}** ({ihsg.get('breadth',0)}/6 breadth)",

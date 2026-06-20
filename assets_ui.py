@@ -1,5 +1,5 @@
 """
-Simple Trading V6 — Shared UI Assets V5 (Linear Dark / Refined Cyberpunk)
+Simple Trading V9 — Shared UI Assets V5 (Linear Dark / Refined Cyberpunk)
 ==========================================================================
 UPGRADE V5:
   • Systematic spacing scale: --sp-1 through --sp-8 (4px base)
@@ -958,10 +958,10 @@ def render_sidebar(page: str, ema_total: int = 0, whale_total: int = 0,
     regime_color = REGIME_COLORS.get(regime, TEXT_MUTED)
 
     _vf = _Path(__file__).parent / "version.json"
-    _ver = "6"; _ver_full = "6"
+    _ver = "9"; _ver_full = "9"
     try:
         _vdata    = _json.loads(_vf.read_text(encoding="utf-8"))
-        _ver_full = _vdata.get("version", "6")
+        _ver_full = _vdata.get("version", "9")
         _ver      = _ver_full.split(".")[0]
     except Exception:
         pass
