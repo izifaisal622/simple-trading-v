@@ -1,8 +1,9 @@
 {
-  "version": "8.9.9",
+  "version": "9.0.0",
   "codename": "AI-CHALLENGE-V1",
   "date": "2026-06-20",
   "changelog": [
+    "9.0.0 — UI: Stock Analysis EMA200 info block warna #1E3A5F→#60A5FA (biru terang) agar teks lebih readable",
     "8.9.9 — FEAT: branching logic EMA200 berdasarkan data availability; jika weekly bars >= 150 → EMA200 reliable, dipakai dalam scoring dan display; jika < 150 → EMA200 di-skip sepenuhnya (tidak award, tidak hukum score), EMA89 jadi long-term anchor; warning merah diganti label biru informatif 'EMA200 N/A — EMA89 sebagai anchor'; saham baru/illiquid (SINI, CDIA) dapat analisis fair tanpa dihukum absennya EMA200",
     "8.9.8 — FIX: single_stock_agent weekly data fallback 3y→1y; root cause: saham yang baru aktif/liquid (misal SINI) punya banyak NaN pada data 3y weekly → setelah dropna len(df)<30 → error 'Data mingguan tidak cukup'; fix: coba 3y dulu, jika kurang dari 30 bar fallback ke 1y, threshold minimum turun ke 10 bar",
     "8.9.7 — UI: War Room regional cards redesign — lebih besar (min-height 90px, font 1.15rem), warna sentiment 4 tier (strong up/up/down/strong down) dengan border glow, arrow indicator ▲▼, DXY format 2 desimal",

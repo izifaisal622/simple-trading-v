@@ -295,7 +295,7 @@ if r.risk_pct > 25:
 elif r.risk_pct > 15:
     html += warn_block("⚠ RISK "+f"{r.risk_pct:.0f}%"+" — Hati-hati sizing. Kurangi ukuran posisi.", YELLOW)
 if not r.ema200_reliable:
-    html += warn_block("ℹ EMA200 tidak tersedia (data < 150 bar weekly) — EMA89 dipakai sebagai long-term anchor.", "#1E3A5F")
+    html += warn_block("ℹ EMA200 tidak tersedia (data < 150 bar weekly) — EMA89 dipakai sebagai long-term anchor.", "#60A5FA")
 
 # MCF line
 html += line(B("MCF") + " " + B(mcf_lbl, mcf_col))
