@@ -1,7 +1,8 @@
 {
-  "version": "9.1.0",
+  "version": "9.1.1",
   "date": "2026-06-20",
   "changelog": [
+    "9.1.1 — FEAT: tambah Factor #9 Daily Confirmation (+1) dan Factor #10 Whale Activity (+1) ke EMA-XBO scoring; max score 8→10; hard cap technical_engine 8→10",
     "9.1.0 — CHORE: koreksi version string dari 9.0.10 ke 9.1.0; patch dan minor max single digit (0-9), rollover ke atas",
     "9.0.10 — FIX: War Room position card refactor — build HTML sebagai list join, bukan f-string multiline; _ema_badge/_exit_badges/_date_str di-concat langsung ke list, bukan diinjeksi ke f-string",
     "9.0.9 — FIX: War Room data_date_badge pindah ke st.markdown terpisah di bawah card; tidak lagi diinjeksi ke dalam f-string multiline",

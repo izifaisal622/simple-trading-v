@@ -155,7 +155,7 @@ class ScannerAgent:
             r.update(ms)
             boost      = ms.get("ms_conviction_boost", 0)
             score_pre  = r.get("score", 0)
-            score_post = max(0, min(8, score_pre + boost))
+            score_post = max(0, min(10, score_pre + boost))
             r["score"] = score_post
 
             # [SA-1 FIX] Flag jika MS penalty drop signal yang sudah lolos filter.
@@ -175,6 +175,25 @@ class ScannerAgent:
                     flags.append("MS downgrade → WATCHLIST")
         except Exception as exc:
             logger.debug(f"[Scanner] {ticker} MS boost: {exc}")
+
+        # ── Factor #9: Daily Confirmation boost ──────────────────────────────
+        if r.get("dual_confirmed", False):
+            _s = r.get("score", 0)
+            r["score"] = min(10, _s + 1)
+            _f9 = r.get("flags", [])
+            _f9.append("Daily confirmed ✦ +1")
+            r["flags"] = _f9
+
+        # ── Factor #10: Whale Activity boost ─────────────────────────────────
+        _whale_ok  = r.get("whale_ok", False)
+        _whale_sig = r.get("whale_signal", "")
+        _whale_con = r.get("conviction", 0)
+        if _whale_ok and _whale_sig not in ("UNKNOWN", "—", "") and _whale_con >= 5:
+            _s = r.get("score", 0)
+            r["score"] = min(10, _s + 1)
+            _f10 = r.get("flags", [])
+            _f10.append(f"Whale {_whale_sig} conv{_whale_con} ✦ +1")
+            r["flags"] = _f10
 
         # ── MCF ──────────────────────────────────────────────────────────────
         regime_tag = r.get("regime_tag", "FULL")

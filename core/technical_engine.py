@@ -602,8 +602,8 @@ class EMABreakoutEngine:
                 score += 1
                 flags.append("✦ FULL CONFIRMATION +1")
 
-            # ── HARD CAP: score never exceeds 8 ──────────────────────────────
-            score = min(score, 8)
+            # ── HARD CAP: score never exceeds 10 ─────────────────────────────
+            score = min(score, 10)
 
             # ── Regime score cap (after hard cap) ────────────────────────────
             if regime_tag == "WATCHLIST_ONLY" and score > 3:
@@ -1465,7 +1465,7 @@ class DailyEMAEngine:
                 score += 1
                 flags.append("✦ FULL CONFIRMATION +1")
 
-            score = min(score, 8)
+            score = min(score, 10)
 
             if regime_tag == "WATCHLIST_ONLY" and score > 3:
                 flags.append("⚠ BEAR: score capped 3")
