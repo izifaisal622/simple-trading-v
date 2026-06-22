@@ -180,9 +180,10 @@ def _render_risk_warning(r, lines_out: list) -> None:
         return  # Tidak perlu warning
 
     # Kalkulasi max lot berdasarkan 1% modal
-    # Asumsi modal 100jt (dapat disesuaikan), risk 1-2%
-    modal_default   = 100_000_000  # 100 jt
-    risk_per_trade  = modal_default * 0.01  # 1% modal = 1jt
+    # Modal dari session_state jika user sudah set, default 100jt
+    import streamlit as _st
+    modal_default   = int(_st.session_state.get("modal_size", 100_000_000))
+    risk_per_trade  = modal_default * 0.01  # 1% modal
     risk_per_lembar = (entry_price - sl_price) if sl_price > 0 and entry_price > sl_price else entry_price * (risk_pct / 100)
     max_lembar      = int(risk_per_trade / risk_per_lembar) if risk_per_lembar > 0 else 0
     max_lot_str     = f"{max_lembar:,} lembar (Rp{max_lembar * entry_price / 1_000_000:.1f}jt)" if max_lembar > 0 else "kalkulasi manual"
@@ -265,13 +266,20 @@ def _render_ema_detail(r) -> None:
     elif cross == "CROSSING":
         phase,phase_col = "GOLDEN_CROSS","#00FF66"
         phase_desc = f"EMA13 baru melewati EMA89 (gap {ema_gap_pct:+.1f}%). Early entry — risiko lebih tinggi tapi potensi besar."
-    elif abs(pct_vs_ema13) <= 3:
+    elif 0 <= pct_vs_ema13 <= 3:
         if vol >= 1.3:
             phase,phase_col = "PULLBACK_TO_EMA_CONFIRMED","#00FF66"
             phase_desc = f"Harga di EMA13 support ({pct_vs_ema13:+.1f}%) + volume naik {vol:.1f}×. Re-entry terbaik dalam uptrend."
         else:
             phase,phase_col = "PULLBACK_TO_EMA_WATCH","#F0B429"
             phase_desc = f"Harga di EMA13 ({pct_vs_ema13:+.1f}%) tapi volume belum konfirmasi ({vol:.1f}×). Tunggu volume ≥1.5×."
+    elif -3 <= pct_vs_ema13 < 0:
+        if pct_vs_ema89 > 0:
+            phase,phase_col = "PULLBACK_BELOW_EMA13","#F0B429"
+            phase_desc = f"Harga {pct_vs_ema13:+.1f}% di bawah EMA13 tapi masih di atas EMA89. Trend besar intact — tunggu bounce kembali ke EMA13 Rp{ema13:,.0f}."
+        else:
+            phase,phase_col = "BELOW_EMA13_AND_EMA89","#EF4444"
+            phase_desc = f"Harga {pct_vs_ema13:+.1f}% di bawah EMA13 DAN EMA89. Jangan entry."
     elif 3 < pct_vs_ema13 <= 12:
         if vol >= 3.0:
             phase,phase_col = "BREAKOUT_CONFIRMED","#00FF66"
@@ -494,29 +502,31 @@ def _render_ema_detail(r) -> None:
         for ln in lines_out
     ])
 
-    _ = (ticker, v_col, v_bg, verdict, rows_html, action)  # template vars
-    st.markdown(f"""
-<div style="background:{v_bg};border:1px solid rgba(255,255,255,0.08);
-border-left:4px solid {v_col};border-radius:var(--r-md);padding:0.9rem 1.1rem;margin:0.3rem 0 0.8rem 0">
-  <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.6rem;
-  padding-bottom:0.5rem;border-bottom:1px solid rgba(255,255,255,0.05)">
-    <span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:900;
-    color:#E2E8F0">{ticker}</span>
-    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-    color:#374151">EMA-XBO · Score {score}/10 · Vol {vol:.1f}×</span>
-    <span style="background:{v_col}18;border:1px solid {v_col}45;border-radius:var(--r-sm);
-    padding:2px 10px;font-family:Orbitron,monospace;font-size:var(--text-xs);
-    font-weight:700;color:{v_col};margin-left:auto">{verdict}</span>
-  </div>
-  {rows_html}
-  <div style="background:rgba(0,0,0,0.25);border:1px solid {phase_col}30;
-  border-radius:var(--r-sm);padding:0.55rem 0.9rem;margin-top:0.6rem;
-  font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-  color:#E2E8F0;line-height:1.8">
-    <span style="color:{phase_col};font-weight:700">→ </span>{action}
-  </div>
-</div>
-""", unsafe_allow_html=True)
+    # Build card via string concat — rows_html dan action tidak masuk f-string
+    _card_header = (
+        '<div style="background:' + v_bg + ';border:1px solid rgba(255,255,255,0.08);'
+        'border-left:4px solid ' + v_col + ';border-radius:var(--r-md);padding:0.9rem 1.1rem;margin:0.3rem 0 0.8rem 0">'
+        '<div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.6rem;'
+        'padding-bottom:0.5rem;border-bottom:1px solid rgba(255,255,255,0.05)">'
+        '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:900;'
+        'color:#E2E8F0">' + ticker + '</span>'
+        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+        'color:#374151">EMA-XBO · Score ' + str(score) + '/10 · Vol ' + f"{vol:.1f}" + '×</span>'
+        '<span style="background:' + v_col + '18;border:1px solid ' + v_col + '45;border-radius:var(--r-sm);'
+        'padding:2px 10px;font-family:Orbitron,monospace;font-size:var(--text-xs);'
+        'font-weight:700;color:' + v_col + ';margin-left:auto">' + verdict + '</span>'
+        '</div>'
+    )
+    _card_action = (
+        '<div style="background:rgba(0,0,0,0.25);border:1px solid ' + phase_col + '30;'
+        'border-radius:var(--r-sm);padding:0.55rem 0.9rem;margin-top:0.6rem;'
+        'font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
+        'color:#E2E8F0;line-height:1.8">'
+        '<span style="color:' + phase_col + ';font-weight:700">→ </span>'
+        + action +
+        '</div></div>'
+    )
+    st.markdown(_card_header + rows_html + _card_action, unsafe_allow_html=True)
 
 
 
@@ -587,6 +597,23 @@ with st.sidebar:
         )
     except Exception:
         pass
+
+    # Modal size input untuk risk calculator
+    st.markdown("---")
+    st.markdown(
+        '<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:#374151;margin-bottom:4px">'
+        'MODAL SIZE (RISK CALC)</div>',
+        unsafe_allow_html=True
+    )
+    _modal_input = st.number_input(
+        "Modal (Rp juta)",
+        min_value=10, max_value=10000,
+        value=int(st.session_state.get("modal_size", 100_000_000) / 1_000_000),
+        step=10, key="modal_input_jt",
+        label_visibility="collapsed",
+        help="Modal aktif untuk kalkulasi max lot di risk warning. Default 100jt."
+    )
+    st.session_state["modal_size"] = _modal_input * 1_000_000
 
 # Page header
 import json as _jv, pathlib as _pv
@@ -750,20 +777,22 @@ if ema_results:
                 _high_str = ('<div style="font-family:Share Tech Mono,monospace;'
                              'font-size:var(--text-xs);color:#00FF66;margin-top:.25rem">'
                              f'★ HIGH CONVICTION: {_high_tickers}</div>')
-            st.markdown(f"""
-<div style="background:{_pbg};border:1px solid {_pcol}55;border-left:4px solid {_pcol};
-border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
-  <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
-    <span style="font-family:Orbitron,monospace;font-size:var(--text-xs);font-weight:800;
-    color:{_pcol}">◈ {_idx} REBALANCING WINDOW</span>
-    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:{_pcol}">
-    T-{_t} HARI · EFFECTIVE {_eff} · {_ph}</span>
-    <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#64748B">
-    {len(_msci_high)} high conviction alerts</span>
-  </div>
-  {_high_str}
-</div>
-""", unsafe_allow_html=True)
+            # Build via string concat — _high_str tidak masuk f-string
+            _msci_banner = (
+                '<div style="background:' + _pbg + ';border:1px solid ' + _pcol + '55;border-left:4px solid ' + _pcol + ';'
+                'border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">'
+                '<div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">'
+                '<span style="font-family:Orbitron,monospace;font-size:var(--text-xs);font-weight:800;'
+                'color:' + _pcol + '">◈ ' + _idx + ' REBALANCING WINDOW</span>'
+                '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:' + _pcol + '">'
+                'T-' + str(_t) + ' HARI · EFFECTIVE ' + _eff + ' · ' + _ph + '</span>'
+                '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#64748B">'
+                + str(len(_msci_high)) + ' high conviction alerts</span>'
+                '</div>'
+                + _high_str +
+                '</div>'
+            )
+            st.markdown(_msci_banner, unsafe_allow_html=True)
 
     # Show bear market notice
     if cycle in ("BEAR_TREND", "WATCHLIST_ONLY"):
@@ -902,12 +931,12 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                 # P01-X2: quick pre-flight gate sebelum simpan
                 # Pakai data yang sudah ada dari result dict (r)
                 _pf_quick_regime = r.get("regime_tag","") not in ("BEAR_TREND","WATCHLIST_ONLY","BEAR_WEAK")
-                _pf_quick_score  = int(r.get("score",0)) >= 3
+                _pf_quick_score  = int(r.get("score",0)) >= 5
                 _pf_quick_risk   = float(r.get("risk_pct",0)) <= 25
                 _pf_quick_pass   = _pf_quick_regime and _pf_quick_score and _pf_quick_risk
                 _pf_quick_fails  = []
                 if not _pf_quick_regime: _pf_quick_fails.append(f"Regime={r.get('regime_tag','?')}")
-                if not _pf_quick_score:  _pf_quick_fails.append(f"Score={r.get('score',0)}/10 (<3)")
+                if not _pf_quick_score:  _pf_quick_fails.append(f"Score={r.get('score',0)}/10 (<5)")
                 if not _pf_quick_risk:   _pf_quick_fails.append(f"Risk={r.get('risk_pct',0):.0f}% (>25%)")
 
                 if not _pf_quick_pass:
@@ -985,7 +1014,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                 )
             with fc2:
                 min_score = st.slider(
-                    "Min Score", min_value=1, max_value=7,
+                    "Min Score", min_value=1, max_value=10,
                     value=st.session_state.get("f_score", 1),
                     key="f_score", label_visibility="collapsed",
                     help="Min Score (1–7)",
