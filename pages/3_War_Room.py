@@ -510,7 +510,7 @@ else:
         _ema13     = _pdata.get("ema13", 0)
         _vol_r     = _pdata.get("vol_ratio", 0)
         _data_date       = _pdata.get("data_date", "")
-        _data_date_badge = f'<span style="color:#475569">data per {_data_date}</span>' if _data_date else ""
+        _data_date_badge = ("<span style='color:#475569'>data per " + _data_date + "</span>") if _data_date else ""
 
         # Kalkulasi posisi
         _pnl_pct    = ((_last - _entry) / _entry * 100) if _entry > 0 and _last > 0 else 0

@@ -1,7 +1,8 @@
 {
-  "version": "9.0.7",
+  "version": "9.0.8",
   "date": "2026-06-20",
   "changelog": [
+    "9.0.8 — FIX: War Room _data_date_badge render sebagai raw HTML text — ganti f-string dengan escaped double quote ke string concatenation + single quote HTML attr",
     "9.0.7 — FIX: liquidity_bn bug — tambah field ke StockAnalysis dataclass dan hitung avg 5d value traded di _run_whale; sebelumnya getattr() return 0 karena field tidak ada",
     "9.0.6 — FIX: hero banner War Room dan Trade Journal ambil major version saja (.split(\".\")[0]) agar tampil V9 bukan V9.0.5",
     "9.0.5 — FIX: hero banner version dinamis dari version.json di 4 page (EMA_XBO/Follow_Whale/Stock_Pick/Alert_Watch) — ambil major version saja (.split(\".\")[0]); fallback V6→V9; page_title STV6→STV9",
