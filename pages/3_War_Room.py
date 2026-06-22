@@ -514,7 +514,8 @@ else:
 
         # Kalkulasi posisi
         _pnl_pct    = ((_last - _entry) / _entry * 100) if _entry > 0 and _last > 0 else 0
-        _pct_to_sl  = ((_last - _sl) / _last * 100) if _last > 0 and _sl > 0 else 999
+        _pct_to_sl  = ((_entry - _sl) / _entry * 100) if _entry > 0 and _sl > 0 else 999
+        _sl_breached = _last > 0 and _sl > 0 and _last < _sl  # harga sudah di bawah SL
         _pct_to_tp1 = ((_tp1 - _last) / _last * 100) if _last > 0 and _tp1 > 0 else 999
         _ema_ok     = _last > _ema13 * 0.98 if _ema13 > 0 else True
 
@@ -572,6 +573,7 @@ else:
                 _badge_parts.append(_bp)
             _exit_badges = " ".join(_badge_parts)
 
+        if _sl_breached: _pct_to_sl = -1  # override agar health_color tahu SL terlewat
         _health_c, _health_lbl = _health_color(_pct_to_sl, _pct_to_tp1, _exit_urgency)
 
         with _pos_cols[_idx % 3]:
