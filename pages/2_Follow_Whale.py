@@ -24,7 +24,6 @@ from assets_ui import (
     score_badge, vp_zone_pill, signal_badge,
 )
 _ = (sparkline_svg, fmt_rp, fmt_pct, fmt_vol, fmt_bn, fmt_conv, SIG_COLORS, VP_ZONE_COLORS, REGIME_COLORS, BG_CARD, BG_DEEP, TEXT_DIM, TEXT_MUTED, score_badge, vp_zone_pill, signal_badge)  # used in st.markdown HTML templates
-LABEL = "var(--text-secondary)"  # Readable label color — overrides TEXT_MUTED for better contrast
 try:
     from agents.ownership_agent import OwnershipAgent, get_broker_html as _get_broker_html
     _own_agent = OwnershipAgent()
@@ -412,7 +411,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     def score_icon(ok):
         return ("✅" if ok == "good" else "⚠️" if ok == "warn" else "❌")
 
-    signal_ok  = "good" if signal == "ACCUMULATION"   else "warn" if signal in ("BLOCK_BUY","VOL_SPIKE_UP") else "warn"
+    signal_ok  = "good" if signal == "ACCUMULATION" else "warn" if signal in ("BLOCK_BUY","VOL_SPIKE_UP") else "bad"
     qual_ok    = "good" if qual in ("SMART","LIKELY_SMART") else "warn"
     ema_ok     = "good" if ema_tr == "BULLISH"        else "warn" if ema_tr == "MIXED"  else "bad"
     floor_ok   = "good" if pct_f <= 15                else "warn" if pct_f <= 30        else "bad"
@@ -1056,8 +1055,8 @@ def _trading_summary_row(w: dict) -> str:
         (ff_vol >= 1.5) * 1,                        # 1pt: volume konfirmasi
         (conv >= 6) * 1,                            # 1pt: conviction
     ])
-    # Max score = 12 — normalisasi ke skala 8 untuk kompatibilitas threshold lama
-    positive_signals = round(positive_signals * 8 / 12)
+    # Max score = 12 — normalisasi ke skala 10 (proporsional terhadap conviction /10)
+    positive_signals = round(positive_signals * 10 / 12)
 
     if is_dist:
         verdict      = "DISTRIBUSI"
@@ -1071,7 +1070,7 @@ def _trading_summary_row(w: dict) -> str:
             reasons.append("EMA bearish")
         if ff_vol < 0.5:
             reasons.append(f"Vol hanya {ff_vol:.1f}× (sepi)")
-    elif conv >= 6 and positive_signals >= 3 and pct_f <= 20 and ema_tr in ("BULLISH","MIXED"):
+    elif conv >= 6 and positive_signals >= 5 and pct_f <= 20 and ema_tr in ("BULLISH","MIXED"):
         verdict      = "ENTRY VALID"
         verdict_col  = "#00FF66"
         verdict_bg   = "rgba(0,255,102,0.06)"
@@ -1086,7 +1085,7 @@ def _trading_summary_row(w: dict) -> str:
         if in_ob:        reasons.append("di OB zone")
         if ctrl >= 6:    reasons.append(f"control {ctrl}/10")
         if sc in ("SANGAT KETAT","KETAT"): reasons.append(f"supply {sc.lower()}")
-    elif conv >= 4 and positive_signals >= 2 and pct_f <= 35:
+    elif conv >= 4 and positive_signals >= 3 and pct_f <= 35:
         verdict      = "WATCHLIST"
         verdict_col  = "#F0B429"
         verdict_bg   = "rgba(240,180,41,0.05)"
