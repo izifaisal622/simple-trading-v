@@ -459,7 +459,7 @@ padding:0.7rem 1rem;margin-bottom:0.4rem">
     <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
     color:{_pf_head_col};font-weight:700">{_pf_head_lbl}</span>
     <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
-    color:var(--text-dim);margin-left:auto">{_pf_pass_count}/8 pass</span>
+    color:var(--text-dim);margin-left:auto">{_pf_pass_count}/10 pass</span>
   </div>
   {_pf_rows}
 </div>

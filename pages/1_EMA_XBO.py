@@ -352,7 +352,7 @@ def _render_ema_detail(r) -> None:
 
     lines_out.append(
         f'<b>Volume:</b> <b style="color:{vol_col}">{vol:.1f}× — {vol_lbl}</b> · '
-        f'Score <b style="color:{_score_col}">{score}/8</b> · '
+        f'Score <b style="color:{_score_col}">{score}/10</b> · '
         f'RS <b style="color:{_rs_col}">{rs:+.1f}%</b>'
         + (f' · Regime <b style="color:{_regime_col}">{regime}</b>' if regime else '')
     )
@@ -484,7 +484,7 @@ def _render_ema_detail(r) -> None:
     elif phase == "BELOW_EMA":
         action = f"<b>BELUM SETUP.</b> EMA13 Rp{ema13:,.0f} belum melewati EMA89 Rp{ema89:,.0f}."
     else:
-        action = f"<b>MONITOR.</b> Score {score}/8."  # noqa: F841
+        action = f"<b>MONITOR.</b> Score {score}/10."  # noqa: F841
 
     # Render
     rows_html = "".join([  # noqa: F841
@@ -503,7 +503,7 @@ border-left:4px solid {v_col};border-radius:var(--r-md);padding:0.9rem 1.1rem;ma
     <span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:900;
     color:#E2E8F0">{ticker}</span>
     <span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
-    color:#374151">EMA-XBO · Score {score}/8 · Vol {vol:.1f}×</span>
+    color:#374151">EMA-XBO · Score {score}/10 · Vol {vol:.1f}×</span>
     <span style="background:{v_col}18;border:1px solid {v_col}45;border-radius:var(--r-sm);
     padding:2px 10px;font-family:Orbitron,monospace;font-size:var(--text-xs);
     font-weight:700;color:{v_col};margin-left:auto">{verdict}</span>
@@ -787,7 +787,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
         # P01-A: Min score filter + copy tickers
         _bh1, _bh2, _bh3 = st.columns([1, 1, 2])
         with _bh1:
-            _bo_min_score = st.slider("Min Score", 1, 8, 3, key="bo_min_score",
+            _bo_min_score = st.slider("Min Score", 1, 10, 3, key="bo_min_score",
                                       help="Filter breakout berdasarkan minimum score")
         with _bh2:
             _bo_max_risk = st.slider("Max Risk %", 5, 50, 30, 5, key="bo_max_risk",
@@ -907,7 +907,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
                 _pf_quick_pass   = _pf_quick_regime and _pf_quick_score and _pf_quick_risk
                 _pf_quick_fails  = []
                 if not _pf_quick_regime: _pf_quick_fails.append(f"Regime={r.get('regime_tag','?')}")
-                if not _pf_quick_score:  _pf_quick_fails.append(f"Score={r.get('score',0)}/8 (<3)")
+                if not _pf_quick_score:  _pf_quick_fails.append(f"Score={r.get('score',0)}/10 (<3)")
                 if not _pf_quick_risk:   _pf_quick_fails.append(f"Risk={r.get('risk_pct',0):.0f}% (>25%)")
 
                 if not _pf_quick_pass:
@@ -1118,7 +1118,7 @@ border-radius:var(--r-md);padding:.7rem 1rem;margin:.5rem 0">
         st.dataframe(
             df_table, hide_index=True,
             column_config={
-                "Score":  st.column_config.NumberColumn("Score", format="%d/8"),
+                "Score":  st.column_config.NumberColumn("Score", format="%d/10"),
                 "Close":  st.column_config.NumberColumn("Close", format="Rp%,.0f"),
                 "EMA13d": st.column_config.NumberColumn("EMA13d", format="Rp%,.0f"),
                 "Vol×":   st.column_config.NumberColumn("Vol×",  format="%.2f×"),
