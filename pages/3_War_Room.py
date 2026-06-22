@@ -634,11 +634,21 @@ else:
             ])
             st.markdown(_card_html, unsafe_allow_html=True)
 
-            # Close trade button
-            if st.button(f"✓ CLOSE #{_tid}", key=f"close_{_tid}_{_t}",
-                         use_container_width=True):
-                st.session_state[f"closing_{_tid}"] = True
+            # Action buttons — CLOSE dan EDIT berdampingan
+            _btn_col1, _btn_col2 = st.columns(2)
+            with _btn_col1:
+                if st.button(f"✓ CLOSE #{_tid}", key=f"close_{_tid}_{_t}",
+                             use_container_width=True):
+                    st.session_state[f"closing_{_tid}"] = True
+                    st.session_state.pop(f"editing_{_tid}", None)
 
+            with _btn_col2:
+                if st.button(f"✎ EDIT #{_tid}", key=f"edit_{_tid}_{_t}",
+                             use_container_width=True):
+                    st.session_state[f"editing_{_tid}"] = True
+                    st.session_state.pop(f"closing_{_tid}", None)
+
+            # Form CLOSE
             if st.session_state.get(f"closing_{_tid}"):
                 _cx1, _cx2, _cx3 = st.columns(3)
                 with _cx1:
@@ -661,6 +671,60 @@ else:
                                 st.rerun()
                         except Exception as _ce:
                             st.error(f"Error: {_ce}")
+
+            # Form EDIT — revisi SL / TP tanpa close
+            if st.session_state.get(f"editing_{_tid}"):
+                st.markdown(
+                    '<div style="background:#1e293b;border:1px solid #334155;border-radius:6px;'                    'padding:0.6rem 0.8rem;margin:0.3rem 0 0.2rem">'
+                    '<span style="font-family:Share Tech Mono,monospace;font-size:0.7rem;'
+                    'color:#94A3B8">✎ REVISI POSISI — tidak menutup trade</span></div>',
+                    unsafe_allow_html=True
+                )
+                _ex1, _ex2, _ex3, _ex4 = st.columns(4)
+                with _ex1:
+                    _new_sl  = st.number_input("SL baru (Rp)",
+                                               value=float(_sl) if _sl else 0.0,
+                                               step=10.0, key=f"esl_{_tid}")
+                with _ex2:
+                    _new_tp1 = st.number_input("TP1 baru (Rp)",
+                                               value=float(_tp1) if _tp1 else 0.0,
+                                               step=10.0, key=f"etp1_{_tid}")
+                with _ex3:
+                    _new_tp2 = st.number_input("TP2 baru (Rp)",
+                                               value=float(_tp2) if _tp2 else 0.0,
+                                               step=10.0, key=f"etp2_{_tid}")
+                with _ex4:
+                    _new_notes = st.text_input("Catatan", value="",
+                                               placeholder="alasan revisi...",
+                                               key=f"enotes_{_tid}")
+
+                _es1, _es2 = st.columns(2)
+                with _es1:
+                    if st.button("💾 SIMPAN REVISI", key=f"esave_{_tid}",
+                                 use_container_width=True):
+                        try:
+                            from trade_logger import update_trade
+                            _upd = update_trade(
+                                trade_id  = _tid,
+                                sl_price  = _new_sl  if _new_sl  > 0 else None,
+                                tp1_price = _new_tp1 if _new_tp1 > 0 else None,
+                                tp2_price = _new_tp2 if _new_tp2 > 0 else None,
+                                notes     = _new_notes if _new_notes.strip() else None,
+                            )
+                            if _upd.get("success"):
+                                st.success(f"✅ Posisi #{_tid} diupdate")
+                                st.session_state.pop(f"editing_{_tid}", None)
+                                st.session_state.pop(f"pos_data_{_t}", None)
+                                st.rerun()
+                            else:
+                                st.error(_upd.get("error", "Gagal update"))
+                        except Exception as _ue:
+                            st.error(f"Error: {_ue}")
+                with _es2:
+                    if st.button("✕ BATAL", key=f"ecancel_{_tid}",
+                                 use_container_width=True):
+                        st.session_state.pop(f"editing_{_tid}", None)
+                        st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 3 — EXIT SIGNAL WATCH

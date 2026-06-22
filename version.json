@@ -1,7 +1,8 @@
 {
-  "version": "9.1.9",
+  "version": "9.1.10",
   "date": "2026-06-22",
   "changelog": [
+    "9.1.10 — FEAT: War Room — tambah tombol EDIT per card untuk revisi SL/TP1/TP2/Notes tanpa close trade; update_trade() ditambahkan di trade_logger.py",
     "9.1.9 — FIX: threshold ema200_reliable 150→100 bars (data IDX via yfinance memang terbatas); warning text diupdate, hapus referensi fetch 3 tahun yang tidak relevan",
     "9.1.8 — FIX: data_feed.py weekly period 3y→5y agar EMA200 reliable (n_bars≥150); fallback chain Round 2 diupdate 2y→3y sesuai primary period baru; saham baru/IPO tidak terpengaruh — yfinance return data sebanyak yang ada tanpa error",
     "9.1.7 — FIX: gate.py URL Stock_Analysis → Stock_Pick; page tidak bisa diakses dari landing page",

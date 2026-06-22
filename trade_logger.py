@@ -225,6 +225,51 @@ def close_trade(
     }
 
 
+def update_trade(
+    trade_id:  int,
+    sl_price:  float = None,
+    tp1_price: float = None,
+    tp2_price: float = None,
+    notes:     str   = None,
+) -> dict:
+    """
+    Revisi SL / TP1 / TP2 / Notes pada trade yang masih open.
+    Hanya field yang diisi (bukan None) yang akan diupdate.
+    """
+    init_db()
+    conn = sqlite3.connect(str(DB_PATH))
+
+    row = conn.execute(
+        "SELECT id FROM manual_trades WHERE id=? AND outcome='OPEN'",
+        (trade_id,)
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return {"success": False, "error": f"Trade #{trade_id} tidak ditemukan atau sudah closed"}
+
+    sets, vals = [], []
+    if sl_price  is not None: sets.append("sl_price=?");  vals.append(sl_price)
+    if tp1_price is not None: sets.append("tp1_price=?"); vals.append(tp1_price)
+    if tp2_price is not None: sets.append("tp2_price=?"); vals.append(tp2_price)
+    if notes     is not None:
+        existing = conn.execute(
+            "SELECT notes FROM manual_trades WHERE id=?", (trade_id,)
+        ).fetchone()
+        combined = f"{(existing[0] or '')} | {notes}".strip(" |") if notes else (existing[0] or "")
+        sets.append("notes=?"); vals.append(combined)
+
+    if not sets:
+        conn.close()
+        return {"success": False, "error": "Tidak ada field yang diubah"}
+
+    vals.append(trade_id)
+    conn.execute(f"UPDATE manual_trades SET {', '.join(sets)} WHERE id=?", vals)
+    conn.commit()
+    conn.close()
+    return {"success": True, "trade_id": trade_id}
+
+
 def get_open_trades() -> list:
     """Ambil semua trade yang masih open."""
     init_db()
