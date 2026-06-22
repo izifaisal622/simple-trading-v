@@ -575,69 +575,64 @@ else:
         _health_c, _health_lbl = _health_color(_pct_to_sl, _pct_to_tp1, _exit_urgency)
 
         with _pos_cols[_idx % 3]:
-            st.markdown(f"""
-<div style="background:rgba(0,0,0,0.3);border:1px solid {_health_c}40;
-border-left:4px solid {_health_c};border-radius:var(--r-md);
-padding:0.8rem 1rem;margin-bottom:0.6rem">
-  <div style="display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:0.5rem;padding-bottom:0.4rem;border-bottom:1px solid rgba(255,255,255,0.06)">
-    <span style="font-family:Orbitron,monospace;font-size:var(--text-xl);
-    font-weight:900;color:#E2E8F0">{_t}</span>
-    <span style="font-family:Orbitron,monospace;font-size:var(--text-xs);
-    font-weight:700;color:{_health_c}">{_health_lbl}</span>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin-bottom:0.5rem">
-    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">HARGA</div>
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#E2E8F0;font-weight:700">
-        {f"Rp{_last:,.0f}" if _last else "—"}
-      </div>
-    </div>
-    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">P&L</div>
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:{_pnl_col};font-weight:700">
-        {f"{_pnl_pct:+.1f}%" if _last else "—"}
-      </div>
-    </div>
-    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">→ SL</div>
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-      color:{_sl_col}">
-        {f"TERLEWAT" if _pct_to_sl <= 0 else f"{_pct_to_sl:.1f}%" if _last else "—"}
-      </div>
-    </div>
-    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">→ TP1</div>
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
-      color:{_tp1_col}">
-        {f"{_pct_to_tp1:.1f}%" if _last and _tp1 else "—"}
-      </div>
-    </div>
-    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">→ TP2</div>
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#94A3B8">
-        {f"Rp{_tp2:,.0f}" if _tp2 else "—"}
-      </div>
-    </div>
-    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">HARI</div>
-      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#CBD5E1">
-        {_holding_days_str}
-      </div>
-    </div>
-  </div>
-  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);
-  color:#94A3B8;display:flex;gap:0.8rem;align-items:center">
-    <span>Entry <b style="color:#E2E8F0">Rp{_entry:,.0f}</b></span>
-    <span>SL <b style="color:#EF4444">Rp{_sl:,.0f}</b></span>
-    <span>Vol <b style="color:{_vol_col}">{_vol_r:.1f}×</b></span>
-    {_ema_badge}
-    {_exit_badges}
-  </div>
-</div>
-""", unsafe_allow_html=True)
-            if _data_date_badge:
-                st.markdown(_data_date_badge, unsafe_allow_html=True)
+            # Pre-build semua nilai scalar dulu — tidak ada HTML variable di dalam f-string
+            _harga_str   = f"Rp{_last:,.0f}" if _last else "—"
+            _pnl_str     = f"{_pnl_pct:+.1f}%" if _last else "—"
+            _sl_str      = "TERLEWAT" if _pct_to_sl <= 0 else (f"{_pct_to_sl:.1f}%" if _last else "—")
+            _tp1_str     = f"{_pct_to_tp1:.1f}%" if _last and _tp1 else "—"
+            _tp2_str     = f"Rp{_tp2:,.0f}" if _tp2 else "—"
+            _entry_str   = f"Rp{_entry:,.0f}"
+            _sl_val_str  = f"Rp{_sl:,.0f}"
+            _vol_str     = f"{_vol_r:.1f}\u00d7"
+            _date_str    = ("data per " + _data_date) if _data_date else ""
+
+            _card_html = "".join([
+                '<div style="background:rgba(0,0,0,0.3);border:1px solid ' + _health_c + '40;',
+                'border-left:4px solid ' + _health_c + ';border-radius:var(--r-md);',
+                'padding:0.8rem 1rem;margin-bottom:0.6rem">',
+                '  <div style="display:flex;align-items:center;justify-content:space-between;',
+                '  margin-bottom:0.5rem;padding-bottom:0.4rem;border-bottom:1px solid rgba(255,255,255,0.06)">',
+                '    <span style="font-family:Orbitron,monospace;font-size:var(--text-xl);font-weight:900;color:#E2E8F0">' + _t + '</span>',
+                '    <span style="font-family:Orbitron,monospace;font-size:var(--text-xs);font-weight:700;color:' + _health_c + '">' + _health_lbl + '</span>',
+                '  </div>',
+                '  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin-bottom:0.5rem">',
+                '    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">HARGA</div>',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#E2E8F0;font-weight:700">' + _harga_str + '</div>',
+                '    </div>',
+                '    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">P&amp;L</div>',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:' + _pnl_col + ';font-weight:700">' + _pnl_str + '</div>',
+                '    </div>',
+                '    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">&rarr; SL</div>',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:' + _sl_col + '">' + _sl_str + '</div>',
+                '    </div>',
+                '    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">&rarr; TP1</div>',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:' + _tp1_col + '">' + _tp1_str + '</div>',
+                '    </div>',
+                '    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">&rarr; TP2</div>',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#94A3B8">' + _tp2_str + '</div>',
+                '    </div>',
+                '    <div style="background:rgba(255,255,255,0.03);border-radius:4px;padding:0.4rem 0.5rem">',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#94A3B8">HARI</div>',
+                '      <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:#CBD5E1">' + _holding_days_str + '</div>',
+                '    </div>',
+                '  </div>',
+                '  <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);',
+                '  color:#94A3B8;display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap">',
+                '    <span>Entry <b style="color:#E2E8F0">' + _entry_str + '</b></span>',
+                '    <span>SL <b style="color:#EF4444">' + _sl_val_str + '</b></span>',
+                '    <span>Vol <b style="color:' + _vol_col + '">' + _vol_str + '</b></span>',
+                _ema_badge,
+                _exit_badges,
+                ('<span style="color:#475569">' + _date_str + '</span>') if _date_str else "",
+                '  </div>',
+                '</div>',
+            ])
+            st.markdown(_card_html, unsafe_allow_html=True)
 
             # Close trade button
             if st.button(f"✓ CLOSE #{_tid}", key=f"close_{_tid}_{_t}",
