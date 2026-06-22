@@ -193,7 +193,7 @@ st.markdown(
 
     '<div style="min-width:140px;font-family:Share Tech Mono,monospace;display:flex;flex-direction:column;gap:.18rem">'
     '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">SIGNAL</span><span style="font-size:var(--text-xs);font-weight:600;color:'+sig_col+'">'+sig_icon+' '+r.signal+'</span></div>'
-    '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">EMA SCORE</span><span style="font-size:var(--text-xs);font-weight:600;color:'+ema_c+'">'+str(r.ema_score)+'/7</span></div>'
+    '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">EMA SCORE</span><span style="font-size:var(--text-xs);font-weight:600;color:'+ema_c+'">'+str(r.ema_score)+'/10</span></div>'
     '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">WHALE</span><span style="font-size:var(--text-xs);font-weight:600;color:'+wq_c+'">'+r.whale_quality+'</span></div>'
     '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">CONVICTION</span><span style="font-size:var(--text-xs);font-weight:600;color:'+conv_c+'">'+str(r.conviction)+'/10</span></div>'
     '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">REGIME</span><span style="font-size:var(--text-xs);color:'+reg_col+'">'+reg_col.replace("#","")[:0]+r.regime_tag+'</span></div>'
@@ -223,7 +223,7 @@ html = (
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">'
     '<div><span style="font-family:Orbitron,monospace;font-size:var(--text-xl);font-weight:800;color:'+WHITE+'">'+r.ticker+'</span>'
     '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:'+LABEL+';margin-left:.6rem">'
-    'EMA-XBO · Score '+str(r.ema_score)+'/7 · Vol '+f"{r.vol_ratio:.1f}"+'×</span></div>'
+    'EMA-XBO · Score '+str(r.ema_score)+'/10 · Vol '+f"{r.vol_ratio:.1f}"+'×</span></div>'
     '<div style="background:'+v_bg+';border:1px solid '+v_col+'55;border-radius:3px;padding:.25rem .7rem;'
     'font-family:Share Tech Mono,monospace;font-size:var(--text-xs);font-weight:700;color:'+v_col+'">'+verdict+'</div>'
     '</div>'
@@ -272,7 +272,7 @@ html += line(
 # Vol + score + RS line
 html += line(
     B("Volume:") + " " + B(f"{r.vol_ratio:.1f}× — {vol_lbl}", vol_wc) + " · "
-    + "Score " + B(str(r.ema_score)+"/7", ema_c) + " · "
+    + "Score " + B(str(r.ema_score)+"/10", ema_c) + " · "
     + "RS " + B(f"{r.rs_vs_ihsg:+.1f}%", rs_c)
     + (" · Regime " + B(r.regime_tag, reg_col) if r.regime_tag else "")
 )
@@ -368,7 +368,7 @@ st.markdown(
     '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:'+LABEL+'">REKOMENDASI</span>'
     '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:800;color:'+g_col+'">'+r.action_label+'</span>'
     '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:'+g_col+'">'
-    'Grade '+r.grade+'  ·  Score '+str(r.overall_score)+'/100  ·  EMA '+str(r.ema_score)+'/7  ·  Whale '+str(r.conviction)+'/10</span>'
+    'Grade '+r.grade+'  ·  Score '+str(r.overall_score)+'/100  ·  EMA '+str(r.ema_score)+'/10  ·  Whale '+str(r.conviction)+'/10</span>'
     '</div>',
     unsafe_allow_html=True)
 
@@ -426,7 +426,7 @@ def _pf_row(ok: bool, label: str, value: str, rule: str) -> str:
 _pf_rows = (
     _pf_row(_pf_regime_ok,  "REGIME",        r.regime_tag or "UNKNOWN",
              "Bukan BEAR/WATCHLIST_ONLY")
-    + _pf_row(_pf_ema_ok,   "EMA SCORE",     f"{r.ema_score}/7",
+    + _pf_row(_pf_ema_ok,   "EMA SCORE",     f"{r.ema_score}/10",
                "≥ 4 untuk entry")
     + _pf_row(_pf_conv_ok,  "CONVICTION",    f"{r.conviction}/10",
                "≥ 6 untuk full size")
@@ -717,11 +717,25 @@ with tab_ringkasan:
     else:
         _kesimpulan = f"🔴 <b style='color:{RED}'>SKIP / JANGAN ENTRY.</b> Hanya {_pass_count}/6 kriteria terpenuhi. Terlalu banyak risiko."
 
+    # EMA Gate label
+    _ema_gate_col   = GREEN if r.signal in ('BREAKOUT','STRONG_BREAKOUT','WATCHLIST') and r.regime_tag not in ('WATCHLIST_ONLY','BEAR_TREND') else RED
+    _ema_gate_lbl   = 'PASS' if _ema_gate_col == GREEN else 'BLOCK'
+    # Whale Qualifier label
+    _wq = r.whale_quality if r.whale_ok else 'NO DATA'
+    _wq_col  = GREEN if _wq in ('SMART','LIKELY_SMART') else YELLOW if _wq == 'UNCERTAIN' else LABEL
+    _wq_size = 'FULL SIZE' if _wq in ('SMART','LIKELY_SMART') else ('50% SIZE' if _wq == 'UNCERTAIN' else '25% SIZE')
+    _gate_html = (
+        '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:.4rem;'
+        'font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:'+LABEL+'">'
+        '<span>EMA GATE: <b style="color:'+_ema_gate_col+'">'+_ema_gate_lbl+'</b></span>'
+        '<span>WHALE QUALIFIER: <b style="color:'+_wq_col+'">'+_wq+'</b> → <b style="color:'+_wq_col+'">'+_wq_size+'</b></span>'
+        '</div>'
+    )
     st.markdown(
         '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);'
         'border-radius:6px;padding:.65rem 1.1rem;margin:.4rem 0;'
         'font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:' + WHITE + '">'
-        '→ <b>KESIMPULAN:</b> ' + _kesimpulan + '</div>',
+        '→ <b>KESIMPULAN:</b> ' + _kesimpulan + _gate_html + '</div>',
         unsafe_allow_html=True)
 
 with tab_flags:
