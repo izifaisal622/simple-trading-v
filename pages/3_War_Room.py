@@ -633,10 +633,11 @@ padding:0.8rem 1rem;margin-bottom:0.6rem">
     <span>Vol <b style="color:{_vol_col}">{_vol_r:.1f}×</b></span>
     {_ema_badge}
     {_exit_badges}
-    {_data_date_badge}
   </div>
 </div>
 """, unsafe_allow_html=True)
+            if _data_date_badge:
+                st.markdown(_data_date_badge, unsafe_allow_html=True)
 
             # Close trade button
             if st.button(f"✓ CLOSE #{_tid}", key=f"close_{_tid}_{_t}",
