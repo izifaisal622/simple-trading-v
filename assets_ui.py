@@ -133,7 +133,7 @@ def sparkline_svg(prices: list, width: int = 80, height: int = 28,
 
 
 # ── Score badge HTML ──────────────────────────────────────────────────────────
-def score_badge(score: int, max_score: int = 8) -> str:
+def score_badge(score: int, max_score: int = 10) -> str:
     """Prominent score badge with color-graded fill."""
     ratio = score / max_score if max_score > 0 else 0
     if ratio >= 0.75:   col, bg = "#00FF66", "rgba(0,255,102,0.12)"

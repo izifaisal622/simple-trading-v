@@ -1,7 +1,8 @@
 {
-  "version": "9.1.4",
+  "version": "9.1.5",
   "date": "2026-06-20",
   "changelog": [
+    "9.1.5 — FIX: score_badge default max_score 8→10 di assets_ui.py",
     "9.1.4 — FIX: EMA XBO audit — 6 fixes: rows_html/_high_str keluar f-string; phase logic gap -3to0 pisah branch; slider max 7→10; pre-flight threshold 3→5; modal size input di sidebar",
     "9.1.3 — FIX: Follow Whale verdict logic — normalisasi positive_signals ke /10 (proporsional conviction); threshold ENTRY VALID >=5, WATCHLIST >=3; fix signal_ok DISTRIBUTION→bad; hapus dead code LABEL",
     "9.1.2 — FIX: UI denominator score /8 → /10 di EMA_XBO dan Stock_Pick; slider min score max 8→10",
