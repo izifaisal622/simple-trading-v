@@ -70,6 +70,9 @@ class StockAnalysis:
     mcf_entry_ok:  bool  = False
     mcf_bear_blocked: bool = False
 
+    # Liquidity
+    liquidity_bn:  float = 0.0   # avg daily value traded (Rp Bn)
+
     # Market structure
     ms_label:      str   = ""
     ms_score:      int   = 0
@@ -404,6 +407,7 @@ def _run_whale(a: StockAnalysis, ticker: str):
     a.total_lot        = total_lot
     a.control_score    = control_score
     a.whale_signal     = signal
+    a.liquidity_bn     = round(float((close.tail(5) * vol.tail(5)).mean() / 1e9), 3)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
