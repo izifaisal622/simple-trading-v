@@ -598,7 +598,7 @@ class DataFeed:
         period: Optional[str] = None,
     ) -> None:
         self.timeframe = timeframe
-        self.period    = period or ("3y" if timeframe == "1wk" else "1y")
+        self.period    = period or ("5y" if timeframe == "1wk" else "1y")
 
     def fetch(
         self,
@@ -819,7 +819,7 @@ class DataFeed:
             missing   = [t for t in needs_full if t not in batch_res]
 
             if missing:
-                fallback_p = "2y" if _period == "3y" else _period
+                fallback_p = "3y" if _period == "5y" else _period
                 if fallback_p != _period:
                     logger.info(f"[DataFeed] batch round 2: {len(missing)} → 2y")
                     batch_res.update(_batch_download(missing, fallback_p))

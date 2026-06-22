@@ -1,7 +1,8 @@
 {
-  "version": "9.1.7",
-  "date": "2026-06-20",
+  "version": "9.1.8",
+  "date": "2026-06-22",
   "changelog": [
+    "9.1.8 — FIX: data_feed.py weekly period 3y→5y agar EMA200 reliable (n_bars≥150); fallback chain Round 2 diupdate 2y→3y sesuai primary period baru; saham baru/IPO tidak terpengaruh — yfinance return data sebanyak yang ada tanpa error",
     "9.1.7 — FIX: gate.py URL Stock_Analysis → Stock_Pick; page tidak bisa diakses dari landing page",
     "9.1.6 — FEAT: Stock Pick tambah EMA Gate + Whale Qualifier label di KESIMPULAN; fix semua ema_score /7→/10",
     "9.1.5 — FIX: score_badge default max_score 8→10 di assets_ui.py",
