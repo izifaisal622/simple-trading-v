@@ -406,7 +406,7 @@ class EMABreakoutEngine:
             last_ema13  = _f(ema13_s.iloc[-1])
             last_ema89  = _f(ema89_s.iloc[-1])
             last_ema200 = _f(ema200_s.iloc[-1])
-            ema200_reliable = n_bars >= 150
+            ema200_reliable = n_bars >= 100
 
             # IPO: EMA89/200 tidak reliable jika bar < 89
             # Untuk saham IPO, gunakan EMA5/EMA13 cross sebagai primary signal
@@ -551,7 +551,7 @@ class EMABreakoutEngine:
                 flags.append("Price>EMA89")
 
             # (4) Price above EMA200 — only if reliable
-            # Opsi 1: jika data < 150 bars weekly, EMA200 tidak reliable →
+            # Opsi 1: jika data < 100 bars weekly, EMA200 tidak reliable →
             # skip sepenuhnya (tidak award, tidak flag negatif).
             # EMA89 sudah cukup sebagai long-term anchor untuk saham baru.
             if not ipo_mode and ema200_reliable and last_close > last_ema200:

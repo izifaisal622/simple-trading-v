@@ -223,9 +223,9 @@ def _render_ema200_warning(r, lines_out: list) -> None:
             '<div style="background:rgba(240,180,41,0.06);border:1px solid rgba(240,180,41,0.25);'
             'border-radius:var(--r-sm);padding:0.35rem 0.8rem;margin:0.2rem 0">'
             '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#F0B429">'
-            '⚠ EMA200 tidak reliable — data weekly < 150 bars. '
+            '⚠ EMA200 tidak reliable — data weekly < 100 bars. '
             'Score point "Price > EMA200" mungkin tidak akurat. '
-            'Direkomendasikan: fetch 3 tahun data untuk EMA200 yang stabil.'
+            'Data historis saham ini terbatas di provider.'
             '</span>'
             '</div>'
         )
