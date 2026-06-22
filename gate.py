@@ -327,7 +327,7 @@ st.markdown(f"""
       <a class="hero-cta" href="/War_Room" target="_self">MASUK ›</a>
     </div>
   </div>
-  <div class="hero-panel" onclick="window.location.href='/Stock_Analysis'">
+  <div class="hero-panel" onclick="window.location.href='/Stock_Pick'">
     <div class="hero-bg" style="background-image:url('data:image/png;base64,{IMG_PORTAL}')"></div>
     <div class="hero-overlay"></div>
     <div class="module-tag">◈ MODULE 04</div>
@@ -340,7 +340,7 @@ st.markdown(f"""
         <span class="stat-chip" style="color:#4a9eff;border-color:rgba(74,158,255,.2)">REAL-TIME</span>
         <span class="stat-chip" style="color:#6b7280;border-color:rgba(107,114,128,.2)">MSCI CONTEXT</span>
       </div>
-      <a class="hero-cta" href="/Stock_Analysis" target="_self">MASUK ›</a>
+      <a class="hero-cta" href="/Stock_Pick" target="_self">MASUK ›</a>
     </div>
   </div>
   <div class="hero-panel" onclick="window.location.href='/Alert_Watch'">

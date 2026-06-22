@@ -1,7 +1,8 @@
 {
-  "version": "9.1.6",
+  "version": "9.1.7",
   "date": "2026-06-20",
   "changelog": [
+    "9.1.7 — FIX: gate.py URL Stock_Analysis → Stock_Pick; page tidak bisa diakses dari landing page",
     "9.1.6 — FEAT: Stock Pick tambah EMA Gate + Whale Qualifier label di KESIMPULAN; fix semua ema_score /7→/10",
     "9.1.5 — FIX: score_badge default max_score 8→10 di assets_ui.py",
     "9.1.4 — FIX: EMA XBO audit — 6 fixes: rows_html/_high_str keluar f-string; phase logic gap -3to0 pisah branch; slider max 7→10; pre-flight threshold 3→5; modal size input di sidebar",
