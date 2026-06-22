@@ -234,13 +234,16 @@ def update_trade(
 ) -> dict:
     """
     Revisi SL / TP1 / TP2 / Notes pada trade yang masih open.
-    Hanya field yang diisi (bukan None) yang akan diupdate.
+    - sl_price  → kolom sl_price (ada di schema)
+    - tp1_price → disimpan di notes sebagai 'tp1=xxxx'
+    - tp2_price → disimpan di notes sebagai 'tp2=xxxx'
+    - notes     → append ke notes bestehend
     """
     init_db()
     conn = sqlite3.connect(str(DB_PATH))
 
     row = conn.execute(
-        "SELECT id FROM manual_trades WHERE id=? AND outcome='OPEN'",
+        "SELECT id, notes FROM manual_trades WHERE id=? AND outcome='OPEN'",
         (trade_id,)
     ).fetchone()
 
@@ -248,16 +251,41 @@ def update_trade(
         conn.close()
         return {"success": False, "error": f"Trade #{trade_id} tidak ditemukan atau sudah closed"}
 
+    _, existing_notes = row
+    existing_notes = existing_notes or ""
+
     sets, vals = [], []
-    if sl_price  is not None: sets.append("sl_price=?");  vals.append(sl_price)
-    if tp1_price is not None: sets.append("tp1_price=?"); vals.append(tp1_price)
-    if tp2_price is not None: sets.append("tp2_price=?"); vals.append(tp2_price)
-    if notes     is not None:
-        existing = conn.execute(
-            "SELECT notes FROM manual_trades WHERE id=?", (trade_id,)
-        ).fetchone()
-        combined = f"{(existing[0] or '')} | {notes}".strip(" |") if notes else (existing[0] or "")
-        sets.append("notes=?"); vals.append(combined)
+
+    # sl_price: kolom langsung
+    if sl_price is not None:
+        sets.append("sl_price=?")
+        vals.append(sl_price)
+
+    # tp1_price: update kolom tp1_price jika ada, selalu simpan ke notes juga
+    if tp1_price is not None:
+        # Coba update kolom tp1_price (mungkin ada di DB lama)
+        try:
+            conn.execute("UPDATE manual_trades SET tp1_price=? WHERE id=?", (tp1_price, trade_id))
+        except Exception:
+            pass  # kolom tidak ada — tidak apa, notes sudah cukup
+        # Simpan ke notes string: ganti tp1= yang lama atau append
+        parts = [p.strip() for p in existing_notes.split("|") if p.strip() and not p.strip().startswith("tp1=")]
+        parts.append(f"tp1={tp1_price:.0f}")
+        existing_notes = " | ".join(parts)
+
+    # tp2_price: simpan ke notes string
+    if tp2_price is not None:
+        parts = [p.strip() for p in existing_notes.split("|") if p.strip() and not p.strip().startswith("tp2=")]
+        parts.append(f"tp2={tp2_price:.0f}")
+        existing_notes = " | ".join(parts)
+
+    # notes tambahan: append
+    if notes and notes.strip():
+        existing_notes = f"{existing_notes} | {notes.strip()}".strip(" |")
+
+    # Selalu update notes (karena tp1/tp2 disimpan di sana)
+    sets.append("notes=?")
+    vals.append(existing_notes)
 
     if not sets:
         conn.close()
