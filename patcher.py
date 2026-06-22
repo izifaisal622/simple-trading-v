@@ -79,19 +79,24 @@ def fmt_version(major: int, minor: int, patch: int) -> str:
 
 def next_patch(ver_str: str) -> str:
     """
-    6.1.1 → 6.1.2
-    6.1.9 → 6.2.1   (patch wraps at MAX_PATCH, minor increments)
+    9.0.1 → 9.0.2
+    9.0.9 → 9.1.0   (patch wraps, minor increments, patch resets to 0)
+    9.9.9 → 10.0.0  (minor wraps, major increments)
     """
     major, minor, patch = parse_version(ver_str)
     if patch >= MAX_PATCH:
-        return fmt_version(major, minor + 1, 1)
+        if minor >= MAX_PATCH:
+            return fmt_version(major + 1, 0, 0)
+        return fmt_version(major, minor + 1, 0)
     return fmt_version(major, minor, patch + 1)
 
 
 def next_minor(ver_str: str) -> str:
-    """6.1.x → 6.2.1"""
+    """9.0.x → 9.1.0"""
     major, minor, _ = parse_version(ver_str)
-    return fmt_version(major, minor + 1, 1)
+    if minor >= MAX_PATCH:
+        return fmt_version(major + 1, 0, 0)
+    return fmt_version(major, minor + 1, 0)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
