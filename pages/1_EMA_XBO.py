@@ -632,14 +632,67 @@ render_page_header(
 
 render_regime_bar(cycle, ihsg, mom_4w, breadth, scan_date, mom_2w=mom_2w, pct_from_low=pct_from_low)
 
+# ── DATE GUARD — stale data warning ──────────────────────────────────────────
+_today_str = datetime.now().strftime("%Y-%m-%d")
+_is_weekend = datetime.now().weekday() >= 5  # Sabtu=5, Minggu=6
+if scan_date and scan_date != "—":
+    _scan_dt   = None
+    try:
+        from datetime import datetime as _dtparse
+        _scan_dt = _dtparse.strptime(scan_date, "%Y-%m-%d")
+    except Exception:
+        pass
+    if _scan_dt:
+        _days_old  = (datetime.now() - _scan_dt).days
+        _stale     = _days_old >= 1 and not _is_weekend
+        _very_stale = _days_old >= 3
+        if _very_stale:
+            _stale_bg  = "rgba(239,68,68,0.10)"
+            _stale_bdr = "rgba(239,68,68,0.45)"
+            _stale_ico = "⛔"
+            _stale_col = "#EF4444"
+            _stale_msg = f"Data scan sudah <b>{_days_old} hari</b> yang lalu. Sinyal ini TIDAK mencerminkan kondisi pasar hari ini."
+        elif _stale:
+            _stale_bg  = "rgba(240,180,41,0.08)"
+            _stale_bdr = "rgba(240,180,41,0.40)"
+            _stale_ico = "⚠"
+            _stale_col = "#F0B429"
+            _stale_msg = f"Data scan dari <b>{scan_date}</b> — bukan hari ini. Jalankan scan ulang untuk sinyal terkini."
+        else:
+            _stale     = False
+        if _stale or _very_stale:
+            st.markdown(
+                f'<div style="background:{_stale_bg};border:1px solid {_stale_bdr};'
+                f'border-left:4px solid {_stale_col};border-radius:6px;'
+                f'padding:0.65rem 1rem;margin:0.5rem 0 0.8rem 0">'
+                f'<span style="font-family:Orbitron,monospace;font-size:11px;'
+                f'font-weight:800;color:{_stale_col}">{_stale_ico} DATA STALE — {scan_date}</span>'
+                f'<span style="font-family:Share Tech Mono,monospace;font-size:11px;'
+                f'color:#94A3B8;margin-left:1rem">{_stale_msg}</span>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
 # Summary metrics
 breakouts  = [r for r in ema_results if r.get("signal") in ("STRONG_BREAKOUT","BREAKOUT")]
 watchlists = [r for r in ema_results if r.get("signal") == "WATCHLIST"]
 correcting = [r for r in ema_results if r.get("signal") in ("CORRECTING","DEEP_CORRECT")]
+compressing = [r for r in ema_results if r.get("signal") == "COMPRESSING"]
 universe   = last.get("universe", len(ema_results))
 
 bear_blocked_count = sum(1 for r in ema_results if r.get("mcf_bear_blocked"))
 mcf_join    = [r for r in ema_results if r.get("mcf_label") == "JOIN" and not r.get("mcf_bear_blocked")]
+
+# ── Cross-state audit — data untuk keputusan Sesi 2 (hard gate EMA cross) ────
+_cross_above  = sum(1 for r in ema_results if r.get("cross_state") == "ABOVE")
+_cross_below  = sum(1 for r in ema_results if r.get("cross_state") == "BELOW")
+_cross_cross  = sum(1 for r in ema_results if r.get("cross_state") == "CROSSING")
+# Sinyal actionable (BREAKOUT/WATCHLIST) yang cross_state bukan ABOVE
+_actionable_no_cross = [
+    r for r in ema_results
+    if r.get("signal") in ("STRONG_BREAKOUT", "BREAKOUT", "WATCHLIST")
+    and r.get("cross_state") != "ABOVE"
+]
 
 c1,c2,c3,c4,c5,c6,c7 = st.columns(7)
 metrics = [
@@ -659,6 +712,39 @@ for col, label, val, color, sub in metrics:
           <div class="m-val" style="color:{color}">{val}</div>
           <div class="m-sub">{sub}</div>
         </div>""", unsafe_allow_html=True)
+
+# ── Cross-state audit expander ────────────────────────────────────────────────
+if ema_results:
+    _pct_above = round(_cross_above / len(ema_results) * 100) if ema_results else 0
+    with st.expander(
+        f"◈ AUDIT: {_cross_above}/{len(ema_results)} ticker sudah EMA cross ABOVE "
+        f"({_pct_above}%) — {len(_actionable_no_cross)} actionable tanpa cross",
+        expanded=False
+    ):
+        _a1, _a2, _a3, _a4 = st.columns(4)
+        _a1.metric("CROSS ABOVE", _cross_above, help="EMA13 > EMA89")
+        _a2.metric("CROSSING", _cross_cross, help="EMA13 ≈ EMA89 (gap <1%)")
+        _a3.metric("BELOW", _cross_below, help="EMA13 < EMA89")
+        _a4.metric("COMPRESSING", len(compressing), help="BELOW tapi gap menyempit ≥25%")
+        if _actionable_no_cross:
+            st.markdown(
+                '<div style="font-family:Share Tech Mono,monospace;font-size:11px;'
+                'color:#F0B429;margin-top:0.5rem">'
+                f'⚠ {len(_actionable_no_cross)} ticker dengan signal BREAKOUT/WATCHLIST '
+                f'tapi cross_state bukan ABOVE — akan hilang jika hard gate aktif di Sesi 2:'
+                '</div>',
+                unsafe_allow_html=True
+            )
+            _audit_rows = [
+                {"Ticker": r.get("ticker","").replace(".JK",""),
+                 "Signal": r.get("signal",""),
+                 "Cross": r.get("cross_state",""),
+                 "Score": r.get("score",0)}
+                for r in _actionable_no_cross
+            ]
+            st.dataframe(_audit_rows, use_container_width=True, hide_index=True)
+        else:
+            st.success("✅ Semua sinyal actionable sudah cross ABOVE — hard gate aman diterapkan.")
 
 # Run Scan
 sec_head("◆ SCAN CONTROLS")
