@@ -409,6 +409,9 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     def_     = w.get("whale_defending",False)
     ff_vol   = w.get("ff_adj_vol_ratio", w.get("vol_ratio",0))
     sector   = w.get("sector","")
+    # Slow exit
+    slow_exit      = w.get("slow_exit", False)
+    slow_exit_desc = w.get("slow_exit_desc", "")
     # Relative Strength vs IHSG
     rs_5d    = w.get("rs_5d", 0.0)
     rs_20d   = w.get("rs_20d", 0.0)
@@ -487,6 +490,12 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     else:
         narratives.append(f"**{score_icon(ema_ok)} EMA Trend: BEARISH** — masih downtrend. Recovery play yang butuh kesabaran ekstra.")
 
+    # 2a. Slow exit warning — tampil di awal jika detected, sebelum sinyal lain
+    if slow_exit and slow_exit_desc:
+        narratives.append(
+            f"**❌ PERINGATAN: {slow_exit_desc}** — "
+            f"Ada indikasi whale sedang exit diam-diam. Jangan entry sebelum pola ini selesai.")
+
     # 2b. Relative Strength vs IHSG
     if rs_ok:
         _rs_label = "STRONG" if rs_20d > 5 else "MILD"
@@ -554,11 +563,13 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     # 8. Pump Fingerprint — selalu tampil, termasuk kasus tidak ada data
     fp_conf_label = {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low"}.get(fp_conf, "")
     fp_type_label = {
-        "GRADUAL_INST": "Akumulasi Institusi Bertahap",
-        "STEP_UP_INST": "Step-Up Institusi",
-        "GORENGAN":     "Pump Spekulatif",
-        "MIXED":        "Mixed Pattern",
-    }.get(fp_type, "")
+        "GRADUAL_INST":     "Akumulasi Institusi Bertahap",
+        "STEP_UP_INST":     "Step-Up Institusi",
+        "GORENGAN":         "Pump Spekulatif",
+        "MIXED_INST_GOREN": "Mixed: Institusi + Spekulatif",
+        "MIXED_INST":       "Mixed: Pola Institusi",
+        "MIXED":            "Mixed (Pola Tidak Dominan)",
+    }.get(fp_type, fp_type)
 
     # Similarity label kualitatif
     if fp_sim >= 0.75:   _sim_label = "STRONG MATCH"
@@ -1152,7 +1163,7 @@ def _trading_summary_row(w: dict) -> str:
             reasons.append("EMA bearish")
         if ff_vol < 0.5:
             reasons.append(f"Vol hanya {ff_vol:.1f}× (sepi)")
-    elif conv >= 6 and positive_signals >= 5 and pct_f <= 20 and ema_tr in ("BULLISH","MIXED") and close <= entry_hi * 1.02:
+    elif conv >= 6 and positive_signals >= 5 and pct_f <= 20 and ema_tr in ("BULLISH","MIXED") and close <= entry_hi * 1.02 and not slow_exit:
         verdict      = "ENTRY VALID"
         verdict_col  = "#00FF66"
         verdict_bg   = "rgba(0,255,102,0.06)"

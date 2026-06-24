@@ -1,7 +1,8 @@
 {
-  "version": "9.3.0",
+  "version": "9.3.1",
   "date": "2026-06-24",
   "changelog": [
+    "9.3.1 — FEAT P2+P3: [P2] score normalisasi 0-100 di classify_whale_quality (MAX_SCORE=31), threshold SMART=60%+minimum_req, LIKELY_SMART=40%, UNCERTAIN=20%; minimum requirement SMART: wajib (pengeringan OR defense) AND floor proximity; [P3a] whale defense floor proximity gate — defend jauh dari floor (>15%) bobot dikurangi; [P3b] detect_slow_exit() — price-vol divergence + upper wick dominance + close lower half; block ENTRY VALID + cap UNCERTAIN jika slow exit strength>=2; narrative warning di awal card; [P3c] Mixed Pattern breakdown: MIXED_INST_GOREN / MIXED_INST / MIXED",
     "9.3.0 — FEAT P1+P2: [P1] detect_pengeringan() tambah false pengeringan detection — harga drift <-5% dalam 10h atau <-8% dalam 20h = false, return is_false=True + deskripsi; UI tampilkan warning false pengeringan di conviction narrative; [P2a] Relative Strength vs IHSG — fetch IHSG daily sekali di scan(), hitung rs_5d+rs_20d+rs_ok per ticker; rs_ok masuk classify_whale_quality (+0-2pt) dan compute_conviction (+0-1pt); narrative RS di page 2; [P2b] Similarity label kualitatif STRONG/MODERATE/WEAK/NO MATCH di pump fingerprint narrative",
     "9.2.9 — FIX P0+P1: [P0] ENTRY VALID auto-invalidate jika close > entry_hi*1.02 — fallthrough ke WATCHLIST dengan reason harga sudah di atas entry zone, tunggu pullback; [P1] control_score sebagai gate/cap di classify_whale_quality — ctrl<=3 cap di LIKELY_SMART (tidak bisa reach SMART), ctrl 4-5 tanpa pengeringan+defense juga cap LIKELY_SMART; free_float>60% override ctrl ke max 3 karena supply terlalu bebas",
     "9.2.8 — FIX: Follow Whale pump fingerprint narrative selalu tampil — sebelumnya silent skip jika fp_cnt==0; sekarang tampil pesan informatif: illiquid/IPO baru jika value_bn<1, atau belum ada pump >20% dalam 2 tahun jika liquid tapi belum pernah pump",

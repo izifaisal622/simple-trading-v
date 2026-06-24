@@ -558,6 +558,109 @@ def detect_pengeringan(close: pd.Series, vol: pd.Series, high: pd.Series, low: p
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Slow Exit Detector — Whale diam-diam keluar saat harga masih naik
+# "Jangan masuk saat whale sedang exit" — Hengky
+# ─────────────────────────────────────────────────────────────────────────────
+
+def detect_slow_exit(
+    close: pd.Series,
+    vol: pd.Series,
+    high: pd.Series,
+    low: pd.Series,
+) -> dict:
+    """
+    Deteksi distribusi bertahap — whale exit pelan-pelan saat harga masih naik.
+
+    Signature slow exit (kebalikan dari akumulasi):
+    1. Harga naik tapi volume TURUN bertahap (divergence bearish)
+       = tidak ada buyer baru yang masuk, harga naik karena momentum saja
+    2. Upper wick makin panjang (rejected at high) — seller aktif di atas
+    3. Close makin di lower half candle meski harga range masih tinggi
+    4. Vol spike tapi close di lower half = distribusi tersembunyi (dari hitung_barang)
+
+    Returns:
+    - detected: bool
+    - strength: 0-3
+    - description: str
+    - price_vol_divergence: bool (harga naik tapi vol turun)
+    - upper_wick_dominant: bool
+    """
+    _empty = {"detected": False, "strength": 0, "description": "",
+              "price_vol_divergence": False, "upper_wick_dominant": False}
+
+    if len(close) < 15:
+        return _empty
+
+    try:
+        last_close = float(close.iloc[-1])
+
+        # 1. Price-volume divergence: harga naik 10 hari tapi vol turun
+        price_10d  = (last_close / float(close.iloc[-min(10, len(close))]) - 1) * 100
+        vol_ma_5d  = float(vol.tail(5).mean())
+        vol_ma_15d = float(vol.tail(15).mean()) if len(vol) >= 15 else vol_ma_5d
+        vol_trend  = vol_ma_5d / vol_ma_15d if vol_ma_15d > 0 else 1.0
+
+        # Divergence: harga naik >3% tapi volume turun >15%
+        price_vol_div = price_10d > 3.0 and vol_trend < 0.85
+
+        # 2. Upper wick dominance — seller aktif di atas
+        upper_wicks = []
+        for i in range(min(10, len(close) - 1)):
+            c  = float(close.iloc[-(i+1)])
+            hi = float(high.iloc[-(i+1)])
+            lo = float(low.iloc[-(i+1)])
+            o  = float(close.iloc[-(i+2)]) if i+2 <= len(close) else c
+            body_high  = max(o, c)
+            upper_wick = (hi - body_high) / max(hi - lo, 1) * 100  # % of candle range
+            upper_wicks.append(upper_wick)
+        avg_upper_wick = float(np.mean(upper_wicks)) if upper_wicks else 0
+        upper_wick_dom = avg_upper_wick > 30  # >30% range adalah upper wick = banyak rejection
+
+        # 3. Close position makin turun (lower half) meski harga range masih tinggi
+        close_positions = []
+        for i in range(min(10, len(close) - 1)):
+            c  = float(close.iloc[-(i+1)])
+            hi = float(high.iloc[-(i+1)])
+            lo = float(low.iloc[-(i+1)])
+            candle_range = hi - lo
+            pos = (c - lo) / candle_range if candle_range > 0 else 0.5
+            close_positions.append(pos)
+        avg_close_pos = float(np.mean(close_positions)) if close_positions else 0.5
+        close_lower_half = avg_close_pos < 0.45  # close rata-rata di lower 45% candle
+
+        # Strength scoring
+        strength = 0
+        if price_vol_div:    strength += 1
+        if upper_wick_dom:   strength += 1
+        if close_lower_half: strength += 1
+
+        detected = strength >= 2  # butuh minimal 2 dari 3 signal
+
+        if detected:
+            parts = []
+            if price_vol_div:    parts.append(f"harga +{price_10d:.0f}% tapi vol turun {(1-vol_trend)*100:.0f}%")
+            if upper_wick_dom:   parts.append(f"upper wick dominan {avg_upper_wick:.0f}% — banyak rejection")
+            if close_lower_half: parts.append(f"close di lower half candle ({avg_close_pos:.0%})")
+            desc = "⚠️ Slow exit terdeteksi: " + " · ".join(parts)
+        else:
+            desc = ""
+
+        return {
+            "detected":             detected,
+            "strength":             strength,
+            "description":          desc,
+            "price_vol_divergence": price_vol_div,
+            "upper_wick_dominant":  upper_wick_dom,
+            "avg_upper_wick":       round(avg_upper_wick, 1),
+            "avg_close_pos":        round(avg_close_pos, 2),
+            "vol_trend":            round(vol_trend, 2),
+        }
+
+    except Exception:
+        return _empty
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Gradual Accumulation Detector — Weekly Step-Up Pattern
 # Smart whale afiliasi emiten jarang beli sekaligus — mereka naik bertahap
 # tiap minggu supaya tidak trigger scanner retail
@@ -884,15 +987,23 @@ def detect_pump_fingerprint(
         avg_floor    = float(np.mean([f["floor_dist"] for f in fingerprints]))
         avg_pump_pct = float(np.mean([f["pump_pct"] for f in fingerprints]))
 
-        # Fingerprint type
+        # Fingerprint type — lebih spesifik untuk MIXED
+        gradual_count = sum(1 for f in fingerprints if f["pengeringan"] and f["vol_stepup"])
+        spike_count   = sum(1 for f in fingerprints if not f["pengeringan"] and f["supply_score"] > 0.4)
+        goren_count   = sum(1 for f in fingerprints if f["supply_score"] < 0.3 and f["pump_pct"] > 40)
+
         if avg_supply >= 0.5 and avg_peng:
-            fingerprint_type = "GRADUAL_INST"   # institusi akumulasi bertahap
+            fingerprint_type = "GRADUAL_INST"     # institusi akumulasi bertahap
         elif avg_supply >= 0.5 and avg_stepup:
-            fingerprint_type = "STEP_UP_INST"   # institusi dengan vol step-up
+            fingerprint_type = "STEP_UP_INST"     # institusi dengan vol step-up
         elif avg_supply < 0.3 and avg_pump_pct > 40:
-            fingerprint_type = "GORENGAN"        # pump cepat tanpa akumulasi
+            fingerprint_type = "GORENGAN"          # pump cepat tanpa akumulasi
+        elif gradual_count > 0 and goren_count > 0:
+            fingerprint_type = "MIXED_INST_GOREN"  # sebagian institusi, sebagian gorengan
+        elif gradual_count > 0:
+            fingerprint_type = "MIXED_INST"        # campuran pola institusi
         else:
-            fingerprint_type = "MIXED"
+            fingerprint_type = "MIXED"             # tidak ada pola dominan
 
         confidence = "HIGH" if pump_count >= 3 else "MEDIUM" if pump_count >= 2 else "LOW"
 
@@ -1321,7 +1432,7 @@ def detect_order_block(
     }
 
 
-def test_whale_defense(close: pd.Series, vol: pd.Series, low: pd.Series, high: pd.Series) -> dict:
+def test_whale_defense(close: pd.Series, vol: pd.Series, low: pd.Series, high: pd.Series, floor_price: float = 0.0) -> dict:
     """
     Simulates the 'bit-over test' Hengky uses:
     Kalau ada hari di mana volume spike tapi harga tidak jatuh jauh → ada whale yang defend.
@@ -1372,12 +1483,30 @@ def test_whale_defense(close: pd.Series, vol: pd.Series, low: pd.Series, high: p
     else:
         desc = ""
 
+    # V6: Floor proximity gate — defense hanya meaningful jika terjadi dekat floor
+    # Defend di random harga = bisa noise/panic buy, bukan smart money
+    # Defend di dekat floor (within 15%) = ada kepentingan di level itu
+    defense_near_floor = False
+    if floor_price > 0 and is_defending:
+        last_close_val = float(close.iloc[-1])
+        pct_from_floor = (last_close_val / floor_price - 1) * 100 if floor_price > 0 else 999
+        defense_near_floor = pct_from_floor <= 15.0
+        if not defense_near_floor:
+            # Defense terjadi tapi jauh dari floor — kurangi bobot
+            defense_score = max(0, defense_score - 2)
+            if defense_days_recent == 0 and defense_days_extended <= 1:
+                is_defending = False  # terlalu jauh + terlalu lemah = noise
+            desc = desc + f" (jauh dari floor +{pct_from_floor:.0f}% — bobot dikurangi)" if desc else ""
+    else:
+        defense_near_floor = floor_price == 0  # tidak ada floor data = tidak bisa judge
+
     return {
         "defending":              is_defending,
         "defense_days":           defense_days,
         "defense_days_recent":    defense_days_recent,
         "defense_days_extended":  defense_days_extended,
         "defense_score":          defense_score,
+        "defense_near_floor":     defense_near_floor,
         "description":            desc,
     }
 
@@ -1479,39 +1608,62 @@ def classify_whale_quality(result: dict) -> str:
         if broker_type in ("OWNER_PROXY", "MARKET_MAKER") and broker_live:
             score += 1  # live confirmation dari broker yang biasa dipakai owner
 
-    # V6: Control score sebagai gate/cap — bukan hanya additive
-    # Logika: kalau supply bebas (ctrl rendah), whale tidak bisa defend harga
-    # → sinyal lain tidak bisa dikompensasi supply yang bebas
+    # V6: Normalisasi + Gate System
+    # Max theoretical score ~31 — normalisasi ke 0-100
+    MAX_SCORE = 31.0
+    score_pct = round(score / MAX_SCORE * 100)
+
+    # Gate variables
     ctrl = result.get("control_score", 0)
     ff   = result.get("free_float", 100)
+    has_peng    = result.get("pengeringan_detected", False) and not result.get("is_false", False)
+    has_defense = result.get("whale_defending", False)
+    has_floor   = result.get("entry_zone", "") in ("AT_FLOOR", "NEAR_FLOOR")
 
-    # Free float sangat bebas (>60%) override control score ke max 3
-    # Artinya bahkan ctrl tinggi tidak relevan jika semua orang bisa jual
+    # V6: Slow exit override — kalau whale sedang exit, score di-cap keras
+    # Tidak peduli seberapa bagus sinyal lain, jangan masuk saat distribusi aktif
+    slow_exit         = result.get("slow_exit", False)
+    slow_exit_strength = result.get("slow_exit_strength", 0)
+    if slow_exit and slow_exit_strength >= 2:
+        # Strong slow exit: cap di UNCERTAIN maksimum
+        if score_pct >= 40: return "UNCERTAIN"
+        if score_pct >= 20: return "UNCERTAIN"
+        return "DUMB"
+    elif slow_exit:
+        # Weak slow exit: cap di LIKELY_SMART
+        if score_pct >= 60: return "LIKELY_SMART"
+
+    # Free float override: ff>60% cap ctrl ke 3
     if ff > 60 and ctrl > 3:
         ctrl = 3
 
-    # Cap hasil klasifikasi berdasarkan control score
-    # ctrl <= 3: supply terlalu bebas → tidak bisa reach SMART
-    # ctrl 4-5:  supply cukup tapi tidak dominan → tidak bisa reach SMART tanpa pengeringan
+    # Minimum requirement gate untuk SMART:
+    # Wajib ada (pengeringan OR defense) AND floor proximity
+    # Ini adalah Hengky core: barang kering + harga di support
+    _behavioral_ok  = has_peng or has_defense
+    _floor_ok       = has_floor
+    _meets_smart_req = _behavioral_ok and _floor_ok
+
+    # Control gate: supply bebas → cap klasifikasi
     if ctrl <= 3:
-        # Supply bebas: cap di LIKELY_SMART maksimum
-        if score >= 13:  return "LIKELY_SMART"   # downgrade dari SMART
-        if score >= 8:   return "LIKELY_SMART"
-        if score >= 4:   return "UNCERTAIN"
+        # Supply terlalu bebas — cap di LIKELY_SMART
+        if score_pct >= 60 and _meets_smart_req: return "LIKELY_SMART"
+        if score_pct >= 40:  return "LIKELY_SMART"
+        if score_pct >= 20:  return "UNCERTAIN"
         return "DUMB"
-    elif ctrl <= 5 and not result.get("pengeringan_detected") and not result.get("whale_defending"):
-        # Supply medium tapi tidak ada pengeringan DAN tidak ada defense
-        # Butuh setidaknya satu konfirmasi behavioral
-        if score >= 13:  return "LIKELY_SMART"   # downgrade
-        if score >= 8:   return "LIKELY_SMART"
-        if score >= 4:   return "UNCERTAIN"
+    elif ctrl <= 5 and not _behavioral_ok:
+        # Supply medium tapi tidak ada konfirmasi behavioral
+        if score_pct >= 60:  return "LIKELY_SMART"
+        if score_pct >= 40:  return "LIKELY_SMART"
+        if score_pct >= 20:  return "UNCERTAIN"
         return "DUMB"
     else:
-        # Control cukup atau ada konfirmasi behavioral — threshold normal
-        # Threshold adjusted: max score ~24 (dengan afiliasi emiten HIGH + broker live)
-        if score >= 13:  return "SMART"
-        if score >= 8:   return "LIKELY_SMART"
-        if score >= 4:   return "UNCERTAIN"
+        # Control OK — terapkan threshold normalisasi + minimum requirement
+        # SMART: score >=60% DAN wajib punya pengeringan/defense + floor
+        if score_pct >= 60 and _meets_smart_req:  return "SMART"
+        if score_pct >= 60:                        return "LIKELY_SMART"  # score tinggi tapi missing req
+        if score_pct >= 40:                        return "LIKELY_SMART"
+        if score_pct >= 20:                        return "UNCERTAIN"
         return "DUMB"
 
 
@@ -1935,7 +2087,7 @@ class WhaleScanner:
             peng_data   = detect_pengeringan(close, vol, high, low)
 
             # 4. Whale defense test
-            def_data    = test_whale_defense(close, vol, low, high)
+            def_data    = test_whale_defense(close, vol, low, high, floor_price=floor_data.get("floor_price", 0.0))
 
             # 5. V4: Hitung Barang (Hengky supply concentration math)
             hb_data     = hitung_barang(close, vol, high, low, open_)
@@ -1946,7 +2098,10 @@ class WhaleScanner:
             # 7. V5: Gradual accumulation — weekly step-up pattern (4 minggu)
             ga_data     = detect_gradual_accumulation(close, vol, high, low, min_weeks=4)
 
-            # 8. V5: Relative Strength vs IHSG
+            # 8. V6: Slow exit detection
+            se_data     = detect_slow_exit(close, vol, high, low)
+
+            # 9. V5: Relative Strength vs IHSG
             # RS > 0 = saham lebih kuat dari market = ada yang defend/beli diam-diam
             rs_5d = rs_20d = 0.0
             rs_ok  = False
@@ -2091,6 +2246,12 @@ class WhaleScanner:
                 "rs_5d":               round(rs_5d, 1),
                 "rs_20d":              round(rs_20d, 1),
                 "rs_ok":               rs_ok,
+                # V6: Slow exit
+                "slow_exit":           se_data["detected"],
+                "slow_exit_strength":  se_data["strength"],
+                "slow_exit_desc":      se_data["description"],
+                "price_vol_div":       se_data["price_vol_divergence"],
+                "upper_wick_dom":      se_data["upper_wick_dominant"],
             }
 
             # Phase 1+2: Ownership data (free float + static broker profile)
