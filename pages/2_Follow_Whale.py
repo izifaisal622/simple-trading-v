@@ -539,9 +539,10 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
                 (f"Owner: {owner}. " if owner else "") +
                 "Supply terkontrol dengan baik.")
         else:
+            _supply_cap_note = " ⚠️ Conviction di-cap max 7 — supply terlalu bebas untuk fully trust sinyal." if ff > 60 and ctrl <= 3 else ""
             narratives.append(f"**{score_icon(supply_ok)} Supply: Float {ff:.0f}% — MODERATE/BEBAS** — " +
                 (f"Owner: {owner}. " if owner else "") +
-                "Supply lebih bebas, harga lebih sulit digerakkan.")
+                "Supply lebih bebas, harga lebih sulit digerakkan." + _supply_cap_note)
     
     # 6. Order Block
     if ob_det:

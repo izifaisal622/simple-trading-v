@@ -1753,6 +1753,14 @@ def compute_conviction(r: dict, vol_ratio: float) -> int:
     elif _broker_signal == "SMART" and _broker_live:
         score += 1  # live data confirm smart broker aktif
 
+    # V6: Supply freedom cap — konsisten dengan classify_whale_quality gate
+    # ff>60% + ctrl<=3 = supply terlalu bebas → cap conviction di 7
+    # Conviction tidak boleh misleading vs whale quality
+    _ff   = r.get("free_float", 100)
+    _ctrl = r.get("control_score", 0)
+    if _ff > 60 and _ctrl <= 3:
+        score = min(score, 7)
+
     return max(0, min(10, score))
 
 
