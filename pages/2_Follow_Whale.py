@@ -534,7 +534,8 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     elif ctrl >= 3:
         _ctrl_label = f"Control {ctrl}/10 — supply moderat, butuh volume besar untuk gerak"
     else:
-        _ctrl_label = f"Control {ctrl}/10 — supply bebas, siapapun bisa jual kapan saja"
+        _ctrl_peng_note = " Pengeringan terdeteksi tapi bisa noise, bukan akumulasi smart money." if peng and not peng_false else ""
+        _ctrl_label = f"Control {ctrl}/10 — supply tersebar, tidak ada pihak yang cukup besar untuk defend harga." + _ctrl_peng_note
     narratives.append(f"**{score_icon(conv_ok)} Conviction {conv}/10 · {_ctrl_label}** — {_conv_label}" + _peng_suffix + _def_suffix)
 
     # 5. Supply concentration
