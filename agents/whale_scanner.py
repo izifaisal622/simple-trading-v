@@ -1440,12 +1440,40 @@ def classify_whale_quality(result: dict) -> str:
         if broker_type in ("OWNER_PROXY", "MARKET_MAKER") and broker_live:
             score += 1  # live confirmation dari broker yang biasa dipakai owner
 
-    # Threshold adjusted: max score ~24 (dengan afiliasi emiten HIGH + broker live)
-    # SMART threshold tetap 13 — emiten afiliasi otomatis naik ke SMART jika kriteria lain terpenuhi
-    if score >= 13:  return "SMART"
-    if score >= 8:   return "LIKELY_SMART"
-    if score >= 4:   return "UNCERTAIN"
-    return "DUMB"
+    # V6: Control score sebagai gate/cap — bukan hanya additive
+    # Logika: kalau supply bebas (ctrl rendah), whale tidak bisa defend harga
+    # → sinyal lain tidak bisa dikompensasi supply yang bebas
+    ctrl = result.get("control_score", 0)
+    ff   = result.get("free_float", 100)
+
+    # Free float sangat bebas (>60%) override control score ke max 3
+    # Artinya bahkan ctrl tinggi tidak relevan jika semua orang bisa jual
+    if ff > 60 and ctrl > 3:
+        ctrl = 3
+
+    # Cap hasil klasifikasi berdasarkan control score
+    # ctrl <= 3: supply terlalu bebas → tidak bisa reach SMART
+    # ctrl 4-5:  supply cukup tapi tidak dominan → tidak bisa reach SMART tanpa pengeringan
+    if ctrl <= 3:
+        # Supply bebas: cap di LIKELY_SMART maksimum
+        if score >= 13:  return "LIKELY_SMART"   # downgrade dari SMART
+        if score >= 8:   return "LIKELY_SMART"
+        if score >= 4:   return "UNCERTAIN"
+        return "DUMB"
+    elif ctrl <= 5 and not result.get("pengeringan_detected") and not result.get("whale_defending"):
+        # Supply medium tapi tidak ada pengeringan DAN tidak ada defense
+        # Butuh setidaknya satu konfirmasi behavioral
+        if score >= 13:  return "LIKELY_SMART"   # downgrade
+        if score >= 8:   return "LIKELY_SMART"
+        if score >= 4:   return "UNCERTAIN"
+        return "DUMB"
+    else:
+        # Control cukup atau ada konfirmasi behavioral — threshold normal
+        # Threshold adjusted: max score ~24 (dengan afiliasi emiten HIGH + broker live)
+        if score >= 13:  return "SMART"
+        if score >= 8:   return "LIKELY_SMART"
+        if score >= 4:   return "UNCERTAIN"
+        return "DUMB"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

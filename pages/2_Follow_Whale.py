@@ -1122,7 +1122,7 @@ def _trading_summary_row(w: dict) -> str:
             reasons.append("EMA bearish")
         if ff_vol < 0.5:
             reasons.append(f"Vol hanya {ff_vol:.1f}× (sepi)")
-    elif conv >= 6 and positive_signals >= 5 and pct_f <= 20 and ema_tr in ("BULLISH","MIXED"):
+    elif conv >= 6 and positive_signals >= 5 and pct_f <= 20 and ema_tr in ("BULLISH","MIXED") and close <= entry_hi * 1.02:
         verdict      = "ENTRY VALID"
         verdict_col  = "#00FF66"
         verdict_bg   = "rgba(0,255,102,0.06)"
@@ -1144,6 +1144,8 @@ def _trading_summary_row(w: dict) -> str:
         verdict_bdr  = "rgba(240,180,41,0.25)"
         verdict_icon = "⏳"
         wait_reasons = []
+        if close > entry_hi * 1.02:
+            wait_reasons.append(f"harga Rp{close:,.0f} sudah di atas entry zone Rp{entry_hi:,.0f} — tunggu pullback")
         if pct_f > 20:        wait_reasons.append(f"harga masih {pct_f:.0f}% above floor")
         if ema_tr == "MIXED": wait_reasons.append("EMA mixed — tunggu konfirmasi")
         if ema_tr == "BEARISH": wait_reasons.append("EMA bearish — tunggu reversal")
