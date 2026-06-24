@@ -1,7 +1,18 @@
 {
-  "version": "9.5.1",
+  "version": "9.5.2",
   "date": "2026-06-24",
   "changelog": [
+    {
+      "version": "9.5.2",
+      "date": "2026-06-24",
+      "changes": [
+        "NEW: WATCHLIST section terpisah \u2014 EMA cross confirmed, menunggu breakout box",
+        "NEW: PIPELINE section \u2014 CORRECTING dengan RS \u2265+20% dan score \u22655, label jelas bukan entry",
+        "NEW: Score cap badge di WATCHLIST dan PIPELINE saat regime SPECULATIVE",
+        "REFACTOR: ALL SETUPS dipindah ke expander collapsed \u2014 tidak lagi jadi section utama",
+        "CLARIFY: Dualisme engine weekly/daily dikonfirmasi by design (fallback IPO) \u2014 tidak diubah"
+      ]
+    },
     {
       "version": "9.5.1",
       "date": "2026-06-24",

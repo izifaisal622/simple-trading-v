@@ -1053,214 +1053,322 @@ if ema_results:
                     except Exception as _le:
                         st.error(f"Error log trade: {_le}")
 
-    # ── ALL SETUPS with filter controls ──────────────────────────────────────
-    rest = [r for r in ema_results if r.get("signal") not in ("BREAKOUT", "STRONG_BREAKOUT")]
-    if rest:
-        sec_head("◆ ALL SETUPS")
-
-        # ── FILTER CONTROLS ────────────────────────────────────────────────────
-        # PENTING: Apply preset SEBELUM widget di-buat.
-        # Streamlit melarang set session_state[widget_key] setelah widget rendered.
-        # Pattern: tombol → set f_preset → rerun → apply f_preset → buat widget.
-        _preset = st.session_state.pop("f_preset", None)
-        if _preset == "safe":
-            st.session_state["f_risk"]  = 15
-            st.session_state["f_score"] = 1
-        elif _preset == "high_score":
-            st.session_state["f_score"] = 5
-            st.session_state["f_risk"]  = 50
-        elif _preset == "correcting":
-            st.session_state["f_sig"]   = ["CORRECTING"]
-        elif _preset == "reset":
-            for _k in ("f_score", "f_risk", "f_sig", "f_sort"):
-                st.session_state.pop(_k, None)
-
-        # rs_pos dan mcf_ok adalah toggle non-widget, bisa di-set kapanpun
-        rs_pos_only = st.session_state.pop("f_rs_pos", False)
-        mcf_ok_only = st.session_state.pop("f_mcf_ok", False)
-        # P01-X3: RS minimum threshold — bukan hanya binary > 0
-        _rs_min = st.session_state.get("f_rs_min", 0.0)
-
-        with st.container():
-            st.markdown("""<div style="font-family:Share Tech Mono,monospace;
-            font-size:var(--text-2xs);letter-spacing:.15em;color:#374151;
-            margin-bottom:.4rem">◆ FILTER CONTROLS</div>""",
-            unsafe_allow_html=True)
-
-            fc1, fc2, fc3, fc4 = st.columns(4)
-
-            with fc1:
-                sig_filter = st.multiselect(
-                    "Signal Type",
-                    ["WATCHLIST", "CORRECTING", "DEEP_CORRECT"],
-                    default=st.session_state.get("f_sig",
-                        ["WATCHLIST","CORRECTING","DEEP_CORRECT"]),
-                    key="f_sig",
-                    label_visibility="collapsed",
-                )
-            with fc2:
-                min_score = st.slider(
-                    "Min Score", min_value=1, max_value=10,
-                    value=st.session_state.get("f_score", 1),
-                    key="f_score", label_visibility="collapsed",
-                    help="Min Score (1–7)",
-                )
-            with fc3:
-                max_risk = st.slider(
-                    "Max Risk %", min_value=5, max_value=50,
-                    value=st.session_state.get("f_risk", 50),
-                    step=5, key="f_risk", label_visibility="collapsed",
-                    help="Max Risk % per trade",
-                )
-            with fc4:
-                sort_col = st.selectbox(
-                    "Sort by",
-                    ["Score ↓","RS% ↓","MCF ↓","Risk% ↑","Vol× ↓"],
-                    key="f_sort", label_visibility="collapsed",
-                )
-
-        # Quick filter buttons — hanya set f_preset, TIDAK set widget key langsung
-        qf1, qf2, qf3, qf4, qf5, qf_reset = st.columns(6)
-        with qf1:
-            if st.button("🟢 SAFE (<15%R)", key="qf_safe"):
-                st.session_state["f_preset"] = "safe"
-                st.rerun()
-        with qf2:
-            if st.button("⭐ HIGH SCORE (≥5)", key="qf_hs"):
-                st.session_state["f_preset"] = "high_score"
-                st.rerun()
-        with qf3:
-            if st.button("📈 RS POSITIVE", key="qf_rs"):
-                st.session_state["f_rs_pos"] = True
-                st.rerun()
-        with qf4:
-            if st.button("◈ MCF JOIN/WAIT", key="qf_mc"):
-                st.session_state["f_mcf_ok"] = True
-                st.rerun()
-        with qf5:
-            if st.button("◌ CORRECTING only", key="qf_corr"):
-                st.session_state["f_preset"] = "correcting"
-                st.rerun()
-        with qf_reset:
-            if st.button("✕ RESET", key="qf_reset"):
-                st.session_state["f_preset"] = "reset"
-                st.rerun()
-
-        # ── Apply filters ───────────────────────────────────────────────────────
-        sig_filter_val = st.session_state.get("f_sig", ["WATCHLIST","CORRECTING","DEEP_CORRECT"])
-        min_score_val  = st.session_state.get("f_score", 1)
-        max_risk_val   = st.session_state.get("f_risk", 50)
-
-        filtered = rest
-        filtered = [r for r in filtered if r.get("signal","") in sig_filter_val]
-        filtered = [r for r in filtered if r.get("score", 0) >= min_score_val]
-        filtered = [r for r in filtered if r.get("risk_pct", 0) <= max_risk_val]
-        if rs_pos_only:
-            # P01-X3: minimum RS threshold — bukan hanya > 0
-            filtered = [r for r in filtered if r.get("rs_vs_ihsg_4w", 0) >= _rs_min]
-        if mcf_ok_only:
-            filtered = [r for r in filtered if r.get("mcf_label","") in ("JOIN","WAIT")]
-
-        # Sort
-        sort_map = {
-            "Score ↓":  lambda r: -r.get("score", 0),
-            "RS% ↓":    lambda r: -r.get("rs_vs_ihsg_4w", 0),
-            "MCF ↓":    lambda r: -r.get("mcf_score", 0),
-            "Risk% ↑":  lambda r:  r.get("risk_pct", 0),
-            "Vol× ↓":   lambda r: -r.get("vol_ratio", 0),
-        }
-        sort_key = st.session_state.get("f_sort", "Score ↓")
-        # P01-X3: RS min threshold slider — hanya tampil jika RS filter aktif
-        if rs_pos_only:
-            _rs_min_new = st.slider("Min RS% vs IHSG", 0.0, 20.0,
-                                    float(st.session_state.get("f_rs_min", 0.0)),
-                                    0.5, key="rs_min_slider",
-                                    help="Hanya tampilkan saham dengan RS ≥ X% vs IHSG 4W")
-            st.session_state["f_rs_min"] = _rs_min_new
-            _rs_min = _rs_min_new
-            filtered = [r for r in filtered if r.get("rs_vs_ihsg_4w", 0) >= _rs_min]
-        filtered.sort(key=sort_map.get(sort_key, sort_map["Score ↓"]))
-
-        # Filter stats
-        hidden = len(rest) - len(filtered)
-        _hidden_html = f'<span style="color:#F0B429">{hidden} tersembunyi oleh filter</span>' if hidden else ''
-        _sep = ' &middot; ' if hidden else ''
-        _stats_html = (
-            f'<div style="font-family:Share Tech Mono,monospace;font-size:12px;'
-            f'color:#374151;margin:.3rem 0 .5rem">'
-            f'Menampilkan <b style="color:#E2E8F0">{len(filtered)}</b> / {len(rest)} setups'
-            f'{_sep}{_hidden_html}'
-            f' &middot; Sort: <b style="color:#60A5FA">{sort_key}</b>'
-            f'</div>'
+    # ── WATCHLIST SECTION — cross ABOVE, belum breakout box ──────────────────
+    _watchlist_only = [r for r in ema_results if r.get("signal") == "WATCHLIST"]
+    if _watchlist_only:
+        sec_head(f"◎ WATCHLIST — {len(_watchlist_only)} kandidat · EMA cross confirmed · menunggu breakout box")
+        st.markdown(
+            '<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:#64748B;'
+            'margin:-0.3rem 0 0.7rem 0">EMA13 sudah di atas EMA89. Harga dalam box konsolidasi. '
+            'Entry saat breakout box dengan volume konfirmasi.</div>',
+            unsafe_allow_html=True
         )
-        st.markdown(_stats_html, unsafe_allow_html=True)
-
-        # ── Build table ─────────────────────────────────────────────────────────
-        sig_icons = {"WATCHLIST":"◎","CORRECTING":"◌","DEEP_CORRECT":"◍"}
-        rows = []
-        for r in filtered:
-            sig    = r.get("signal","")
-            icon   = sig_icons.get(sig,"◯")
-            rs     = r.get("rs_vs_ihsg_4w", 0)
-            risk_v = r.get("risk_pct", 0)
-            risk_flag = "⚠" if risk_v > 25 else "!" if risk_v > 15 else "✓"
-            _t = r.get("ticker","").replace(".JK","").upper()
-            _ma = _msci_alerts_by_ticker.get(_t)
-            msci_badge = ""
-            if _ma:
-                _lv = _ma.get("alert_level","")
-                msci_badge = ("★" if _lv == "HIGH_CONVICTION" else
-                              "◈" if _lv == "MEDIUM" else "·")
-            rows.append({
-                "Signal":  f"{icon} {sig}",
-                "MSCI":    msci_badge,
-                "Ticker":  r.get("ticker","").replace(".JK",""),
-                "Score":   r.get("score",0),
-                "Close":   r.get("close",0),
-                "Vol×":    round(r.get("vol_ratio",0), 2),
-                "RS%":     round(rs, 1),
-                "MCF":     r.get("mcf_score",0),
-                "MCF?":    r.get("mcf_label","—"),
-                "Bear?":   "⛔" if r.get("mcf_bear_blocked") else "",
-                "Risk%":   round(risk_v, 1),
-                "Risk":    risk_flag,
+        # Score cap notice untuk regime SPECULATIVE
+        if cycle in ("BEAR_CONSOLIDATION", "SPECULATIVE"):
+            st.markdown(
+                '<div style="background:rgba(240,180,41,0.07);border:1px solid rgba(240,180,41,0.3);'
+                'border-radius:6px;padding:0.5rem 0.8rem;margin-bottom:0.6rem">'
+                '<span style="font-family:Share Tech Mono,monospace;font-size:11px;color:#F0B429">'
+                '⚠ REGIME SPECULATIVE — score di-cap maksimal 4/10. '
+                'Score aktual mungkin lebih tinggi jika regime berubah ke FULL/SELECTIVE.</span>'
+                '</div>',
+                unsafe_allow_html=True
+            )
+        _wl_rows = []
+        for r in sorted(_watchlist_only, key=lambda x: -x.get("score", 0)):
+            _ticker = r.get("ticker", "").replace(".JK", "")
+            _capped = (
+                cycle in ("BEAR_CONSOLIDATION", "SPECULATIVE")
+                and r.get("score", 0) <= 4
+            )
+            _cap_note = " ⚠cap" if _capped else ""
+            _wl_rows.append({
+                "Ticker":  _ticker,
+                "Score":   str(r.get("score", 0)) + "/10" + _cap_note,
+                "Close":   r.get("close", 0),
+                "Vol×":    round(r.get("vol_ratio", 0), 2),
+                "RS%":     round(r.get("rs_vs_ihsg_4w", 0), 1),
+                "MCF":     r.get("mcf_score", 0),
+                "Risk%":   round(r.get("risk_pct", 0), 1),
                 "EMA13d":  r.get("ema13d", 0),
-                "Daily?":  "✓" if r.get("daily_ok") else "",
-                "Regime":  r.get("regime_tag",""),
             })
-
-        df_table = pd.DataFrame(rows)
         st.dataframe(
-            df_table, hide_index=True,
+            _wl_rows,
+            use_container_width=True,
+            hide_index=True,
             column_config={
-                "Score":  st.column_config.NumberColumn("Score", format="%d/10"),
-                "Close":  st.column_config.NumberColumn("Close", format="Rp%,.0f"),
+                "Close":  st.column_config.NumberColumn("Close",  format="Rp%,.0f"),
                 "EMA13d": st.column_config.NumberColumn("EMA13d", format="Rp%,.0f"),
-                "Vol×":   st.column_config.NumberColumn("Vol×",  format="%.2f×"),
-                "RS%":    st.column_config.NumberColumn("RS%",   format="%+.1f%%"),
-                "MCF":    st.column_config.NumberColumn("MCF",   format="%d/10"),
-                "Risk%":  st.column_config.NumberColumn("Risk%", format="%.1f%%"),
+                "Vol×":   st.column_config.NumberColumn("Vol×",   format="%.2f×"),
+                "RS%":    st.column_config.NumberColumn("RS%",    format="%+.1f%%"),
+                "MCF":    st.column_config.NumberColumn("MCF",    format="%d/10"),
+                "Risk%":  st.column_config.NumberColumn("Risk%",  format="%.1f%%"),
             }
         )
 
-        # ── Detail analysis ─────────────────────────────────────────────────────
-        st.markdown("<br>", unsafe_allow_html=True)
-        sec_head("◆ ANALISIS DETAIL")
-        ticker_opts = ["— Pilih saham —"] + [
-            r.get("ticker","").replace(".JK","") for r in filtered
-        ]
-        sel = st.selectbox("Saham:", ticker_opts, key="ema_detail_sel",
-                           label_visibility="collapsed")
-        if sel and sel != "— Pilih saham —":
-            match = next((r for r in filtered if r.get("ticker","").replace(".JK","") == sel), None)
-            if match:
-                _render_ema_detail(match)
+    # ── PIPELINE SECTION — CORRECTING dengan RS kuat, approaching cross ───────
+    _pipeline = [
+        r for r in ema_results
+        if r.get("signal") in ("CORRECTING", "DEEP_CORRECT", "COMPRESSING")
+        and r.get("rs_vs_ihsg_4w", 0) >= 20.0
+        and r.get("score", 0) >= 5
+    ]
+    if _pipeline:
+        sec_head(f"◌ PIPELINE — {len(_pipeline)} approaching · RS kuat · pantau, bukan entry")
+        st.markdown(
+            '<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:#64748B;'
+            'margin:-0.3rem 0 0.4rem 0">Saham dengan RS ≥ +20% vs IHSG dan score ≥ 5, '
+            'tapi EMA masih dalam fase CORRECTING. '
+            '<b style="color:#F0B429">Bukan sinyal entry</b> — watchlist untuk minggu depan.</div>',
+            unsafe_allow_html=True
+        )
+        # Score cap notice
+        if cycle in ("BEAR_CONSOLIDATION", "SPECULATIVE"):
+            st.markdown(
+                '<div style="background:rgba(240,180,41,0.07);border:1px solid rgba(240,180,41,0.3);'
+                'border-radius:6px;padding:0.5rem 0.8rem;margin-bottom:0.6rem">'
+                '<span style="font-family:Share Tech Mono,monospace;font-size:11px;color:#F0B429">'
+                '⚠ REGIME SPECULATIVE — score di-cap 4/10. Score yang ditampilkan adalah score aktual '
+                'sebelum cap — menunjukkan potensi saham jika regime membaik.</span>'
+                '</div>',
+                unsafe_allow_html=True
+            )
+        _pl_rows = []
+        for r in sorted(_pipeline, key=lambda x: (-x.get("rs_vs_ihsg_4w", 0), -x.get("score", 0))):
+            _ticker = r.get("ticker", "").replace(".JK", "")
+            _sig    = r.get("signal", "")
+            _pl_rows.append({
+                "Ticker":  _ticker,
+                "Signal":  _sig,
+                "Score":   r.get("score", 0),
+                "Close":   r.get("close", 0),
+                "RS%":     round(r.get("rs_vs_ihsg_4w", 0), 1),
+                "Vol×":    round(r.get("vol_ratio", 0), 2),
+                "MCF":     r.get("mcf_score", 0),
+                "Risk%":   round(r.get("risk_pct", 0), 1),
+            })
+        st.dataframe(
+            _pl_rows,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Score":  st.column_config.NumberColumn("Score",  format="%d/10"),
+                "Close":  st.column_config.NumberColumn("Close",  format="Rp%,.0f"),
+                "RS%":    st.column_config.NumberColumn("RS%",    format="%+.1f%%"),
+                "Vol×":   st.column_config.NumberColumn("Vol×",   format="%.2f×"),
+                "MCF":    st.column_config.NumberColumn("MCF",    format="%d/10"),
+                "Risk%":  st.column_config.NumberColumn("Risk%",  format="%.1f%%"),
+            }
+        )
+
+    # ── ALL SETUPS with filter controls ──────────────────────────────────────
+    rest = [r for r in ema_results if r.get("signal") not in ("BREAKOUT", "STRONG_BREAKOUT")]
+    if rest:
+        with st.expander(f"◆ ALL SETUPS — {len(rest)} total (filter lengkap)", expanded=False):
+
+         # ── FILTER CONTROLS ──────────────────────────────────────────────────
+         # PENTING: Apply preset SEBELUM widget di-buat.
+         # Streamlit melarang set session_state[widget_key] setelah widget rendered.
+         # Pattern: tombol → set f_preset → rerun → apply f_preset → buat widget.
+          _preset = st.session_state.pop("f_preset", None)
+          if _preset == "safe":
+              st.session_state["f_risk"]  = 15
+              st.session_state["f_score"] = 1
+          elif _preset == "high_score":
+              st.session_state["f_score"] = 5
+              st.session_state["f_risk"]  = 50
+          elif _preset == "correcting":
+              st.session_state["f_sig"]   = ["CORRECTING"]
+          elif _preset == "reset":
+              for _k in ("f_score", "f_risk", "f_sig", "f_sort"):
+                st.session_state.pop(_k, None)
+
+          # rs_pos dan mcf_ok adalah toggle non-widget, bisa di-set kapanpun
+          rs_pos_only = st.session_state.pop("f_rs_pos", False)
+          mcf_ok_only = st.session_state.pop("f_mcf_ok", False)
+          # P01-X3: RS minimum threshold — bukan hanya binary > 0
+          _rs_min = st.session_state.get("f_rs_min", 0.0)
+
+          with st.container():
+              st.markdown("""<div style="font-family:Share Tech Mono,monospace;
+              font-size:var(--text-2xs);letter-spacing:.15em;color:#374151;
+              margin-bottom:.4rem">◆ FILTER CONTROLS</div>""",
+              unsafe_allow_html=True)
+
+              fc1, fc2, fc3, fc4 = st.columns(4)
+
+              with fc1:
+                  sig_filter = st.multiselect(
+                      "Signal Type",
+                      ["WATCHLIST", "CORRECTING", "DEEP_CORRECT"],
+                      default=st.session_state.get("f_sig",
+                          ["WATCHLIST","CORRECTING","DEEP_CORRECT"]),
+                      key="f_sig",
+                      label_visibility="collapsed",
+                  )
+              with fc2:
+                  min_score = st.slider(
+                      "Min Score", min_value=1, max_value=10,
+                      value=st.session_state.get("f_score", 1),
+                      key="f_score", label_visibility="collapsed",
+                      help="Min Score (1–7)",
+                  )
+              with fc3:
+                  max_risk = st.slider(
+                      "Max Risk %", min_value=5, max_value=50,
+                      value=st.session_state.get("f_risk", 50),
+                      step=5, key="f_risk", label_visibility="collapsed",
+                      help="Max Risk % per trade",
+                  )
+              with fc4:
+                  sort_col = st.selectbox(
+                      "Sort by",
+                      ["Score ↓","RS% ↓","MCF ↓","Risk% ↑","Vol× ↓"],
+                      key="f_sort", label_visibility="collapsed",
+                  )
+
+          # Quick filter buttons — hanya set f_preset, TIDAK set widget key langsung
+          qf1, qf2, qf3, qf4, qf5, qf_reset = st.columns(6)
+          with qf1:
+              if st.button("🟢 SAFE (<15%R)", key="qf_safe"):
+                  st.session_state["f_preset"] = "safe"
+                  st.rerun()
+          with qf2:
+              if st.button("⭐ HIGH SCORE (≥5)", key="qf_hs"):
+                  st.session_state["f_preset"] = "high_score"
+                  st.rerun()
+          with qf3:
+              if st.button("📈 RS POSITIVE", key="qf_rs"):
+                  st.session_state["f_rs_pos"] = True
+                  st.rerun()
+          with qf4:
+              if st.button("◈ MCF JOIN/WAIT", key="qf_mc"):
+                  st.session_state["f_mcf_ok"] = True
+                  st.rerun()
+          with qf5:
+              if st.button("◌ CORRECTING only", key="qf_corr"):
+                  st.session_state["f_preset"] = "correcting"
+                  st.rerun()
+          with qf_reset:
+              if st.button("✕ RESET", key="qf_reset"):
+                  st.session_state["f_preset"] = "reset"
+                  st.rerun()
+
+          # ── Apply filters ───────────────────────────────────────────────────────
+          sig_filter_val = st.session_state.get("f_sig", ["WATCHLIST","CORRECTING","DEEP_CORRECT"])
+          min_score_val  = st.session_state.get("f_score", 1)
+          max_risk_val   = st.session_state.get("f_risk", 50)
+
+          filtered = rest
+          filtered = [r for r in filtered if r.get("signal","") in sig_filter_val]
+          filtered = [r for r in filtered if r.get("score", 0) >= min_score_val]
+          filtered = [r for r in filtered if r.get("risk_pct", 0) <= max_risk_val]
+          if rs_pos_only:
+              # P01-X3: minimum RS threshold — bukan hanya > 0
+              filtered = [r for r in filtered if r.get("rs_vs_ihsg_4w", 0) >= _rs_min]
+          if mcf_ok_only:
+              filtered = [r for r in filtered if r.get("mcf_label","") in ("JOIN","WAIT")]
+
+          # Sort
+          sort_map = {
+              "Score ↓":  lambda r: -r.get("score", 0),
+              "RS% ↓":    lambda r: -r.get("rs_vs_ihsg_4w", 0),
+              "MCF ↓":    lambda r: -r.get("mcf_score", 0),
+              "Risk% ↑":  lambda r:  r.get("risk_pct", 0),
+              "Vol× ↓":   lambda r: -r.get("vol_ratio", 0),
+          }
+          sort_key = st.session_state.get("f_sort", "Score ↓")
+          # P01-X3: RS min threshold slider — hanya tampil jika RS filter aktif
+          if rs_pos_only:
+              _rs_min_new = st.slider("Min RS% vs IHSG", 0.0, 20.0,
+                                      float(st.session_state.get("f_rs_min", 0.0)),
+                                      0.5, key="rs_min_slider",
+                                      help="Hanya tampilkan saham dengan RS ≥ X% vs IHSG 4W")
+              st.session_state["f_rs_min"] = _rs_min_new
+              _rs_min = _rs_min_new
+              filtered = [r for r in filtered if r.get("rs_vs_ihsg_4w", 0) >= _rs_min]
+          filtered.sort(key=sort_map.get(sort_key, sort_map["Score ↓"]))
+
+          # Filter stats
+          hidden = len(rest) - len(filtered)
+          _hidden_html = f'<span style="color:#F0B429">{hidden} tersembunyi oleh filter</span>' if hidden else ''
+          _sep = ' &middot; ' if hidden else ''
+          _stats_html = (
+              f'<div style="font-family:Share Tech Mono,monospace;font-size:12px;'
+              f'color:#374151;margin:.3rem 0 .5rem">'
+              f'Menampilkan <b style="color:#E2E8F0">{len(filtered)}</b> / {len(rest)} setups'
+              f'{_sep}{_hidden_html}'
+              f' &middot; Sort: <b style="color:#60A5FA">{sort_key}</b>'
+              f'</div>'
+          )
+          st.markdown(_stats_html, unsafe_allow_html=True)
+
+          # ── Build table ─────────────────────────────────────────────────────────
+          sig_icons = {"WATCHLIST":"◎","CORRECTING":"◌","DEEP_CORRECT":"◍"}
+          rows = []
+          for r in filtered:
+              sig    = r.get("signal","")
+              icon   = sig_icons.get(sig,"◯")
+              rs     = r.get("rs_vs_ihsg_4w", 0)
+              risk_v = r.get("risk_pct", 0)
+              risk_flag = "⚠" if risk_v > 25 else "!" if risk_v > 15 else "✓"
+              _t = r.get("ticker","").replace(".JK","").upper()
+              _ma = _msci_alerts_by_ticker.get(_t)
+              msci_badge = ""
+              if _ma:
+                  _lv = _ma.get("alert_level","")
+                  msci_badge = ("★" if _lv == "HIGH_CONVICTION" else
+                                "◈" if _lv == "MEDIUM" else "·")
+              rows.append({
+                  "Signal":  f"{icon} {sig}",
+                  "MSCI":    msci_badge,
+                  "Ticker":  r.get("ticker","").replace(".JK",""),
+                  "Score":   r.get("score",0),
+                  "Close":   r.get("close",0),
+                  "Vol×":    round(r.get("vol_ratio",0), 2),
+                  "RS%":     round(rs, 1),
+                  "MCF":     r.get("mcf_score",0),
+                  "MCF?":    r.get("mcf_label","—"),
+                  "Bear?":   "⛔" if r.get("mcf_bear_blocked") else "",
+                  "Risk%":   round(risk_v, 1),
+                  "Risk":    risk_flag,
+                  "EMA13d":  r.get("ema13d", 0),
+                  "Daily?":  "✓" if r.get("daily_ok") else "",
+                  "Regime":  r.get("regime_tag",""),
+              })
+
+          df_table = pd.DataFrame(rows)
+          st.dataframe(
+              df_table, hide_index=True,
+              column_config={
+                  "Score":  st.column_config.NumberColumn("Score", format="%d/10"),
+                  "Close":  st.column_config.NumberColumn("Close", format="Rp%,.0f"),
+                  "EMA13d": st.column_config.NumberColumn("EMA13d", format="Rp%,.0f"),
+                  "Vol×":   st.column_config.NumberColumn("Vol×",  format="%.2f×"),
+                  "RS%":    st.column_config.NumberColumn("RS%",   format="%+.1f%%"),
+                  "MCF":    st.column_config.NumberColumn("MCF",   format="%d/10"),
+                  "Risk%":  st.column_config.NumberColumn("Risk%", format="%.1f%%"),
+              }
+          )
+
+          # ── Detail analysis ─────────────────────────────────────────────────────
+          st.markdown("<br>", unsafe_allow_html=True)
+          sec_head("◆ ANALISIS DETAIL")
+          ticker_opts = ["— Pilih saham —"] + [
+              r.get("ticker","").replace(".JK","") for r in filtered
+          ]
+          sel = st.selectbox("Saham:", ticker_opts, key="ema_detail_sel",
+                             label_visibility="collapsed")
+          if sel and sel != "— Pilih saham —":
+              match = next((r for r in filtered if r.get("ticker","").replace(".JK","") == sel), None)
+              if match:
+                  _render_ema_detail(match)
 
 
 else:
-    render_empty_state(
-        icon     = "◎",
-        title    = "NO SCAN DATA",
-        subtitle = "Run a new scan to detect EMA crossover setups.\nResults auto-save and persist between sessions.",
-        command  = "python orchestrator.py --mode ema"
-    )
+  render_empty_state(
+      icon     = "◎",
+      title    = "NO SCAN DATA",
+      subtitle = "Run a new scan to detect EMA crossover setups.\nResults auto-save and persist between sessions.",
+      command  = "python orchestrator.py --mode ema"
+  )
