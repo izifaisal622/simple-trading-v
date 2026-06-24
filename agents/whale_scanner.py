@@ -526,6 +526,135 @@ def detect_pengeringan(close: pd.Series, vol: pd.Series, high: pd.Series, low: p
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Gradual Accumulation Detector — Weekly Step-Up Pattern
+# Smart whale afiliasi emiten jarang beli sekaligus — mereka naik bertahap
+# tiap minggu supaya tidak trigger scanner retail
+# ─────────────────────────────────────────────────────────────────────────────
+
+def detect_gradual_accumulation(
+    close: pd.Series,
+    vol: pd.Series,
+    high: pd.Series,
+    low: pd.Series,
+    min_weeks: int = 4,
+) -> dict:
+    """
+    Detects gradual weekly volume step-up with sideways price — signature
+    smart whale afiliasi emiten yang akumulasi diam-diam tanpa trigger scanner.
+
+    Logic (Opsi A — aggregate daily data ke weekly):
+    - Resample daily close/vol/high/low ke minggu
+    - Cek apakah vol naik tiap minggu selama min_weeks minggu berturut-turut
+    - Cek price range tiap minggu < 5% (sideways)
+    - Total vol gain dari minggu pertama ke terakhir minimal +20%
+
+    Returns:
+    - detected: bool
+    - weeks_confirmed: int (berapa minggu step-up terkonfirmasi)
+    - vol_gain_pct: float (total vol growth dari minggu 1 ke N)
+    - avg_weekly_range_pct: float (rata-rata price range per minggu)
+    - strength: int 0-3 (0=none, 1=weak, 2=moderate, 3=strong)
+    - description: str
+    """
+    _empty = {
+        "detected": False, "weeks_confirmed": 0,
+        "vol_gain_pct": 0.0, "avg_weekly_range_pct": 0.0,
+        "strength": 0, "description": ""
+    }
+
+    # Butuh minimal 5 minggu data (4 step-up + 1 baseline)
+    if len(close) < 35:
+        return _empty
+
+    try:
+        # Aggregate daily → weekly menggunakan resample
+        df_temp = pd.DataFrame({
+            "close": close.values,
+            "vol":   vol.values,
+            "high":  high.values,
+            "low":   low.values,
+        }, index=close.index)
+
+        weekly = df_temp.resample("W").agg({
+            "close": "last",
+            "vol":   "sum",
+            "high":  "max",
+            "low":   "min",
+        }).dropna()
+
+        if len(weekly) < min_weeks + 1:
+            return _empty
+
+        # Ambil N+1 minggu terakhir (N untuk step-up, 1 baseline sebelumnya)
+        look = weekly.tail(min_weeks + 1).reset_index(drop=True)
+
+        # Cek vol step-up tiap minggu berturut-turut
+        step_up_count = 0
+        weekly_ranges = []
+        for i in range(1, len(look)):
+            prev_vol = float(look["vol"].iloc[i - 1])
+            curr_vol = float(look["vol"].iloc[i])
+            if prev_vol > 0 and curr_vol > prev_vol:
+                step_up_count += 1
+
+            # Price range minggu ini sebagai % dari close
+            w_close = float(look["close"].iloc[i])
+            w_high  = float(look["high"].iloc[i])
+            w_low   = float(look["low"].iloc[i])
+            w_range = ((w_high - w_low) / w_close * 100) if w_close > 0 else 999
+            weekly_ranges.append(w_range)
+
+        avg_range = float(np.mean(weekly_ranges)) if weekly_ranges else 999
+
+        # Vol gain dari baseline (minggu pertama) ke minggu terakhir
+        base_vol = float(look["vol"].iloc[0])
+        last_vol = float(look["vol"].iloc[-1])
+        vol_gain_pct = ((last_vol / base_vol - 1) * 100) if base_vol > 0 else 0.0
+
+        # Konfirmasi: semua minggu step-up DAN price sideways DAN vol gain meaningful
+        all_stepped_up  = step_up_count >= min_weeks
+        price_sideways  = avg_range < 5.0
+        vol_meaningful  = vol_gain_pct >= 20.0
+
+        detected = all_stepped_up and price_sideways and vol_meaningful
+
+        # Strength scoring
+        if not detected:
+            # Partial detection — berapa minggu yang terkonfirmasi step-up
+            partial = step_up_count >= (min_weeks - 1) and price_sideways
+            strength = 1 if partial else 0
+        else:
+            if vol_gain_pct >= 80 and avg_range < 3.0:
+                strength = 3  # strong: vol naik tajam + range sangat sempit
+            elif vol_gain_pct >= 40 or avg_range < 3.5:
+                strength = 2  # moderate
+            else:
+                strength = 1  # weak but confirmed
+
+        # Description
+        if detected:
+            desc = (f"Gradual akumulasi {step_up_count} minggu berturut-turut — "
+                    f"vol naik +{vol_gain_pct:.0f}%, range sempit {avg_range:.1f}%/minggu")
+        elif strength == 1:
+            desc = (f"Partial step-up {step_up_count}/{min_weeks} minggu — "
+                    f"pantau minggu depan")
+        else:
+            desc = ""
+
+        return {
+            "detected":              detected,
+            "weeks_confirmed":       step_up_count,
+            "vol_gain_pct":          round(vol_gain_pct, 1),
+            "avg_weekly_range_pct":  round(avg_range, 1),
+            "strength":              strength,
+            "description":           desc,
+        }
+
+    except Exception:
+        return _empty
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Whale Defense Test
 # "Kalau dihantam tapi tidak jatuh → ada yang nampung" (Hengky)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -946,6 +1075,14 @@ def classify_whale_quality(result: dict) -> str:
     ff = result.get("free_float", 100)
     if ff <= 15: score += 1
 
+    # V5: Gradual accumulation — weekly step-up (0–2)
+    # Smart whale jarang beli sekaligus, mereka naik bertahap tiap minggu
+    if result.get("gradual_accum"):
+        ga_strength = result.get("gradual_strength", 1)
+        score += min(ga_strength, 2)
+    elif result.get("gradual_strength", 0) == 1:
+        score += 1  # partial — 3 dari 4 minggu terkonfirmasi
+
     # V5: Afiliasi emiten — owner broker diketahui (0–3)
     # Ini signal terkuat: kalau broker owner emiten yang beli = insider accumulation
     owner_broker    = result.get("owner_broker", "")
@@ -1029,6 +1166,12 @@ def compute_conviction(r: dict, vol_ratio: float) -> int:
     # V4: Market Structure boost from scanner (if available)
     ms_boost = r.get("ms_conviction_boost", 0)
     score += ms_boost
+
+    # V5: Gradual accumulation boost (0–2)
+    if r.get("gradual_accum"):
+        score += min(r.get("gradual_strength", 1), 2)
+    elif r.get("gradual_strength", 0) == 1:
+        score += 1
 
     # V5: Afiliasi emiten boost (0–2)
     # Owner broker diketahui = conviction lebih tinggi karena insider accumulation
@@ -1387,6 +1530,9 @@ class WhaleScanner:
             # 6. V4: Order Block (institutional footprint / compression zone)
             ob_data     = detect_order_block(close, high, low, vol)
 
+            # 7. V5: Gradual accumulation — weekly step-up pattern (4 minggu)
+            ga_data     = detect_gradual_accumulation(close, vol, high, low, min_weeks=4)
+
             # 4. Multi-day accumulation
             accum_days  = int((vol.tail(5) > vol_ma * 1.5).sum())
             pattern     = "SUSTAINED" if accum_days >= 3 else "SINGLE_DAY"
@@ -1480,6 +1626,13 @@ class WhaleScanner:
                 "peng_absorption":      peng_data.get("absorption_score", 0),
                 "peng_close_pos":       peng_data.get("close_position_score", 0.5),
                 "peng_vol_accel":       peng_data.get("vol_acceleration", 1.0),
+                # V5: Gradual accumulation
+                "gradual_accum":        ga_data["detected"],
+                "gradual_weeks":        ga_data["weeks_confirmed"],
+                "gradual_vol_gain":     ga_data["vol_gain_pct"],
+                "gradual_range_pct":    ga_data["avg_weekly_range_pct"],
+                "gradual_strength":     ga_data["strength"],
+                "gradual_desc":         ga_data["description"],
             }
 
             # Phase 1+2: Ownership data (free float + static broker profile)
@@ -1725,7 +1878,7 @@ class WhaleScanner:
         # Sequential + throttled (1 req/s), skip otomatis jika tidak ada token
         if _HAS_OWNERSHIP:
             try:
-                results = _ownership_agent.enrich_top_results(results, top_n=15)
+                results = _ownership_agent.enrich_top_results(results)  # V5: top_n=50, min_conviction=4
             except Exception as _ee:
                 logger.debug(f"[Whale] Enrichment skipped: {_ee}")
 

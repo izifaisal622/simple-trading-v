@@ -307,15 +307,23 @@ class OwnershipAgent:
             logger.debug(f"[Stockbit] {t}: {e}")
             return {"available": False, "reason": str(e)}
 
-    def enrich_top_results(self, results: list, top_n: int = 15) -> list:
+    def enrich_top_results(self, results: list, top_n: int = 50,
+                            min_conviction: int = 4) -> list:
         """
         Enrichment pass: fetch Stockbit broker data untuk top-N hasil scan.
         SEQUENTIAL + THROTTLED (1 req/detik) — dipanggil setelah scan selesai.
         Hanya jalan kalau token ada. Aman untuk skip kalau token tidak ada.
 
+        V5 fix: top_n dinaikkan 15→50, tambah min_conviction filter.
+        Sebelumnya circular dependency — ticker dengan conviction rendah (karena
+        missing owner broker data) tidak di-enrich, padahal enrich itulah yang
+        bisa naikkan conviction-nya. Fix: enrich semua ticker di atas threshold
+        conviction minimum, bukan hanya top 15 saja.
+
         Args:
-            results: list of whale/scan result dicts, sudah sorted by conviction
-            top_n:   max tickers yang di-enrich (default 15)
+            results:        list of whale/scan result dicts, sorted by conviction
+            top_n:          max tickers yang di-enrich (default 50)
+            min_conviction: skip ticker dengan conviction < threshold (default 4)
         Returns:
             results yang sama, dengan broker_live=True + top_buyers/sellers
             untuk ticker yang berhasil di-fetch
@@ -327,12 +335,14 @@ class OwnershipAgent:
             logger.debug("[Enrich] No token — skip Stockbit enrichment")
             return results
 
+        # Filter: hanya enrich ticker dengan conviction >= min_conviction
         # Sort by conviction descending, ambil top_n
-        sorted_res = sorted(results, key=lambda x: x.get("conviction", 0), reverse=True)
+        eligible   = [r for r in results if r.get("conviction", 0) >= min_conviction]
+        sorted_res = sorted(eligible, key=lambda x: x.get("conviction", 0), reverse=True)
         to_enrich  = sorted_res[:top_n]
         ticker_set = {r.get("ticker","").replace(".JK","") for r in to_enrich}
 
-        logger.info(f"[Enrich] Stockbit enrichment: {len(ticker_set)} tickers (top {top_n} by conviction)")
+        logger.info(f"[Enrich] Stockbit enrichment: {len(ticker_set)} tickers "                    f"(conviction>={min_conviction}, top {top_n})")
 
         enriched = 0
         for i, r in enumerate(results):
