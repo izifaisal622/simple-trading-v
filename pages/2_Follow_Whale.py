@@ -705,9 +705,41 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     elif ema_ok == "warn" and floor_ok == "warn":
         action = f"**WATCHLIST AKTIF.** Setup menarik tapi dua konfirmasi belum terpenuhi: (1) tunggu EMA jadi BULLISH, (2) harga pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}. Pasang alert." + _not_best_long_note + _fp_badge
     elif floor_ok == "warn":
-        action = f"**WATCHLIST AKTIF.** EMA sudah BULLISH, sinyal bagus. Tunggu pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f} untuk entry dengan R/R lebih baik. Kalau breakout dengan volume tinggi bisa kejar dengan sizing 50%." + _not_best_long_note + _fp_badge
+        action = f"**WATCHLIST AKTIF.** EMA sudah BULLISH, sinyal bagus. Tunggu pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f} untuk entry dengan R/R lebih baik." + _not_best_long_note + _fp_badge
     else:
-        action = f"**ENTRY ZONA** — Semua kriteria terpenuhi. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}. SL di bawah floor Rp{sl_price:,.0f}." + _fp_badge
+        # Priority 1: MRS menentukan urgency dan sizing dalam ENTRY ZONA
+        # Sebelumnya semua "ENTRY ZONA" sama — MRS ada di badge terpisah tapi tidak mengubah action
+        # Sekarang action ikut MRS agar kesimpulan mencerminkan timing, bukan hanya struktur
+        if mrs >= 4 and tc_det:
+            # MRS tinggi + trigger candle = timing terbaik, full size
+            action = (f"**🚀 ENTRY SEKARANG — MRS {mrs}/5 SIAP + TRIGGER CANDLE.** "
+                      f"Whale mulai push hari ini. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}, "
+                      f"SL Rp{sl_price:,.0f}. "
+                      f"**Full size** — semua sinyal konfluens." + _fp_badge)
+        elif mrs >= 4:
+            # MRS tinggi tanpa trigger candle — siap tapi belum push
+            action = (f"**✅ ENTRY ZONA — MRS {mrs}/5 SIAP.** "
+                      f"Struktur matang, timing mendekati. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}, "
+                      f"SL Rp{sl_price:,.0f}. "
+                      f"**Full size** direkomendasikan — tunggu candle konfirmasi sebelum masuk." + _fp_badge)
+        elif mrs >= 3:
+            # MRS sedang — setup bagus tapi timing belum optimal
+            action = (f"**⚠️ ENTRY ZONA — MRS {mrs}/5 MENDEKATI.** "
+                      f"Setup bagus tapi belum di timing terbaik. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}, "
+                      f"SL Rp{sl_price:,.0f}. "
+                      f"**Half size (50%)** — tambah saat MRS naik ke 4+." + _fp_badge)
+        elif mrs >= 2:
+            # MRS rendah — struktur oke tapi akumulasi masih dalam proses
+            action = (f"**⏳ ENTRY ZONA — MRS {mrs}/5 DALAM PROSES.** "
+                      f"Semua kriteria struktural terpenuhi tapi whale masih akumulasi. "
+                      f"Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}, SL Rp{sl_price:,.0f}. "
+                      f"**Partial size (25%)** atau tunggu MRS >= 3." + _fp_badge)
+        else:
+            # MRS 0-1 — struktur oke tapi belum ada sinyal timing
+            action = (f"**🔍 SETUP BAGUS TAPI BELUM TIMING.** "
+                      f"Kriteria terpenuhi namun MRS {mrs}/5 — whale belum selesai akumulasi. "
+                      f"Entry zone Rp{entry_low:,.0f}–{entry_high:,.0f} valid untuk pantau. "
+                      f"**Masuk ke watchlist aktif**, tunggu MRS naik ke 3+." + _fp_badge)
 
     # ── Render ────────────────────────────────────────────────────────────────
     _ = (zone, sc, ob_str, mom5, w52h, ff_vol, ticker, sector, action, v_col, v_bg, v_border)  # template vars
@@ -765,11 +797,31 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         # Momentum Readiness Score badge — ditampilkan sebelum conclusion
         st.markdown(_mrs_badge, unsafe_allow_html=True)
 
+        # Pre-build exit plan — berbasis pump historis jika tersedia
+        # Priority 2: user butuh tahu kapan dan berapa keluar, bukan hanya di mana masuk
+        _risk_val = max(float(close) - float(sl_price), 1.0)
+        if fp_cnt > 0 and fp_avg > 0:
+            # Ada data pump historis — pakai sebagai basis TP yang lebih realistis
+            _tp1_hist = round(float(close) * (1 + fp_avg * 0.004), 0)  # 40% dari avg pump
+            _tp2_hist = round(float(close) * (1 + fp_avg * 0.008), 0)  # 80% dari avg pump
+            _exit_line = (f"📤 Exit plan (basis pump historis avg +{fp_avg:.0f}%): "
+                          f"TP1 ~Rp{_tp1_hist:,.0f} (trim 50%) · "
+                          f"TP2 ~Rp{_tp2_hist:,.0f} (sisa posisi)")
+        else:
+            # Fallback ke R/R generik
+            _tp1_rr = round(float(close) + _risk_val * 1.5, 0)
+            _tp2_rr = round(float(close) + _risk_val * 3.0, 0)
+            _exit_line = (f"📤 Exit plan (1.5R/3R): "
+                          f"TP1 ~Rp{_tp1_rr:,.0f} (trim 50%) · "
+                          f"TP2 ~Rp{_tp2_rr:,.0f} (sisa posisi)")
+
         # Conclusion box
+        _exit_line_html = _exit_line  # pre-built, aman untuk inject
         st.markdown(f"""<div style="background:rgba(0,0,0,0.3);border:1px solid {v_col_hex}30;
         border-radius:var(--r-sm);padding:0.6rem 1rem;margin-top:0.6rem;
         font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:var(--text-primary);line-height:1.7">
         <span style="color:{v_col};font-weight:700">→ KESIMPULAN: </span>{action}
+        <div style="color:#64748B;font-size:var(--text-xs);margin-top:0.4rem;border-top:1px solid rgba(255,255,255,0.05);padding-top:0.4rem">{_exit_line_html}</div>
         </div>""", unsafe_allow_html=True)
 
         # LOG TRADE button — muncul di bawah conclusion
@@ -788,13 +840,25 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
                     _log_date  = st.date_input("Tanggal Entry")
                 # FIX #4: tambah input TP1 dan TP2 — tanpa ini War Room tidak punya data TP
                 # TP disimpan sebagai token "tp1=xxxx | tp2=xxxx" di notes string
-                # (DB schema tidak punya kolom tp terpisah — lihat trade_logger.py)
+                # Priority 3: default TP berbasis pump historis jika tersedia, fallback R/R generik
                 _c4, _c5 = st.columns(2)
                 _risk = max(float(close) - float(sl_price), 1.0)
+                # Hitung default TP: pump historis lebih akurat dari formula R/R statis
+                _fp_avg_local = w.get("pump_fp_avg_pct", 0.0)
+                if _fp_avg_local > 0 and w.get("pump_fp_count", 0) > 0:
+                    _tp1_default = round(float(close) * (1 + _fp_avg_local * 0.004), 0)  # 40% pump
+                    _tp2_default = round(float(close) * (1 + _fp_avg_local * 0.008), 0)  # 80% pump
+                    _tp_label1 = f"TP1 (~40% pump hist +{_fp_avg_local:.0f}%)"
+                    _tp_label2 = f"TP2 (~80% pump hist +{_fp_avg_local:.0f}%)"
+                else:
+                    _tp1_default = round(float(close) + _risk * 1.5, 0)
+                    _tp2_default = round(float(close) + _risk * 3.0, 0)
+                    _tp_label1 = "TP1 (1.5R)"
+                    _tp_label2 = "TP2 (3R)"
                 with _c4:
-                    _log_tp1 = st.number_input("TP1", value=round(float(close) + _risk * 1.5, 0), min_value=0.0, format="%.0f")
+                    _log_tp1 = st.number_input(_tp_label1, value=float(_tp1_default), min_value=0.0, format="%.0f")
                 with _c5:
-                    _log_tp2 = st.number_input("TP2", value=round(float(close) + _risk * 3.0, 0), min_value=0.0, format="%.0f")
+                    _log_tp2 = st.number_input(_tp_label2, value=float(_tp2_default), min_value=0.0, format="%.0f")
                 _log_notes = st.text_input("Notes (opsional)", value="")
                 _submitted = st.form_submit_button("✅ Simpan Trade", use_container_width=True)
                 if _submitted:
