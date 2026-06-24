@@ -1704,6 +1704,15 @@ def classify_whale_quality(result: dict) -> str:
     elif result.get("gradual_strength", 0) == 1:
         score += 1
 
+    # Fix A: Trigger candle — whale mulai push (0–2)
+    # Sinyal timing terkuat: transisi akumulasi → markup terkonfirmasi hari ini
+    # Tidak ada di whale_quality sebelumnya → fungsi berjalan sendiri tanpa memperkuat quality
+    if result.get("trigger_candle"):
+        score += 2
+        # Fix C: combinatorial — pengeringan selesai + trigger = sekuens sempurna
+        if result.get("pengeringan_detected") and not result.get("is_false", False):
+            score += 1  # sekuens barang kering → push dimulai = konfirmasi terkuat
+
     # V5: Pump fingerprint — kondisi sekarang mirip pre-pump historis (0–3)
     if result.get("pump_fp_matches"):
         sim  = result.get("pump_fp_similarity", 0.0)
@@ -1736,7 +1745,7 @@ def classify_whale_quality(result: dict) -> str:
 
     # V6: Normalisasi + Gate System
     # Max theoretical score ~31 — normalisasi ke 0-100
-    MAX_SCORE = 31.0
+    MAX_SCORE = 34.0  # Fix A+C: +2 trigger_candle + +1 combinatorial peng+trigger
     score_pct = round(score / MAX_SCORE * 100)
 
     # Gate variables
@@ -1884,6 +1893,25 @@ def compute_conviction(r: dict, vol_ratio: float) -> int:
         score += 1
     elif _broker_signal == "SMART" and _broker_live:
         score += 1  # live data confirm smart broker aktif
+
+    # Fix A: Trigger candle boost — whale mulai push, sinyal timing terkuat
+    # Tidak ada di conviction sebelumnya meski fungsinya sudah ada di engine
+    if r.get("trigger_candle"):
+        score += 1
+        # Fix C: combinatorial boost — pengeringan selesai + trigger = sekuens benar
+        # Bukan double-count: ini konfirmasi urutan akumulasi → push yang valid
+        if r.get("pengeringan_detected") and not r.get("is_false", False):
+            score += 1
+
+    # Fix B: Slow exit CAP conviction — konsisten dengan classify_whale_quality
+    # whale_quality sudah cap ke UNCERTAIN saat slow_exit kuat, conviction harus ikut
+    # Sebelumnya: conviction bisa 8 tapi whale_quality UNCERTAIN = kontradiksi
+    _slow_exit    = r.get("slow_exit", False)
+    _slow_exit_st = r.get("slow_exit_strength", 0)
+    if _slow_exit and _slow_exit_st >= 2:
+        score = min(score, 4)  # cap keras — konsisten dengan UNCERTAIN di whale_quality
+    elif _slow_exit:
+        score = min(score, 6)  # cap ringan — konsisten dengan LIKELY_SMART cap
 
     # V6: Supply freedom cap — konsisten dengan classify_whale_quality gate
     # ff>60% + ctrl<=3 = supply terlalu bebas → cap conviction di 7
@@ -2551,6 +2579,13 @@ class WhaleScanner:
             if tc_data.get("detected"):
                 _mrs += 1
                 _mrs_parts.append("trigger candle hari ini")
+
+                # Fix C: combinatorial bonus di MRS — sekuens pengeringan → trigger = paling kuat
+                # Pengeringan (barang kering) + trigger (push dimulai) = konfirmasi urutan sempurna
+                # Keduanya terkonfirmasi = bukan hanya noise volume biasa
+                if peng_data.get("detected") and not peng_data.get("is_false", False):
+                    _mrs += 1
+                    _mrs_parts.append("✓ sekuens peng→trigger terkonfirmasi")
 
             # +1: Range compression — price range menyempit = tekanan akan release
             _range_r = hb_data.get("range_ratio", 1.0)
