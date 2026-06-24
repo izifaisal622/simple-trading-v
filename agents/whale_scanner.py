@@ -1812,113 +1812,117 @@ def classify_whale_quality(result: dict) -> str:
 
 def compute_conviction(r: dict, vol_ratio: float) -> int:
     """
-    0–10 conviction score V4 — Hengky framework + Order Block.
+    0–10 conviction score — unified scoring, semua boost dan cap di satu tempat.
 
-    Volume ratio     (0–3)
-    Pengeringan      (0–2)
-    Floor proximity  (0–2)
-    Whale defense    (0–1)
-    EMA alignment    (0–1)
-    Momentum         (0–1)
-    --- V4 additions ---
-    Hitung Barang    (0–2): supply centralized = easier to push up
-    Order Block      (0–2): price at/near institutional OB zone
+    Opsi B refactor: semua post-hoc boost yang sebelumnya tersebar di _analyze_ticker
+    dipindahkan ke sini. Cap dijalankan SEKALI di akhir setelah semua boost selesai
+    sehingga tidak ada boost yang bisa bypass cap.
+
+    Urutan eksekusi:
+    1. Base scores (vol, pengeringan, floor, defense, EMA, momentum)
+    2. Supply + OB scores (hitung barang, order block — dengan synergy gate Fix 4)
+    3. Signal confirmation (RS, gradual Fix 3, pump fp, afiliasi, trigger)
+    4. Context boosts (VP, POC+peng, free float tight, MSCI/LQ45) — dipindah dari _analyze_ticker
+    5. CAPS sekali di akhir: slow exit → supply freedom
     """
     score = 0
 
-    # Vol ratio (cap 3)
-    score += min(int(vol_ratio / 1.5), 3)
+    # ── 1. Base scores ────────────────────────────────────────────────────────
+    score += min(int(vol_ratio / 1.5), 3)           # Vol ratio (cap 3)
+    score += min(r.get("pengeringan_strength", 0), 2)  # Pengeringan
 
-    # Pengeringan
-    score += min(r.get("pengeringan_strength", 0), 2)
-
-    # Floor proximity
-    zone = r.get("entry_zone", "FAR_FROM_FLOOR")
+    zone = r.get("entry_zone", "FAR_FROM_FLOOR")    # Floor proximity
     if zone == "AT_FLOOR":      score += 2
     elif zone == "NEAR_FLOOR":  score += 1
 
-    # Whale defense
-    if r.get("whale_defending"):    score += 1
+    if r.get("whale_defending"):            score += 1  # Whale defense
+    if r.get("ema_trend") == "BULLISH":     score += 1  # EMA alignment
 
-    # EMA
-    if r.get("ema_trend") == "BULLISH": score += 1
-
-    # Momentum — FIX: REVERSING (mom_5d>0 tapi mom_10d<0) tidak dapat boost
-    # REVERSING = naik jangka pendek tapi tren 10h masih turun = false momentum signal
-    # Hanya ACCELERATING (mom_5d>0 DAN mom_10d>0) yang layak dapat conviction
-    mom = r.get("momentum", "")
+    mom = r.get("momentum", "")                         # Momentum (REVERSING = 0)
     if mom == "ACCELERATING": score += 1
 
-    # V4: Hitung Barang — supply concentration bonus
+    # ── 2. Supply + OB scores (Fix 4: synergy gate OB + gradual) ─────────────
     ctrl = r.get("control_score", 0)
-    if ctrl >= 7:   score += 2
+    if ctrl >= 7:   score += 2                      # Hitung Barang
     elif ctrl >= 4: score += 1
 
-    # V4: Order Block — institutional zone bonus
-    if r.get("in_ob_zone"):    score += 2
-    elif r.get("near_ob_zone"): score += 1
+    _in_ob       = r.get("in_ob_zone", False)
+    _near_ob     = r.get("near_ob_zone", False)
+    _has_gradual = r.get("gradual_accum", False) or r.get("gradual_strength", 0) >= 1
 
-    # V4: Market Structure boost from scanner (if available)
-    ms_boost = r.get("ms_conviction_boost", 0)
-    score += ms_boost
+    # Fix 4: OB + gradual adalah dua view dari satu fenomena (gradual membentuk OB zone)
+    # Jika keduanya true → kurangi OB 1 poin + berikan synergy bonus +1 (net sama tapi eksplisit)
+    # Jika hanya OB → full score; Jika hanya gradual → handled di section 3
+    if _in_ob and _has_gradual:
+        score += 1   # OB dikurangi 1 (dari 2→1) + synergy +1 = net +2 (sama, tapi tidak double-count)
+        score += 1   # synergy bonus
+    elif _near_ob and _has_gradual:
+        score += 0   # near_ob dikurangi 1 (dari 1→0) + synergy +1 = net +1
+        score += 1   # synergy bonus
+    elif _in_ob:
+        score += 2   # full OB score tanpa overlap
+    elif _near_ob:
+        score += 1   # full near_OB score tanpa overlap
 
-    # V6: Relative Strength boost (0–1)
-    if r.get("rs_ok") and r.get("rs_20d", 0) > 3:
+    score += r.get("ms_conviction_boost", 0)        # Market Structure boost
+
+    # ── 3. Signal confirmation scores ─────────────────────────────────────────
+    if r.get("rs_ok") and r.get("rs_20d", 0) > 3:  # Relative Strength
         score += 1
 
-    # V5: Gradual accumulation boost (0–2)
+    # Fix 3: gradual pakai gradual_strength (konsisten dengan classify_whale_quality)
+    # Sebelumnya MRS pakai gradual_weeks, di sini gradual_strength = inkonsisten
     if r.get("gradual_accum"):
         score += min(r.get("gradual_strength", 1), 2)
     elif r.get("gradual_strength", 0) == 1:
         score += 1
 
-    # V5: Pump fingerprint boost (0–2)
-    if r.get("pump_fp_matches"):
+    if r.get("pump_fp_matches"):                    # Pump fingerprint
         sim  = r.get("pump_fp_similarity", 0.0)
         conf = r.get("pump_fp_confidence", "LOW")
         if conf in ("HIGH","MEDIUM") and sim >= 0.70: score += 2
-        else:                                           score += 1
+        else:                                          score += 1
 
-    # V5: Afiliasi emiten boost (0–2)
-    # Owner broker diketahui = conviction lebih tinggi karena insider accumulation
-    _owner_broker   = r.get("owner_broker", "")
-    _broker_signal  = r.get("broker_signal", "")
-    _broker_live    = r.get("broker_live", False)
-    _own_data       = r.get("_ownership", {})
-    _confidence     = _own_data.get("confidence", "") if _own_data else ""
+    _owner_broker = r.get("owner_broker", "")       # Afiliasi emiten
+    _broker_signal = r.get("broker_signal", "")
+    _broker_live   = r.get("broker_live", False)
+    _own_data      = r.get("_ownership", {})
+    _confidence    = _own_data.get("confidence", "") if _own_data else ""
 
-    if _owner_broker and _confidence == "HIGH":
-        score += 2
-    elif _owner_broker and _confidence == "MEDIUM":
+    if _owner_broker and _confidence == "HIGH":       score += 2
+    elif _owner_broker and _confidence == "MEDIUM":   score += 1
+    elif _broker_signal == "SMART" and _broker_live:  score += 1
+
+    if r.get("trigger_candle"):                     # Trigger candle
         score += 1
-    elif _broker_signal == "SMART" and _broker_live:
-        score += 1  # live data confirm smart broker aktif
-
-    # Fix A: Trigger candle boost — whale mulai push, sinyal timing terkuat
-    # Tidak ada di conviction sebelumnya meski fungsinya sudah ada di engine
-    if r.get("trigger_candle"):
-        score += 1
-        # Fix C: combinatorial boost — pengeringan selesai + trigger = sekuens benar
-        # Bukan double-count: ini konfirmasi urutan akumulasi → push yang valid
         if r.get("pengeringan_detected") and not r.get("is_false", False):
-            score += 1
+            score += 1  # combinatorial: peng selesai + push dimulai
 
-    # Fix B: Slow exit CAP conviction — konsisten dengan classify_whale_quality
-    # whale_quality sudah cap ke UNCERTAIN saat slow_exit kuat, conviction harus ikut
-    # Sebelumnya: conviction bisa 8 tapi whale_quality UNCERTAIN = kontradiksi
+    # ── 4. Context boosts (dipindah dari post-hoc di _analyze_ticker) ─────────
+    if r.get("free_float", 100) <= 15:              # Float sangat ketat
+        score += 1
+
+    if r.get("vp_near_val") or r.get("vp_in_value"):  # VP near accumulation zone
+        score += 1
+
+    if (abs(r.get("vp_pct_from_poc", 99)) < 3 and    # Near POC + pengeringan
+            r.get("pengeringan_detected") and not r.get("is_false", False)):
+        score += 1
+
+    if r.get("is_msci_candidate") or r.get("is_lq45_candidate"):  # Index candidate
+        score += 1
+
+    # ── 5. CAPS — sekali di akhir, mencakup semua boost di atas ─────────────
+    # Slow exit cap — konsisten dengan classify_whale_quality
     _slow_exit    = r.get("slow_exit", False)
     _slow_exit_st = r.get("slow_exit_strength", 0)
     if _slow_exit and _slow_exit_st >= 2:
-        score = min(score, 4)  # cap keras — konsisten dengan UNCERTAIN di whale_quality
+        score = min(score, 4)   # cap keras: UNCERTAIN
     elif _slow_exit:
-        score = min(score, 6)  # cap ringan — konsisten dengan LIKELY_SMART cap
+        score = min(score, 6)   # cap ringan: LIKELY_SMART
 
-    # V6: Supply freedom cap — konsisten dengan classify_whale_quality gate
-    # ff>60% + ctrl<=3 = supply terlalu bebas → cap conviction di 7
-    # Conviction tidak boleh misleading vs whale quality
-    _ff   = r.get("free_float", 100)
-    _ctrl = r.get("control_score", 0)
-    if _ff > 60 and _ctrl <= 3:
+    # Supply freedom cap — ff>60% + ctrl<=3
+    if r.get("free_float", 100) > 60 and r.get("control_score", 0) <= 3:
         score = min(score, 7)
 
     return max(0, min(10, score))
@@ -2511,44 +2515,48 @@ class WhaleScanner:
                 "sector":         sector,
             })
 
-            # Whale quality
-            result["whale_quality"] = classify_whale_quality(result)
-
-            # V3: Conviction uses free-float adjusted ratio
-            result["ff_adj_vol_ratio"] = round(ff_adj_ratio, 2)
-            result["conviction"]    = compute_conviction(result, ff_adj_ratio)
-
-            # Free float tight → supply terpusat → boost conviction (BUG 2 fix: dipindah ke sini)
-            _ff_now = result.get("free_float", 100)
-            if _ff_now <= 15 and result["conviction"] < 10:
-                result["conviction"] = min(10, result["conviction"] + 1)
-
-            # V6.4: Boost conviction if price is near Volume Profile VAL (near accumulation zone)
-            if vp_data.get("near_val") and result["conviction"] < 10:
-                result["conviction"] = min(10, result["conviction"] + 1)
-            # Near POC with pengeringan = strong setup
-            if abs(vp_data.get("pct_from_poc", 99)) < 3 and peng_data.get("detected"):
-                result["conviction"] = min(10, result["conviction"] + 1)
-
-            # Catalyst flags — MSCI/LQ45 membership boosts visibility
+            # Catalyst flags — WAJIB di-set sebelum compute_conviction
+            # karena compute_conviction membaca is_msci_candidate + is_lq45_candidate
             _base = ticker.upper().replace(".JK", "")
             _msci = getattr(self, "_msci_set", set())
             _lq45 = getattr(self, "_lq45_set", set())
             result["is_msci_candidate"] = _base in _msci
             result["is_lq45_candidate"] = _base in _lq45
-            if result.get("is_msci_candidate") or result.get("is_lq45_candidate"):
-                result["catalyst_tag"] = "MSCI" if result.get("is_msci_candidate") else "LQ45"
-                # Give a small conviction boost — known index candidate
-                result["conviction"] = min(10, result["conviction"] + 1)
-            else:
-                result["catalyst_tag"] = ""
+            result["catalyst_tag"] = ("MSCI" if result.get("is_msci_candidate") else
+                                      "LQ45" if result.get("is_lq45_candidate") else "")
 
-            # V6: Re-apply supply freedom cap setelah semua post-hoc boost
-            # Post-hoc boost (vp_near_val, poc+peng, msci/lq45) bisa bypass cap
-            _ff_final   = result.get("free_float", 100)
-            _ctrl_final = result.get("control_score", 0)
-            if _ff_final > 60 and _ctrl_final <= 3:
-                result["conviction"] = min(result["conviction"], 7)
+            # Whale quality
+            result["whale_quality"] = classify_whale_quality(result)
+
+            # Conviction — semua boost dan cap sudah ada di dalam compute_conviction()
+            # Post-hoc boosts (ff<=15, vp_near_val, poc+peng, msci/lq45) dipindah ke sana
+            # agar cap slow_exit dan supply freedom mencakup semua boost tanpa bocor
+            result["ff_adj_vol_ratio"] = round(ff_adj_ratio, 2)
+            result["conviction"]       = compute_conviction(result, ff_adj_ratio)
+
+            # ── Reconciliation: quality ↔ conviction (Fix 1) ──────────────────
+            # Dijalankan SEKALI setelah conviction final — quality tidak boleh
+            # lebih optimis dari yang didukung conviction.
+            # Sebelumnya: quality dihitung sebelum conviction, tidak bisa saling validasi.
+            _wq  = result.get("whale_quality", "")
+            _cnv = result.get("conviction", 0)
+            _sig = result.get("signal", "")
+
+            # Fix 2: DISTRIBUTION signal → quality max UNCERTAIN
+            # DISTRIBUTION adalah sinyal harian langsung (vol+price). Smart whale
+            # tidak mungkin mendistribusikan saham yang kita label "SMART".
+            # Slow exit sudah di-cap di conviction, tapi DISTRIBUTION signal belum.
+            if _sig == "DISTRIBUTION" and _wq in ("SMART", "LIKELY_SMART"):
+                result["whale_quality"] = "UNCERTAIN"
+                _wq = "UNCERTAIN"
+
+            # Fix 1: quality harus konsisten dengan conviction
+            # SMART dengan conviction <= 4 = kontradiksi (SMART butuh sinyal kuat)
+            # LIKELY_SMART dengan conviction <= 2 = terlalu rendah untuk label itu
+            if _wq == "SMART" and _cnv <= 4:
+                result["whale_quality"] = "LIKELY_SMART"
+            elif _wq == "LIKELY_SMART" and _cnv <= 2:
+                result["whale_quality"] = "UNCERTAIN"
 
             # ── Momentum Readiness Score (0–5) ────────────────────────────────
             # Menjawab: "Apakah whale sudah selesai akumulasi dan siap push SEKARANG?"
@@ -2557,15 +2565,17 @@ class WhaleScanner:
             _mrs = 0
             _mrs_parts = []
 
-            # +2: Gradual accumulation >= 4 minggu = whale sudah kumpul cukup lama
-            # Makin lama akumulasi, makin dekat ke exit fase akumulasi
+            # +0-2: Gradual accumulation — Fix 3: pakai gradual_strength (konsisten dengan
+            # compute_conviction dan classify_whale_quality yang sudah pakai strength)
+            # gradual_weeks masih ditampilkan di label tapi scoring dari strength
+            _ga_str   = ga_data.get("strength", 0)
             _ga_weeks = ga_data.get("weeks_confirmed", 0)
-            if _ga_weeks >= 4:
+            if ga_data.get("detected") and _ga_str >= 2:
                 _mrs += 2
-                _mrs_parts.append(f"akumulasi {_ga_weeks}w bertahap")
-            elif _ga_weeks >= 2:
+                _mrs_parts.append(f"akumulasi kuat {_ga_weeks}w (strength {_ga_str}/3)")
+            elif ga_data.get("detected") or _ga_str >= 1:
                 _mrs += 1
-                _mrs_parts.append(f"akumulasi {_ga_weeks}w")
+                _mrs_parts.append(f"akumulasi {_ga_weeks}w (strength {_ga_str}/3)")
 
             # +1: Pengeringan strength >= 5 = barang sudah sangat kering
             _peng_str = peng_data.get("strength", 0)
