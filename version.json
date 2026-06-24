@@ -1,7 +1,8 @@
 {
-  "version": "9.2.2",
-  "date": "2026-06-22",
+  "version": "9.2.3",
+  "date": "2026-06-24",
   "changelog": [
+    "9.2.3 — FIX: Follow Whale entry zone logic — entry_low=floor_price (bukan floor*1.02), entry_high=EMA13 jika EMA13>floor (bukan floor*1.12); SL=floor*0.98; fallback entry_high=floor*1.05 jika EMA13 tidak valid; eliminasi range absurd seperti Rp134-243 dengan SL Rp210 di tengah range",
     "9.2.2 — FIX: pct_to_sl dihitung dari entry bukan last; tambah deteksi SL terlewat via _sl_breached flag",
     "9.2.1 — FIX: update_trade() tidak pakai kolom tp1_price/tp2_price yang tidak ada di schema; TP disimpan ke notes string",
     "9.2.0 — FEAT: War Room — tambah tombol EDIT per card untuk revisi SL/TP1/TP2/Notes tanpa close trade; update_trade() ditambahkan di trade_logger.py",

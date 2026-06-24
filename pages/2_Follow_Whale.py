@@ -385,6 +385,8 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     floor_p  = w.get("floor_price",0)
     pct_f    = w.get("pct_above_floor",0)
     zone     = w.get("entry_zone","")
+    ema13    = w.get("ema13", 0)
+    ema89    = w.get("ema89", 0)
     conv     = w.get("conviction",0)
     ctrl     = w.get("control_score",0)
     ff       = w.get("free_float",100)
@@ -420,11 +422,12 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     liq_ok     = "good" if val_bn >= 5                else "warn" if val_bn >= 1        else "bad"
 
     # ── Entry target ──────────────────────────────────────────────────────────
-    entry_low  = floor_p * 1.02
-    entry_high = floor_p * 1.12
-    if ob_det and ob_l > 0:
-        entry_low  = min(entry_low,  ob_l * 1.01)
-        entry_high = max(entry_high, ob_h * 0.99)
+    # Low  = floor price (support terkuat, anchor bawah)
+    # High = EMA13 jika valid dan di atas floor, fallback floor+5%
+    entry_low  = floor_p
+    _ema13_valid = ema13 > floor_p
+    entry_high = ema13 if _ema13_valid else floor_p * 1.05
+    sl_price   = floor_p * 0.98
 
     # ── Overall verdict ───────────────────────────────────────────────────────
     good_count = sum([
@@ -527,7 +530,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     elif floor_ok == "warn":
         action = f"**WATCHLIST AKTIF.** EMA sudah BULLISH, sinyal bagus. Tunggu pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f} untuk entry dengan R/R lebih baik. Kalau breakout dengan volume tinggi bisa kejar dengan sizing 50%."
     else:
-        action = f"**ENTRY ZONA** — Semua kriteria terpenuhi. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}. SL di bawah floor Rp{floor_p*0.97:,.0f}."
+        action = f"**ENTRY ZONA** — Semua kriteria terpenuhi. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}. SL di bawah floor Rp{sl_price:,.0f}."
 
     # ── Render ────────────────────────────────────────────────────────────────
     _ = (zone, sc, ob_str, mom5, w52h, ff_vol, ticker, sector, action, v_col, v_bg, v_border)  # template vars
