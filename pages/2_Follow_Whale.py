@@ -529,29 +529,37 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     else:
         narratives.append(f"**{score_icon(liq_ok)} Likuiditas: Rp{val_bn:.1f}Bn/hari** ✅ Likuiditas bagus.")
 
-    # 8. Pump Fingerprint
-    if fp_cnt > 0:
-        fp_conf_label = {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low"}.get(fp_conf, fp_conf)
-        fp_icon = score_icon("good") if fp_match else score_icon("warn")
-        fp_type_label = {
-            "GRADUAL_INST": "Akumulasi Institusi Bertahap",
-            "STEP_UP_INST": "Step-Up Institusi",
-            "GORENGAN":     "Pump Spekulatif",
-            "MIXED":        "Mixed Pattern",
-        }.get(fp_type, fp_type)
+    # 8. Pump Fingerprint — selalu tampil, termasuk kasus tidak ada data
+    fp_conf_label = {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low"}.get(fp_conf, "")
+    fp_type_label = {
+        "GRADUAL_INST": "Akumulasi Institusi Bertahap",
+        "STEP_UP_INST": "Step-Up Institusi",
+        "GORENGAN":     "Pump Spekulatif",
+        "MIXED":        "Mixed Pattern",
+    }.get(fp_type, "")
 
-        if fp_match:
-            narratives.append(
-                f"**{fp_icon} Pump Fingerprint ({fp_conf_label} confidence): {fp_type_label}** 🎯 "
-                f"Kondisi sekarang mirip pre-pump historis ({fp_cnt}x pump, avg +{fp_avg:.0f}%). "
-                f"Similarity {fp_sim:.0%}. {fp_desc.split('—')[1].strip() if '—' in fp_desc else ''}"
-            )
-        else:
-            narratives.append(
-                f"**{fp_icon} Pump Fingerprint ({fp_conf_label} confidence): {fp_type_label}** — "
-                f"{fp_cnt}x pump historis terdeteksi (avg +{fp_avg:.0f}%), "
-                f"tapi kondisi sekarang belum mirip. Similarity {fp_sim:.0%}."
-            )
+    if fp_cnt == 0:
+        # Tidak ada pump historis — informasikan ke user kenapa
+        _bars_note = "Data historis terbatas" if val_bn < 1 else "Belum ada pump >20% dalam 2 tahun terakhir"
+        narratives.append(
+            f"**❓ Pump Fingerprint: TIDAK ADA DATA** — {_bars_note}. "
+            f"Tidak bisa bandingkan kondisi sekarang dengan pre-pump historis. "
+            f"{'Saham illiquid/IPO baru — hati-hati sizing.' if val_bn < 1 else 'Saham baru atau belum pernah pump signifikan.'}")
+    elif fp_match:
+        fp_icon = score_icon("good")
+        _desc_suffix = fp_desc.split("—")[1].strip() if "—" in fp_desc else ""
+        narratives.append(
+            f"**{fp_icon} Pump Fingerprint ({fp_conf_label} conf): {fp_type_label}** 🎯 "
+            f"Kondisi sekarang mirip pre-pump historis ({fp_cnt}x pump, avg +{fp_avg:.0f}%). "
+            f"Similarity {fp_sim:.0%}. {_desc_suffix}"
+        )
+    else:
+        fp_icon = score_icon("warn")
+        narratives.append(
+            f"**{fp_icon} Pump Fingerprint ({fp_conf_label} conf): {fp_type_label}** — "
+            f"{fp_cnt}x pump historis terdeteksi (avg +{fp_avg:.0f}%), "
+            f"tapi kondisi sekarang belum mirip. Similarity {fp_sim:.0%}."
+        )
 
     # 9. Conclusion
     # Pre-build pump fingerprint badge (hindari nested f-string)

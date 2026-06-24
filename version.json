@@ -1,7 +1,8 @@
 {
-  "version": "9.2.7",
+  "version": "9.2.8",
   "date": "2026-06-24",
   "changelog": [
+    "9.2.8 — FIX: Follow Whale pump fingerprint narrative selalu tampil — sebelumnya silent skip jika fp_cnt==0; sekarang tampil pesan informatif: illiquid/IPO baru jika value_bn<1, atau belum ada pump >20% dalam 2 tahun jika liquid tapi belum pernah pump",
     "9.2.7 — FEAT: Follow Whale page — surface pump fingerprint ke UI; narrative point #8 tampilkan fingerprint type, pump count, avg pump %, similarity score; badge di conclusion box [Nx pump ~+X% | sim XX%] dengan emoji 🎯 jika currently_matches; pre-build badge sebagai variable terpisah sebelum concat ke conclusion string",
     "9.2.6 — FEAT: detect_pump_fingerprint() — reverse-engineer pre-pump conditions dari historis OHLCV; pump detection via weekly aggregate (>20% dalam 2 minggu), pre-pump analysis 20 hari daily (supply concentration, pengeringan, vol step-up, floor proximity); similarity score 4 faktor berbobot (market_mover_proxy 35%, pengeringan 30%, vol_step_up 20%, floor_proximity 15%); confidence HIGH/MEDIUM/LOW berdasarkan pump_count; currently_matches jika similarity>=0.60; LOW confidence bobot 50%; terintegrasi ke classify_whale_quality (+0-3pt) dan compute_conviction (+0-2pt)",
     "9.2.5 — FEAT: whale scanner v5 lanjutan — [1] detect_gradual_accumulation(): weekly step-up 4 minggu berturut, price sideways <5%/minggu, vol gain >=20%; integrated ke classify_whale_quality (+0-2pt) dan compute_conviction (+0-2pt); [2] fix circular dependency enrich: top_n 15→50 + min_conviction=4 filter — ticker dengan missing owner broker tidak lagi terlewat karena conviction rendah",
