@@ -429,7 +429,8 @@ IDX_EXTENDED = sorted(list(set([
     "RAJA","MSIN","TELE","BOAT","LABA","ZINC","ENRG","AKSI","DSSA",
     "KEEN","APEX","BULL","BSSR","EMTK","MNCN","BMTR","SCMA",
     "GOTO","BUKA","MCAS","BELI","DNET","ASSA",
-])))
+    # FIX: filter EXCLUDED + DELISTED saat definisi, bukan hanya di _MOVER_SEED
+]) - EXCLUDED_TICKERS - DELISTED_TICKERS))
 
 # Gabungan seed untuk mover scan (tidak ada duplikat dengan IDX_FULL)
 # ATPK dihapus dari IDX_EXTENDED — confirmed delisted

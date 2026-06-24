@@ -362,6 +362,24 @@ class OwnershipAgent:
                 r["dominant_buyer"] = sb.get("dominant_buyer", {})
                 enriched += 1
                 logger.debug(f"[Enrich] {t} ✓")
+
+                # FIX: re-compute conviction + whale_quality setelah broker data masuk
+                # compute_conviction dan classify_whale_quality membaca broker_live
+                # dari result dict — tapi conviction sudah final saat scan.
+                # Tanpa re-compute, broker live boost tidak pernah teraplikasi.
+                try:
+                    from agents.whale_scanner import compute_conviction, classify_whale_quality
+                    _vol_ratio = r.get("ff_adj_vol_ratio", r.get("vol_ratio", 1.0))
+                    _new_conv  = compute_conviction(r, _vol_ratio)
+                    # Re-apply supply freedom cap (konsisten dengan _analyze_ticker)
+                    _ff   = r.get("free_float", 100)
+                    _ctrl = r.get("control_score", 0)
+                    if _ff > 60 and _ctrl <= 3:
+                        _new_conv = min(_new_conv, 7)
+                    r["conviction"]    = max(0, min(10, _new_conv))
+                    r["whale_quality"] = classify_whale_quality(r)
+                except Exception as _ce:
+                    logger.debug(f"[Enrich] {t} re-compute failed: {_ce}")
             else:
                 logger.debug(f"[Enrich] {t} skip: {sb.get('reason','')}")
 
