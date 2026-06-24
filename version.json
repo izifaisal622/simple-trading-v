@@ -1,7 +1,8 @@
 {
-  "version": "9.3.5",
+  "version": "9.3.6",
   "date": "2026-06-24",
   "changelog": [
+    "9.3.6 — FIX: supply freedom cap bypass — post-hoc conviction boost (vp_near_val, poc+peng, msci/lq45) bisa naikan conviction di atas cap 7; fix: re-apply cap ff>60%+ctrl<=3 → max 7 setelah semua boost selesai di akhir _analyze_ticker()",
     "9.3.5 — UI: control score rendah (<3) elaborate menjadi kalimat: supply tersebar, tidak ada pihak yang cukup besar untuk defend harga; tambah conditional: jika peng terdeteksi → tambah Pengeringan terdeteksi tapi bisa noise, bukan akumulasi smart money",
     "9.3.4 — UI: [1] pump fingerprint badge di conclusion → kalimat informatif: Nx pump historis (+X% avg) · pola sekarang mirip XX% (LABEL) · Tipe; [2] control score di conviction narrative → elaborate dengan deskripsi: supply bebas/moderat/terkontrol/sangat terkontrol",
     "9.3.3 — FEAT: conclusion box tampilkan alasan kenapa saham belum masuk BEST LONG — pre-build reasons dari: supply bebas (ff>60%+ctrl<=3), EMA belum BULLISH, harga di atas entry zone, slow exit terdeteksi; muncul sebagai suffix di semua verdict (WATCHLIST/SKIP/ENTRY ZONA)",

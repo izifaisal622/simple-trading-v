@@ -2345,6 +2345,13 @@ class WhaleScanner:
             else:
                 result["catalyst_tag"] = ""
 
+            # V6: Re-apply supply freedom cap setelah semua post-hoc boost
+            # Post-hoc boost (vp_near_val, poc+peng, msci/lq45) bisa bypass cap
+            _ff_final   = result.get("free_float", 100)
+            _ctrl_final = result.get("control_score", 0)
+            if _ff_final > 60 and _ctrl_final <= 3:
+                result["conviction"] = min(result["conviction"], 7)
+
             return result
 
         except Exception as e:
