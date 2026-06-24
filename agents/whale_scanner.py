@@ -2134,13 +2134,19 @@ class WhaleScanner:
             try:
                 ihsg_close = getattr(self, "_ihsg_close", None)
                 if ihsg_close is not None and len(ihsg_close) >= 20:
-                    # Align index — ambil tanggal yang ada di kedua series
+                    # FIX #4: align dari ujung (tail) setelah intersection
+                    # Sebelumnya: reindex(common_idx) lalu iloc[-5] bisa ambil bar
+                    # yang sangat jauh dari hari ini jika common_idx pendek di awal
+                    # Fix: ambil 25 hari terakhir dari common_idx saja (cukup untuk rs_20d)
                     common_idx = close.index.intersection(ihsg_close.index)
+                    common_idx = common_idx[-25:] if len(common_idx) >= 25 else common_idx
                     if len(common_idx) >= 10:
                         stk  = close.reindex(common_idx)
                         mkt  = ihsg_close.reindex(common_idx)
-                        rs_5d  = float((stk.iloc[-1]/stk.iloc[-min(5,len(stk))] - 1) * 100) -                                  float((mkt.iloc[-1]/mkt.iloc[-min(5,len(mkt))] - 1) * 100)
-                        rs_20d = float((stk.iloc[-1]/stk.iloc[-min(20,len(stk))] - 1) * 100) -                                  float((mkt.iloc[-1]/mkt.iloc[-min(20,len(mkt))] - 1) * 100)
+                        rs_5d  = float((stk.iloc[-1]/stk.iloc[-min(5,len(stk))] - 1) * 100) - \
+                                 float((mkt.iloc[-1]/mkt.iloc[-min(5,len(mkt))] - 1) * 100)
+                        rs_20d = float((stk.iloc[-1]/stk.iloc[-min(20,len(stk))] - 1) * 100) - \
+                                 float((mkt.iloc[-1]/mkt.iloc[-min(20,len(mkt))] - 1) * 100)
                         # RS positif di 5d DAN 20d = outperform konsisten = sinyal defend
                         rs_ok = rs_5d > 0 and rs_20d > 0
             except Exception:
@@ -2384,7 +2390,7 @@ class WhaleScanner:
     def scan(self,
              tickers:     Optional[List[str]] = None,
              top_n:       int                 = 50,
-             max_workers: int                 = 20) -> Tuple[List[dict], dict]:
+             max_workers: int                 = 8) -> Tuple[List[dict], dict]:  # FIX #5: 20→8, CPU-bound + GIL
 
         tickers = tickers or get_catalyst_universe()  # V7: includes daily movers
         # Build fast MSCI/LQ45 lookup sets for flagging — stored as instance attrs
@@ -2401,22 +2407,34 @@ class WhaleScanner:
             print(f"[Whale] ⚠️ {ctx.get('market_status')} → scanning for AWARENESS + recovery WL only")
 
         # Batch pre-fetch all data at once
-        # FIX 8.9.0: max_workers 30→4 untuk hindari HTTP 401 Invalid Crumb
-        # (Yahoo expire session saat >10 request paralel simultan)
-        # Fetch IHSG daily untuk Relative Strength calculation
-        # Dilakukan sekali sebelum scan, shared ke semua _analyze_ticker via instance var
-        try:
-            import yfinance as _yf_ihsg
-            _ihsg_df = _yf_ihsg.download("^JKSE", period=self.lookback,
-                                          interval="1d", progress=False, auto_adjust=True)
-            if _ihsg_df is not None and len(_ihsg_df) >= 20:
-                if hasattr(_ihsg_df.columns, "get_level_values"):
-                    _ihsg_df.columns = _ihsg_df.columns.get_level_values(0)
-                self._ihsg_close = _ihsg_df["Close"]
-            else:
+        # FIX #3: IHSG di-cache di instance var dengan TTL 30 menit
+        # Sebelumnya di-fetch fresh setiap scan() dipanggil — 1 network request terbuang
+        # FIX #4: IHSG di-fetch dengan period=self.lookback (sama dengan ticker data)
+        # Sebelumnya period=self.lookback tapi cache ticker bisa lebih lama dari IHSG fetch
+        # → index intersection pendek → rs_5d/rs_20d dihitung dari periode tidak sama
+        # Solusi: simpan timestamp fetch terakhir, reuse jika < 30 menit
+        import time as _time_ihsg
+        _ihsg_cache_age = getattr(self, "_ihsg_fetch_ts", 0)
+        _ihsg_needs_refresh = (_time_ihsg.time() - _ihsg_cache_age) > 1800  # 30 menit TTL
+
+        if _ihsg_needs_refresh or getattr(self, "_ihsg_close", None) is None:
+            try:
+                import yfinance as _yf_ihsg
+                _ihsg_df = _yf_ihsg.download("^JKSE", period=self.lookback,
+                                              interval="1d", progress=False, auto_adjust=True)
+                if _ihsg_df is not None and len(_ihsg_df) >= 20:
+                    if hasattr(_ihsg_df.columns, "get_level_values"):
+                        _ihsg_df.columns = _ihsg_df.columns.get_level_values(0)
+                    self._ihsg_close    = _ihsg_df["Close"]
+                    self._ihsg_fetch_ts = _time_ihsg.time()
+                    logger.info(f"[Whale] IHSG fetched: {len(_ihsg_df)} bars (period={self.lookback})")
+                else:
+                    self._ihsg_close = None
+            except Exception as _e:
+                logger.debug(f"[Whale] IHSG fetch failed: {_e}")
                 self._ihsg_close = None
-        except Exception:
-            self._ihsg_close = None
+        else:
+            logger.info(f"[Whale] IHSG cache hit ({int((_time_ihsg.time()-_ihsg_cache_age)/60)}min old)")
 
         print(f"[Whale] Batch downloading {len(tickers)} tickers...")
         import time as _time
