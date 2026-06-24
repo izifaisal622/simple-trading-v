@@ -1,7 +1,8 @@
 {
-  "version": "9.3.7",
+  "version": "9.3.8",
   "date": "2026-06-24",
   "changelog": [
+    "9.3.8 — FEAT Scope B: tab Backtesting di Trade Journal — breakdown win rate per: whale_quality (SMART/LIKELY_SMART/UNCERTAIN/DUMB), conviction bracket (1-3/4-5/6-7/8-10), signal type, market regime, strategy (FOLLOW_WHALE vs EMA_XBO); auto-insights jika whale quality WR>=60% atau <40%, conviction sweet spot, strategy comparison; butuh min 5-10 trades per kategori untuk insight reliable",
     "9.3.7 — FEAT Scope A: [1] trade_logger.py tambah kolom whale_quality (TEXT) dan whale_conviction (INTEGER) ke schema + migration safe; [2] log_trade() tambah parameter whale_quality dan whale_conviction; [3] Follow Whale Ringkasan Analisis tambah tombol LOG TRADE per card — form inline dengan entry/SL/tanggal/notes, auto-pass whale_quality+conviction dari scan result",
     "9.3.6 — FIX: supply freedom cap bypass — post-hoc conviction boost (vp_near_val, poc+peng, msci/lq45) bisa naikan conviction di atas cap 7; fix: re-apply cap ff>60%+ctrl<=3 → max 7 setelah semua boost selesai di akhir _analyze_ticker()",
     "9.3.5 — UI: control score rendah (<3) elaborate menjadi kalimat: supply tersebar, tidak ada pihak yang cukup besar untuk defend harga; tambah conditional: jika peng terdeteksi → tambah Pengeringan terdeteksi tapi bisa noise, bukan akumulasi smart money",

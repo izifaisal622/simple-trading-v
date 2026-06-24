@@ -105,7 +105,7 @@ except Exception:
     pass
 
 # ─── TABS ─────────────────────────────────────────────────────────────────────
-t_log, t_open, t_perf, t_manual, t_history, t_postmortem, t_unified = st.tabs([
+t_log, t_open, t_perf, t_manual, t_history, t_postmortem, t_unified, t_backtest = st.tabs([
     "📥 Log Trade",
     "📋 Open Trades",
     "📊 Performance",
@@ -113,6 +113,7 @@ t_log, t_open, t_perf, t_manual, t_history, t_postmortem, t_unified = st.tabs([
     "🗂 History",
     "🔬 Post-Mortem",
     "⚖ Paper vs Real",
+    "🧪 Backtesting",
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1005,3 +1006,222 @@ with t_unified:
                     unsafe_allow_html=True,
                 )
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 8 — BACKTESTING: Win Rate per Whale Quality / Conviction / Signal
+# ══════════════════════════════════════════════════════════════════════════════
+with t_backtest:
+    import sqlite3 as _bt_sqlite
+    import pandas as _bt_pd
+
+    st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+    color:var(--text-muted);letter-spacing:0.08em;margin-bottom:1rem">
+    Audit predictive accuracy — win rate per whale quality, conviction bracket, signal type, regime
+    </p>""", unsafe_allow_html=True)
+
+    # ── Load closed trades ────────────────────────────────────────────────────
+    try:
+        _bt_conn = _bt_sqlite.connect(str(DB_PATH))
+        _bt_conn.row_factory = _bt_sqlite.Row
+        _bt_rows = _bt_conn.execute("""
+            SELECT ticker, outcome, pnl_r, pnl_pct, signal_type, signal_score,
+                   regime_tag, whale_quality, whale_conviction, strategy,
+                   entry_date, exit_date, bars_held
+            FROM manual_trades
+            WHERE outcome IN ('WIN','LOSS','BREAKEVEN')
+            ORDER BY exit_date DESC
+        """).fetchall()
+        _bt_conn.close()
+        _bt_df = _bt_pd.DataFrame([dict(r) for r in _bt_rows])
+    except Exception as _bt_e:
+        _bt_df = _bt_pd.DataFrame()
+        st.error(f"Error load data: {_bt_e}")
+
+    if _bt_df.empty:
+        st.info("Belum ada closed trades. Log dan close beberapa trade dulu untuk melihat backtesting analysis.")
+    else:
+        _bt_total = len(_bt_df)
+        _bt_wins  = (_bt_df["outcome"] == "WIN").sum()
+        _bt_wr    = _bt_wins / _bt_total * 100
+        _bt_exp   = _bt_df["pnl_r"].mean() if "pnl_r" in _bt_df else 0
+
+        # ── Summary metrics ───────────────────────────────────────────────────
+        _mc1, _mc2, _mc3, _mc4 = st.columns(4)
+        with _mc1:
+            st.markdown(_metric_box("Total Trades", str(_bt_total), "closed"), unsafe_allow_html=True)
+        with _mc2:
+            _wr_col = NEON_GREEN if _bt_wr >= 50 else C_DANGER
+            st.markdown(_metric_box("Win Rate", f"{_bt_wr:.0f}%", f"{_bt_wins}W/{_bt_total-_bt_wins}L", _wr_col), unsafe_allow_html=True)
+        with _mc3:
+            _exp_col = NEON_GREEN if _bt_exp > 0 else C_DANGER
+            st.markdown(_metric_box("Expectancy", f"{_bt_exp:+.2f}R", "avg per trade", _exp_col), unsafe_allow_html=True)
+        with _mc4:
+            _whale_trades = _bt_df[_bt_df["whale_quality"].notna() & (_bt_df["whale_quality"] != "")].shape[0]
+            st.markdown(_metric_box("Whale Tracked", str(_whale_trades), f"dari {_bt_total} trades"), unsafe_allow_html=True)
+
+        st.markdown("<div style='margin:1rem 0'></div>", unsafe_allow_html=True)
+
+        # ── Helper: render breakdown table ───────────────────────────────────
+        def _bt_breakdown(df: "_bt_pd.DataFrame", col: str, label: str) -> None:
+            if col not in df.columns:
+                return
+            _grp = df[df[col].notna() & (df[col] != "")].groupby(col)
+            if _grp.ngroups == 0:
+                st.markdown(_mono(f"Tidak ada data {label} tersimpan di trade log."), unsafe_allow_html=True)
+                return
+
+            rows_html = ""
+            for _val, _g in sorted(_grp, key=lambda x: -len(x[1])):
+                _n   = len(_g)
+                _w   = (_g["outcome"] == "WIN").sum()
+                _wr  = _w / _n * 100 if _n > 0 else 0
+                _exp = _g["pnl_r"].mean() if "pnl_r" in _g else 0
+                _wr_col  = "#00FF66" if _wr >= 55 else "#F0B429" if _wr >= 45 else "#EF4444"
+                _exp_col = "#00FF66" if _exp > 0 else "#EF4444"
+                rows_html += (
+                    f'<tr>'
+                    f'<td style="padding:6px 10px;color:#E2E8F0;font-weight:500">{_val}</td>'
+                    f'<td style="padding:6px 10px;color:#94A3B8;text-align:center">{_n}</td>'
+                    f'<td style="padding:6px 10px;color:{_wr_col};text-align:center;font-weight:700">{_wr:.0f}%</td>'
+                    f'<td style="padding:6px 10px;color:{_exp_col};text-align:center">{_exp:+.2f}R</td>'
+                    f'<td style="padding:6px 10px;text-align:center">'
+                    f'<div style="background:rgba(0,255,102,0.15);border-radius:3px;height:8px;width:100%;max-width:80px;margin:auto">'
+                    f'<div style="background:#00FF66;border-radius:3px;height:8px;width:{min(_wr,100):.0f}%"></div>'
+                    f'</div></td>'
+                    f'</tr>'
+                )
+
+            st.markdown(
+                f'<div style="margin-bottom:0.5rem;font-family:Share Tech Mono,monospace;'
+                f'font-size:var(--text-xs);color:var(--text-muted);letter-spacing:0.08em">{label}</div>'
+                f'<table style="width:100%;border-collapse:collapse;font-family:Share Tech Mono,monospace;font-size:var(--text-xs)">'
+                f'<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">'
+                f'<th style="padding:6px 10px;color:#64748B;text-align:left">{label}</th>'
+                f'<th style="padding:6px 10px;color:#64748B;text-align:center">N</th>'
+                f'<th style="padding:6px 10px;color:#64748B;text-align:center">Win Rate</th>'
+                f'<th style="padding:6px 10px;color:#64748B;text-align:center">Avg R</th>'
+                f'<th style="padding:6px 10px;color:#64748B;text-align:center">WR Bar</th>'
+                f'</tr></thead>'
+                f'<tbody>{rows_html}</tbody>'
+                f'</table>',
+                unsafe_allow_html=True
+            )
+
+        # ── Breakdown 1: Whale Quality ─────────────────────────────────────
+        _sec("◆ WIN RATE PER WHALE QUALITY")
+        st.caption("Apakah SMART lebih baik dari LIKELY_SMART? Data ini menjawabnya.")
+
+        _wq_order = {"SMART": 0, "LIKELY_SMART": 1, "UNCERTAIN": 2, "DUMB": 3}
+        _bt_wq = _bt_df.copy()
+        _bt_wq["_sort"] = _bt_wq["whale_quality"].map(_wq_order).fillna(9)
+        _bt_wq = _bt_wq.sort_values("_sort")
+        _bt_breakdown(_bt_wq, "whale_quality", "Whale Quality")
+
+        st.markdown("<div style='margin:1.2rem 0'></div>", unsafe_allow_html=True)
+
+        # ── Breakdown 2: Conviction Bracket ───────────────────────────────
+        _sec("◆ WIN RATE PER CONVICTION BRACKET")
+        st.caption("Apakah conviction tinggi = win rate lebih tinggi?")
+
+        def _conv_bracket(v):
+            if _bt_pd.isna(v) or v == 0: return None
+            if v >= 8: return "8-10 (High)"
+            if v >= 6: return "6-7 (Medium-High)"
+            if v >= 4: return "4-5 (Medium)"
+            return "1-3 (Low)"
+
+        _bt_cb = _bt_df.copy()
+        _bt_cb["conv_bracket"] = _bt_cb["whale_conviction"].apply(_conv_bracket)
+        _bt_breakdown(_bt_cb, "conv_bracket", "Conviction Bracket")
+
+        st.markdown("<div style='margin:1.2rem 0'></div>", unsafe_allow_html=True)
+
+        # ── Breakdown 3: Signal Type ──────────────────────────────────────
+        _sec("◆ WIN RATE PER SIGNAL TYPE")
+        st.caption("ACCUMULATION vs RECOVERY_EARLY vs BLOCK_BUY — mana yang lebih reliabel?")
+        _bt_breakdown(_bt_df, "signal_type", "Signal Type")
+
+        st.markdown("<div style='margin:1.2rem 0'></div>", unsafe_allow_html=True)
+
+        # ── Breakdown 4: Regime ───────────────────────────────────────────
+        _sec("◆ WIN RATE PER MARKET REGIME")
+        st.caption("Setup yang sama bisa berbeda hasilnya di regime yang berbeda.")
+        _bt_breakdown(_bt_df, "regime_tag", "Market Regime")
+
+        st.markdown("<div style='margin:1.2rem 0'></div>", unsafe_allow_html=True)
+
+        # ── Breakdown 5: Strategy (FOLLOW_WHALE vs EMA_XBO) ──────────────
+        _sec("◆ WIN RATE PER STRATEGY")
+        st.caption("Follow Whale vs EMA XBO — mana yang lebih profitable?")
+        _bt_breakdown(_bt_df, "strategy", "Strategy")
+
+        st.markdown("<div style='margin:1.2rem 0'></div>", unsafe_allow_html=True)
+
+        # ── Actionable Insights ───────────────────────────────────────────
+        _sec("◆ INSIGHTS OTOMATIS")
+        _bt_insights = []
+
+        # Insight 1: whale quality terbaik
+        _wq_grp = _bt_df[_bt_df["whale_quality"].notna() & (_bt_df["whale_quality"] != "")].groupby("whale_quality")
+        for _wq, _wqg in _wq_grp:
+            if len(_wqg) >= 5:
+                _wqwr = (_wqg["outcome"] == "WIN").sum() / len(_wqg) * 100
+                if _wqwr >= 60:
+                    _bt_insights.append(("✅", NEON_GREEN,
+                        f"Whale quality '{_wq}' win rate {_wqwr:.0f}% dari {len(_wqg)} trades — "
+                        f"prioritaskan setup dengan label ini."))
+                elif _wqwr < 40:
+                    _bt_insights.append(("⛔", C_DANGER,
+                        f"Whale quality '{_wq}' win rate hanya {_wqwr:.0f}% dari {len(_wqg)} trades — "
+                        f"pertimbangkan skip setup dengan label ini."))
+
+        # Insight 2: conviction sweet spot
+        _cb_grp = _bt_cb[_bt_cb["conv_bracket"].notna()].groupby("conv_bracket")
+        _best_bracket = None
+        _best_wr = 0
+        for _cb, _cbg in _cb_grp:
+            if len(_cbg) >= 5:
+                _cbwr = (_cbg["outcome"] == "WIN").sum() / len(_cbg) * 100
+                if _cbwr > _best_wr:
+                    _best_wr = _cbwr
+                    _best_bracket = _cb
+        if _best_bracket and _best_wr >= 55:
+            _bt_insights.append(("🎯", "#F0B429",
+                f"Conviction sweet spot: '{_best_bracket}' punya win rate tertinggi {_best_wr:.0f}% — "
+                f"fokus di range ini."))
+
+        # Insight 3: follow whale vs ema_xbo
+        _strat_grp = _bt_df[_bt_df["strategy"].notna()].groupby("strategy")
+        _strat_stats = {}
+        for _st, _stg in _strat_grp:
+            if len(_stg) >= 3:
+                _strat_stats[_st] = (_stg["outcome"] == "WIN").sum() / len(_stg) * 100
+        if "FOLLOW_WHALE" in _strat_stats and "EMA_XBO" in _strat_stats:
+            _diff = _strat_stats["FOLLOW_WHALE"] - _strat_stats["EMA_XBO"]
+            if abs(_diff) >= 10:
+                _better = "FOLLOW_WHALE" if _diff > 0 else "EMA_XBO"
+                _bt_insights.append(("📊", "#94A3B8",
+                    f"Strategy '{_better}' outperform {abs(_diff):.0f}% lebih tinggi — "
+                    f"alokasikan lebih banyak ke strategy ini."))
+
+        if not _bt_insights:
+            if _bt_total < 10:
+                st.markdown(_mono(
+                    f"Butuh minimal 10 closed trades per kategori untuk generate insights yang reliable. "
+                    f"Sekarang ada {_bt_total} trades total.",
+                    "var(--text-muted)"), unsafe_allow_html=True)
+            else:
+                st.markdown(_mono("Belum ada pola yang cukup kuat untuk generate insight. Terus trade dan close posisi.", "var(--text-muted)"), unsafe_allow_html=True)
+        else:
+            for _ico, _ic, _msg in _bt_insights:
+                st.markdown(
+                    f'<div style="background:rgba(0,0,0,0.2);border:1px solid {_ic}25;'
+                    f'border-left:3px solid {_ic};border-radius:var(--r-sm);'
+                    f'padding:0.45rem 0.9rem;margin-bottom:0.35rem;'
+                    f'font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+                    f'display:flex;gap:0.7rem;align-items:flex-start">'
+                    f'<span style="color:{_ic};font-weight:700;min-width:16px">{_ico}</span>'
+                    f'<span style="color:#94A3B8;line-height:1.6">{_msg}</span>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
