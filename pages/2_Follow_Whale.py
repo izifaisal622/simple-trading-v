@@ -526,7 +526,16 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         _peng_suffix = f" Pengeringan aktif: {_peng_d_clean}"
     _def_suffix  = " Whale defend aktif." if def_ else ""
     _conv_label  = "High conviction, setup matang." if conv >= 7 else "Medium conviction, sizing kecil." if conv >= 4 else "Low conviction, watchlist saja."
-    narratives.append(f"**{score_icon(conv_ok)} Conviction {conv}/10 · Control {ctrl}/10** — {_conv_label}" + _peng_suffix + _def_suffix)
+    # Control score label
+    if ctrl >= 7:
+        _ctrl_label = f"Control {ctrl}/10 — supply sangat terkontrol, mudah digerakkan"
+    elif ctrl >= 5:
+        _ctrl_label = f"Control {ctrl}/10 — supply cukup terkontrol"
+    elif ctrl >= 3:
+        _ctrl_label = f"Control {ctrl}/10 — supply moderat, butuh volume besar untuk gerak"
+    else:
+        _ctrl_label = f"Control {ctrl}/10 — supply bebas, siapapun bisa jual kapan saja"
+    narratives.append(f"**{score_icon(conv_ok)} Conviction {conv}/10 · {_ctrl_label}** — {_conv_label}" + _peng_suffix + _def_suffix)
 
     # 5. Supply concentration
     if ff > 0:
@@ -606,9 +615,9 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     # 9. Conclusion
     # Pre-build pump fingerprint badge (hindari nested f-string)
     if fp_match and fp_cnt > 0:
-        _fp_badge = f" 🎯 [{fp_cnt}x pump ~+{fp_avg:.0f}% | sim {fp_sim:.0%}]"
+        _fp_badge = f" · 🎯 {fp_cnt}x pump historis (+{fp_avg:.0f}% avg) · pola sekarang mirip {fp_sim:.0%} ({_sim_label}) · {fp_type_label}"
     elif fp_cnt > 0:
-        _fp_badge = f" [{fp_cnt}x pump historis | sim {fp_sim:.0%}]"
+        _fp_badge = f" · {fp_cnt}x pump historis (+{fp_avg:.0f}% avg) · belum mirip {fp_sim:.0%} ({_sim_label}) · {fp_type_label}"
     else:
         _fp_badge = ""
 

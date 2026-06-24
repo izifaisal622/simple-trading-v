@@ -1,7 +1,8 @@
 {
-  "version": "9.3.3",
+  "version": "9.3.4",
   "date": "2026-06-24",
   "changelog": [
+    "9.3.4 — UI: [1] pump fingerprint badge di conclusion → kalimat informatif: Nx pump historis (+X% avg) · pola sekarang mirip XX% (LABEL) · Tipe; [2] control score di conviction narrative → elaborate dengan deskripsi: supply bebas/moderat/terkontrol/sangat terkontrol",
     "9.3.3 — FEAT: conclusion box tampilkan alasan kenapa saham belum masuk BEST LONG — pre-build reasons dari: supply bebas (ff>60%+ctrl<=3), EMA belum BULLISH, harga di atas entry zone, slow exit terdeteksi; muncul sebagai suffix di semua verdict (WATCHLIST/SKIP/ENTRY ZONA)",
     "9.3.2 — FIX: conviction cap konsisten dengan whale quality gate — ff>60% AND ctrl<=3 → conviction max 7 di compute_conviction(); sebelumnya conviction bisa 10 tapi whale_quality UNCERTAIN (contradictory signal); tambah disclaimer di supply narrative jika conviction di-cap",
     "9.3.1 — FEAT P2+P3: [P2] score normalisasi 0-100 di classify_whale_quality (MAX_SCORE=31), threshold SMART=60%+minimum_req, LIKELY_SMART=40%, UNCERTAIN=20%; minimum requirement SMART: wajib (pengeringan OR defense) AND floor proximity; [P3a] whale defense floor proximity gate — defend jauh dari floor (>15%) bobot dikurangi; [P3b] detect_slow_exit() — price-vol divergence + upper wick dominance + close lower half; block ENTRY VALID + cap UNCERTAIN jika slow exit strength>=2; narrative warning di awal card; [P3c] Mixed Pattern breakdown: MIXED_INST_GOREN / MIXED_INST / MIXED",
