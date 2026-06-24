@@ -408,6 +408,15 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     def_     = w.get("whale_defending",False)
     ff_vol   = w.get("ff_adj_vol_ratio", w.get("vol_ratio",0))
     sector   = w.get("sector","")
+    # Pump fingerprint
+    fp_det   = w.get("pump_fp_detected", False)
+    fp_match = w.get("pump_fp_matches", False)
+    fp_cnt   = w.get("pump_fp_count", 0)
+    fp_conf  = w.get("pump_fp_confidence", "NONE")
+    fp_type  = w.get("pump_fp_type", "")
+    fp_sim   = w.get("pump_fp_similarity", 0.0)
+    fp_avg   = w.get("pump_fp_avg_pct", 0.0)
+    fp_desc  = w.get("pump_fp_desc", "")
 
     # ── Scoring per criterion ─────────────────────────────────────────────────
     def score_icon(ok):
@@ -520,17 +529,49 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     else:
         narratives.append(f"**{score_icon(liq_ok)} Likuiditas: Rp{val_bn:.1f}Bn/hari** ✅ Likuiditas bagus.")
 
-    # 8. Conclusion
-    if floor_ok == "bad":
-        action = f"**SKIP sekarang.** Harga terlalu jauh dari floor (+{pct_f:.0f}%). Tunggu koreksi ke Rp{entry_low:,.0f}–{entry_high:,.0f} dulu."
-    elif ema_ok == "bad":
-        action = f"**WATCHLIST PASIF.** EMA masih BEARISH. Masukkan di list, pantau mingguan. Entry kalau EMA berubah BULLISH + pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}."
-    elif ema_ok == "warn" and floor_ok == "warn":
-        action = f"**WATCHLIST AKTIF.** Setup menarik tapi dua konfirmasi belum terpenuhi: (1) tunggu EMA jadi BULLISH, (2) harga pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}. Pasang alert."
-    elif floor_ok == "warn":
-        action = f"**WATCHLIST AKTIF.** EMA sudah BULLISH, sinyal bagus. Tunggu pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f} untuk entry dengan R/R lebih baik. Kalau breakout dengan volume tinggi bisa kejar dengan sizing 50%."
+    # 8. Pump Fingerprint
+    if fp_cnt > 0:
+        fp_conf_label = {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low"}.get(fp_conf, fp_conf)
+        fp_icon = score_icon("good") if fp_match else score_icon("warn")
+        fp_type_label = {
+            "GRADUAL_INST": "Akumulasi Institusi Bertahap",
+            "STEP_UP_INST": "Step-Up Institusi",
+            "GORENGAN":     "Pump Spekulatif",
+            "MIXED":        "Mixed Pattern",
+        }.get(fp_type, fp_type)
+
+        if fp_match:
+            narratives.append(
+                f"**{fp_icon} Pump Fingerprint ({fp_conf_label} confidence): {fp_type_label}** 🎯 "
+                f"Kondisi sekarang mirip pre-pump historis ({fp_cnt}x pump, avg +{fp_avg:.0f}%). "
+                f"Similarity {fp_sim:.0%}. {fp_desc.split('—')[1].strip() if '—' in fp_desc else ''}"
+            )
+        else:
+            narratives.append(
+                f"**{fp_icon} Pump Fingerprint ({fp_conf_label} confidence): {fp_type_label}** — "
+                f"{fp_cnt}x pump historis terdeteksi (avg +{fp_avg:.0f}%), "
+                f"tapi kondisi sekarang belum mirip. Similarity {fp_sim:.0%}."
+            )
+
+    # 9. Conclusion
+    # Pre-build pump fingerprint badge (hindari nested f-string)
+    if fp_match and fp_cnt > 0:
+        _fp_badge = f" 🎯 [{fp_cnt}x pump ~+{fp_avg:.0f}% | sim {fp_sim:.0%}]"
+    elif fp_cnt > 0:
+        _fp_badge = f" [{fp_cnt}x pump historis | sim {fp_sim:.0%}]"
     else:
-        action = f"**ENTRY ZONA** — Semua kriteria terpenuhi. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}. SL di bawah floor Rp{sl_price:,.0f}."
+        _fp_badge = ""
+
+    if floor_ok == "bad":
+        action = f"**SKIP sekarang.** Harga terlalu jauh dari floor (+{pct_f:.0f}%). Tunggu koreksi ke Rp{entry_low:,.0f}–{entry_high:,.0f} dulu." + _fp_badge
+    elif ema_ok == "bad":
+        action = f"**WATCHLIST PASIF.** EMA masih BEARISH. Masukkan di list, pantau mingguan. Entry kalau EMA berubah BULLISH + pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}." + _fp_badge
+    elif ema_ok == "warn" and floor_ok == "warn":
+        action = f"**WATCHLIST AKTIF.** Setup menarik tapi dua konfirmasi belum terpenuhi: (1) tunggu EMA jadi BULLISH, (2) harga pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}. Pasang alert." + _fp_badge
+    elif floor_ok == "warn":
+        action = f"**WATCHLIST AKTIF.** EMA sudah BULLISH, sinyal bagus. Tunggu pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f} untuk entry dengan R/R lebih baik. Kalau breakout dengan volume tinggi bisa kejar dengan sizing 50%." + _fp_badge
+    else:
+        action = f"**ENTRY ZONA** — Semua kriteria terpenuhi. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}. SL di bawah floor Rp{sl_price:,.0f}." + _fp_badge
 
     # ── Render ────────────────────────────────────────────────────────────────
     _ = (zone, sc, ob_str, mom5, w52h, ff_vol, ticker, sector, action, v_col, v_bg, v_border)  # template vars
