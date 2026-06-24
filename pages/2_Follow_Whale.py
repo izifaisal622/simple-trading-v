@@ -429,6 +429,21 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     fp_sim   = w.get("pump_fp_similarity", 0.0)
     fp_avg   = w.get("pump_fp_avg_pct", 0.0)
     fp_desc  = w.get("pump_fp_desc", "")
+    # Trigger candle — momen whale mulai push
+    tc_det    = w.get("trigger_candle", False)
+    tc_str    = w.get("trigger_strength", 0)
+    tc_desc   = w.get("trigger_desc", "")
+    tc_spike  = w.get("trigger_vol_spike", False)
+    tc_expand = w.get("trigger_range_expansion", False)
+    # Momentum Readiness Score — timing score 0-5
+    mrs       = w.get("momentum_readiness", 0)
+    mrs_label = w.get("momentum_readiness_label", "BELUM SIAP")
+    mrs_parts = w.get("momentum_readiness_parts", [])
+    # Gradual accumulation — sinyal timing terpenting
+    ga_det    = w.get("gradual_accum", False)
+    ga_weeks  = w.get("gradual_weeks", 0)
+    ga_volgain= w.get("gradual_vol_gain", 0.0)
+    ga_desc   = w.get("gradual_desc", "")
 
     # ── Scoring per criterion ─────────────────────────────────────────────────
     def score_icon(ok):
@@ -506,7 +521,40 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
             f"**❌ PERINGATAN: {slow_exit_desc}** — "
             f"Ada indikasi whale sedang exit diam-diam. Jangan entry sebelum pola ini selesai.")
 
-    # 2b. Relative Strength vs IHSG
+    # 2b. Gradual accumulation — sinyal timing terpenting yang selama ini tersembunyi
+    # Makin banyak minggu, makin dekat ke akhir fase akumulasi
+    if ga_det and ga_weeks >= 2:
+        _ga_intensity = "KUAT" if ga_weeks >= 4 else "SEDANG"
+        _ga_close = " Akumulasi sudah cukup lama — fase markup makin dekat." if ga_weeks >= 4 else ""
+        narratives.append(
+            f"**✅ Gradual Accumulation: {ga_weeks} MINGGU BERTURUT ({_ga_intensity})** 📈 "
+            f"Volume naik bertahap {ga_volgain:.0f}% selama {ga_weeks} minggu, harga sideways. "
+            f"Ini tanda whale kumpul diam-diam tiap minggu supaya tidak ketahuan scanner retail.{_ga_close}"
+        )
+    elif ga_weeks >= 1:
+        narratives.append(
+            f"**⚠️ Gradual Accumulation: {ga_weeks} minggu terdeteksi** — "
+            f"Awal pola akumulasi bertahap. Butuh konfirmasi minggu berikutnya."
+        )
+
+    # 2c. Trigger candle — momen push dimulai
+    if tc_det:
+        _tc_extras = []
+        if tc_spike:    _tc_extras.append("vol spike 2x+")
+        if tc_expand:   _tc_extras.append("range melebar")
+        _tc_extra_str = " · " + " · ".join(_tc_extras) if _tc_extras else ""
+        narratives.append(
+            f"**🕯 TRIGGER CANDLE TERDETEKSI (strength {tc_str}/4){_tc_extra_str}** — "
+            f"{tc_desc} Ini adalah sinyal entry paling tepat waktu — whale mulai push hari ini."
+        )
+    elif w.get("trigger_vol_stepup") and not tc_det:
+        # Volume mulai naik tapi belum cukup untuk trigger candle penuh
+        narratives.append(
+            f"**⚠️ Vol Mulai Step-Up** — Volume hari ini lebih dari kemarin. "
+            f"Belum trigger candle penuh, tapi perlu dipantau ketat. Bisa jadi awal push."
+        )
+
+    # 2d. Relative Strength vs IHSG
     if rs_ok:
         _rs_label = "STRONG" if rs_20d > 5 else "MILD"
         narratives.append(
@@ -663,6 +711,31 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
 
     # ── Render ────────────────────────────────────────────────────────────────
     _ = (zone, sc, ob_str, mom5, w52h, ff_vol, ticker, sector, action, v_col, v_bg, v_border)  # template vars
+
+    # Pre-build Momentum Readiness Score badge (sebelum render — hindari nested f-string)
+    _mrs_bar_filled = "█" * mrs + "░" * (5 - mrs)
+    _mrs_col = ("#00FF66" if mrs >= 4 else
+                "#F0B429" if mrs >= 3 else
+                "#94A3B8" if mrs >= 2 else
+                "#64748B")
+    _mrs_parts_str = " · ".join(mrs_parts) if mrs_parts else "—"
+    _mrs_badge = (
+        '<div style="background:rgba(0,0,0,0.4);border:1px solid ' + _mrs_col + '40;'
+        'border-left:3px solid ' + _mrs_col + ';border-radius:4px;'
+        'padding:0.55rem 1rem;margin-top:0.5rem;margin-bottom:0.3rem">'
+        '<div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">'
+        '<span style="font-family:Orbitron,monospace;font-size:0.72rem;letter-spacing:0.12em;'
+        'color:#94A3B8">⏱ MOMENTUM READINESS</span>'
+        '<span style="font-family:Share Tech Mono,monospace;font-size:1rem;'
+        'font-weight:700;color:' + _mrs_col + '">' + str(mrs) + '/5</span>'
+        '<span style="font-family:Share Tech Mono,monospace;font-size:0.8rem;'
+        'color:' + _mrs_col + ';letter-spacing:0.08em">' + _mrs_bar_filled + '  ' + mrs_label + '</span>'
+        '</div>'
+        '<div style="font-family:Share Tech Mono,monospace;font-size:0.72rem;'
+        'color:#64748B;margin-top:3px">' + _mrs_parts_str + '</div>'
+        '</div>'
+    )
+
     st.markdown(f"""
     <div style="background:{v_bg};border:1px solid {v_border};border-left:4px solid {v_col};
     border-radius:var(--r-md);padding:1rem 1.2rem;margin-bottom:0.8rem">
@@ -688,6 +761,9 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
             color:var(--text-secondary);line-height:1.8;padding:0.1rem 0 0.1rem 1.2rem;
             border-left:2px solid rgba(0,255,102,0.08)">{n}</div>""",
             unsafe_allow_html=True)
+
+        # Momentum Readiness Score badge — ditampilkan sebelum conclusion
+        st.markdown(_mrs_badge, unsafe_allow_html=True)
 
         # Conclusion box
         st.markdown(f"""<div style="background:rgba(0,0,0,0.3);border:1px solid {v_col_hex}30;
@@ -1512,8 +1588,10 @@ if whale_results:
     distrib_list = [w for w in whale_results if not w.get("is_long_signal",True)]
     smart_list   = sorted(
         [w for w in whale_results if w.get("whale_quality") in ("SMART","LIKELY_SMART") and w.get("is_long_signal")],
-        # P02-X2: prioritaskan SMART whale yang di OB/VP zone — setup terkuat Hengky method
+        # Sort: MRS tinggi + trigger candle + OB/VP zone + conviction + floor proximity
         key=lambda w: (
+            -w.get("momentum_readiness", 0),                                                    # timing score tertinggi duluan
+            -(w.get("trigger_candle", False)),                                                  # trigger candle = entry hari ini
             -(w.get("in_ob_zone",False) or w.get("vp_near_val",False) or w.get("vp_in_value",False)),
             -w.get("conviction",0),
              w.get("pct_above_floor",999),
