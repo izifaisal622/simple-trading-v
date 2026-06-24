@@ -1107,11 +1107,14 @@ if ema_results:
         )
 
     # ── PIPELINE SECTION — CORRECTING dengan RS kuat, approaching cross ───────
+    # Score threshold 4 (bukan 5) — regime SPECULATIVE cap score max 4.
+    # Saham genuinely bagus di bear akan di-cap ke 4, bukan 5.
+    # Threshold 5 akan exclude semua kandidat saat SPECULATIVE aktif.
     _pipeline = [
         r for r in ema_results
         if r.get("signal") in ("CORRECTING", "DEEP_CORRECT", "COMPRESSING")
         and r.get("rs_vs_ihsg_4w", 0) >= 20.0
-        and r.get("score", 0) >= 5
+        and r.get("score", 0) >= 4
     ]
     if _pipeline:
         sec_head(f"◌ PIPELINE — {len(_pipeline)} approaching · RS kuat · pantau, bukan entry")

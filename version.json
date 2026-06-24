@@ -1,7 +1,14 @@
 {
-  "version": "9.5.2",
+  "version": "9.5.3",
   "date": "2026-06-24",
   "changelog": [
+    {
+      "version": "9.5.3",
+      "date": "2026-06-24",
+      "changes": [
+        "FIX: PIPELINE threshold turun dari score>=5 ke score>=4 \u2014 regime SPECULATIVE cap score max 4, threshold 5 exclude semua kandidat valid"
+      ]
+    },
     {
       "version": "9.5.2",
       "date": "2026-06-24",
