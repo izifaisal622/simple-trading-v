@@ -318,29 +318,33 @@ if run_scan:
             # None = let adapt_to_market() choose optimal for current regime
             vc = manual_vol if manual_vol > 0 else None
             scanner = WhaleScanner(vol_multiplier=vc, min_value_bn=None)
-            results, new_ctx = (scanner.scan_watchlist(top_n=int(top_n))
-                                if "Watchlist" in mode else scanner.scan(top_n=int(top_n)))
-            best     = scanner.get_best_long(results, min_conviction=int(min_conv_ui))
-            peng     = scanner.get_pengeringan(results)
-            at_floor = scanner.get_at_floor(results)
-            recov    = scanner.get_recovery_watchlist(results)
-            distrib  = scanner.get_distribution_watch(results)
+            # FIX #6: scan dengan top_n=100 (pool penuh) agar tab SEMUA tidak kehilangan data.
+            # top_n dari user hanya dipakai untuk get_best_long display, bukan untuk cap storage.
+            # Sebelumnya scan(top_n=user_top_n) → results hanya 30 → tab SEMUA cuma 30.
+            results_full, new_ctx = (scanner.scan_watchlist(top_n=100)
+                                     if "Watchlist" in mode else scanner.scan(top_n=100))
+            # Display list pakai top_n user untuk best long — tetap respek preferensi user
+            best     = scanner.get_best_long(results_full, min_conviction=int(min_conv_ui))[:int(top_n)]
+            peng     = scanner.get_pengeringan(results_full)
+            at_floor = scanner.get_at_floor(results_full)
+            recov    = scanner.get_recovery_watchlist(results_full)
+            distrib  = scanner.get_distribution_watch(results_full)
 
             je = (f"\n---\n## 🐋 Whale Scan — {datetime.now().strftime('%d %b %Y %H:%M')}\n"
                   f"- Cycle: **{new_ctx.get('cycle','?')}** | Market: **{new_ctx.get('market_status','?')}**\n"
-                  f"- Total: {len(results)} | 🟢 Best: {len(best)} | 💧 Peng: {len(peng)} | "
+                  f"- Total: {len(results_full)} | 🟢 Best: {len(best)} | 💧 Peng: {len(peng)} | "
                   f"🎯 Floor: {len(at_floor)} | 🌅 Recovery: {len(recov)} | 🔴 Distrib: {len(distrib)}\n")
 
             existing = {}
             if RESULTS_FILE.exists():
                 try: existing = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
                 except Exception: pass
-            existing.update({"whale_results":results,"whale_total":len(results),
+            existing.update({"whale_results":results_full,"whale_total":len(results_full),
                              "whale_context":new_ctx,"date":datetime.now().isoformat()})
             RESULTS_FILE.write_text(json.dumps(existing,indent=2,default=str), encoding="utf-8")
             prev = JOURNAL_FILE.read_text(encoding="utf-8") if JOURNAL_FILE.exists() else "# Journal\n"
             JOURNAL_FILE.write_text(prev+je, encoding="utf-8")
-            st.success(f"◈ COMPLETE — {len(results)} alerts | 🟢 {len(best)} best | "
+            st.success(f"◈ COMPLETE — {len(results_full)} alerts | 🟢 {len(best)} best | "
                        f"💧 {len(peng)} peng | 🎯 {len(at_floor)} floor | "
                        f"🌅 {len(recov)} recov | 🔴 {len(distrib)} dist")
             st.rerun()
@@ -451,7 +455,13 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         signal_ok=="good", qual_ok=="good", ema_ok=="good",
         floor_ok=="good",  conv_ok=="good", supply_ok=="good"
     ])
-    if good_count >= 5:
+    # FIX #1: EMA bearish hard-block PRIORITAS — konsisten dengan engine 9.3.9
+    # classify_whale_quality sudah cap EMA bearish ke max LIKELY_SMART.
+    # Verdict UI harus ikut: LIKELY_SMART + EMA bearish tidak bisa PRIORITAS
+    # meski good_count >= 5 (karena qual_ok="good" untuk LIKELY_SMART).
+    _ema_bearish_block = (ema_tr == "BEARISH")
+
+    if good_count >= 5 and not _ema_bearish_block:
         verdict  = "PRIORITAS"
         v_col    = "var(--accent)"
         v_col_hex= "#00FF66"   # resolved hex — dipakai di opacity suffix
@@ -700,11 +710,23 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
                     _log_sl    = st.number_input("SL", value=float(sl_price), min_value=0.0, format="%.0f")
                 with _c3:
                     _log_date  = st.date_input("Tanggal Entry")
+                # FIX #4: tambah input TP1 dan TP2 — tanpa ini War Room tidak punya data TP
+                # TP disimpan sebagai token "tp1=xxxx | tp2=xxxx" di notes string
+                # (DB schema tidak punya kolom tp terpisah — lihat trade_logger.py)
+                _c4, _c5 = st.columns(2)
+                _risk = max(float(close) - float(sl_price), 1.0)
+                with _c4:
+                    _log_tp1 = st.number_input("TP1", value=round(float(close) + _risk * 1.5, 0), min_value=0.0, format="%.0f")
+                with _c5:
+                    _log_tp2 = st.number_input("TP2", value=round(float(close) + _risk * 3.0, 0), min_value=0.0, format="%.0f")
                 _log_notes = st.text_input("Notes (opsional)", value="")
                 _submitted = st.form_submit_button("✅ Simpan Trade", use_container_width=True)
                 if _submitted:
                     try:
                         from trade_logger import log_trade as _log_trade_fn
+                        # Inject TP tokens ke notes — cara yang dipakai trade_logger
+                        _tp_tokens = f"tp1={_log_tp1:.0f} | tp2={_log_tp2:.0f}"
+                        _final_notes = (_tp_tokens + " | " + _log_notes) if _log_notes else _tp_tokens
                         _tid = _log_trade_fn(
                             ticker           = ticker + ".JK",
                             entry_price      = _log_entry,
@@ -716,7 +738,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
                             whale_quality    = qual,
                             whale_conviction = conv,
                             strategy         = "FOLLOW_WHALE",
-                            notes            = _log_notes,
+                            notes            = _final_notes,
                         )
                         st.success(f"✅ Trade {ticker} tersimpan (ID #{_tid})")
                         st.session_state[f"log_form_{ticker}"] = False
@@ -1363,7 +1385,9 @@ def whale_card(w: dict, border_color: str = NEON_GREEN) -> str:
     if w.get("pattern")=="SUSTAINED": tags.append('<span style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.25);border-radius:var(--r-sm);padding:2px 8px;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--c-info)">📅 sustained</span>')
     mom = w.get("momentum","")
     if mom=="ACCELERATING": tags.append('<span style="background:rgba(0,255,102,0.08);border:1px solid rgba(0,255,102,0.25);border-radius:var(--r-sm);padding:2px 8px;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--accent)">⚡ acc</span>')
-    elif mom=="REVERSING":  tags.append('<span style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:var(--r-sm);padding:2px 8px;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--c-warning)">↗ rev</span>')
+    # FIX #2: REVERSING bukan sinyal positif — mom_5d>0 tapi mom_10d<0 = tren 10h masih turun
+    # Engine 9.3.9 sudah hapus conviction boost untuk REVERSING, UI harus konsisten
+    elif mom=="REVERSING":  tags.append('<span style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--r-sm);padding:2px 8px;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--c-danger)">↘ rev</span>')
     tags_html_str = " ".join(tags)
 
     sec_html = ('<span style="background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.2);'
@@ -1504,7 +1528,11 @@ if whale_results:
     _floor_c_raw = len([w for w in floor_list if w.get("conviction",0) >= min_conv_ui])
     _rec_c_raw   = len([w for w in recov_list if w.get("conviction",0) >= min_conv_ui])
     # In bear market: allow MIXED EMA too (recovery plays)
-    _ema_ok = ["BULLISH"] if tradeable else ["BULLISH", "MIXED"]
+    # FIX #3: bull market juga terima MIXED — konsisten dengan verdict _render_analysis_card
+    # yang memberi "WATCHLIST AKTIF" untuk MIXED (bukan skip total).
+    # Tab1 BEST LONG = BULLISH+MIXED saat bull, filter conviction tetap berlaku.
+    # Label tab1 diupdate agar tidak misleading: "BEST LONG" bukan hanya EMA BULLISH.
+    _ema_ok = ["BULLISH", "MIXED"]  # bull dan bear sama — perbedaan ada di min_conviction
     _best_c_raw  = len([w for w in smart_list
                         if w.get("ema_trend") in _ema_ok
                         and w.get("conviction",0) >= min_conv_ui])
@@ -1593,7 +1621,7 @@ if whale_results:
             with _t1h:
                 st.markdown(f"""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
                 color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.3rem">
-                {len(best)} SETUP · SMART WHALE + EMA BULLISH + CONVICTION ≥ {min_conv_ui}
+                {len(best)} SETUP · SMART WHALE + EMA BULLISH/MIXED + CONVICTION ≥ {min_conv_ui}
                 {_tradeable_str}</p>""", unsafe_allow_html=True)
             with _t1s:
                 _best_sort = st.selectbox("Sort", ["Conviction", "% Above Floor", "Control Score", "Vol Ratio"],
