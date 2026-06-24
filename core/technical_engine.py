@@ -168,6 +168,10 @@ class SetupResult:
     data_limited:     bool  = False   # True jika bar < 89 (IPO / saham baru)
     ipo_mode:         bool  = False   # True jika bar < 30 — analisa EMA5/13 only
 
+    # Score transparency
+    score_raw:        int   = 0       # Score sebelum regime cap — potensi saham jika regime membaik
+    score_capped:     bool  = False   # True jika score di-cap oleh regime (SPECULATIVE/WATCHLIST_ONLY)
+
     # Flags
     flags:            list  = field(default_factory=list)
 
@@ -606,12 +610,17 @@ class EMABreakoutEngine:
             score = min(score, 10)
 
             # ── Regime score cap (after hard cap) ────────────────────────────
+            # Simpan score_raw sebelum cap — dipakai di UI untuk komunikasi ke trader
+            score_raw = score
+            score_capped = False
             if regime_tag == "WATCHLIST_ONLY" and score > 3:
                 flags.append("⚠ BEAR: score capped 3")
                 score = min(score, 3)
+                score_capped = True
             elif regime_tag == "SPECULATIVE" and score > 4:
                 flags.append("⚠ BEAR_CONSOL: score capped 4")
                 score = min(score, 4)
+                score_capped = True
 
             # ── Signal classification ─────────────────────────────────────────
             if ipo_mode:
@@ -745,6 +754,8 @@ class EMABreakoutEngine:
                 flags             = flags,
                 data_limited      = data_limited,
                 ipo_mode          = ipo_mode,
+                score_raw         = score_raw,
+                score_capped      = score_capped,
             )
 
         except Exception as exc:
@@ -1467,12 +1478,17 @@ class DailyEMAEngine:
 
             score = min(score, 10)
 
+            # Simpan score_raw sebelum cap — dipakai di UI untuk komunikasi ke trader
+            score_raw = score
+            score_capped = False
             if regime_tag == "WATCHLIST_ONLY" and score > 3:
                 flags.append("⚠ BEAR: score capped 3")
                 score = min(score, 3)
+                score_capped = True
             elif regime_tag == "SPECULATIVE" and score > 4:
                 flags.append("⚠ BEAR_CONSOL: score capped 4")
                 score = min(score, 4)
+                score_capped = True
 
             # ── Signal classification ─────────────────────────────────────────
             if ipo_mode:
@@ -1597,6 +1613,8 @@ class DailyEMAEngine:
                 "flags":           flags,
                 "data_limited":    data_limited,
                 "ipo_mode":        ipo_mode,
+                "score_raw":       score_raw,
+                "score_capped":    score_capped,
 
                 # daily fields (agar scanner_agent tidak crash di dual-TF section)
                 "daily_ok":        False,

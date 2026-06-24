@@ -1,7 +1,17 @@
 {
-  "version": "9.5.3",
+  "version": "9.5.4",
   "date": "2026-06-24",
   "changelog": [
+    {
+      "version": "9.5.4",
+      "date": "2026-06-24",
+      "changes": [
+        "NEW: score_raw + score_capped fields di SetupResult dan DailyEMAEngine dict \u2014 score sebelum regime cap tersimpan permanen",
+        "FIX: PIPELINE filter pakai score_raw untuk threshold (bukan score post-cap) \u2014 UNIC dan kandidat capped lainnya kini muncul",
+        "UX: PIPELINE dan WATCHLIST tabel tampilkan kolom Potensi: score_raw/10 (cap\u2192score) jika di-cap",
+        "UX: Detail card header tampilkan score_raw badge kuning jika score di-cap oleh regime"
+      ]
+    },
     {
       "version": "9.5.3",
       "date": "2026-06-24",

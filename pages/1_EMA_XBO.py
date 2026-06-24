@@ -503,6 +503,20 @@ def _render_ema_detail(r) -> None:
     ])
 
     # Build card via string concat — rows_html dan action tidak masuk f-string
+    _score_raw    = _g(r, "score_raw", score)
+    _score_capped = _g(r, "score_capped", False) or (_score_raw > score)
+    _score_label  = (
+        f"Score {_score_raw}/10 → cap {score}/10"
+        if _score_capped
+        else f"Score {score}/10"
+    )
+    _cap_badge = (
+        ' <span style="background:rgba(240,180,41,0.15);border:1px solid rgba(240,180,41,0.4);'
+        'border-radius:3px;padding:1px 6px;font-size:10px;color:#F0B429;margin-left:4px">'
+        f'⚠ RAW {_score_raw}/10'
+        '</span>'
+        if _score_capped else ""
+    )
     _card_header = (
         '<div style="background:' + v_bg + ';border:1px solid rgba(255,255,255,0.08);'
         'border-left:4px solid ' + v_col + ';border-radius:var(--r-md);padding:0.9rem 1.1rem;margin:0.3rem 0 0.8rem 0">'
@@ -511,7 +525,8 @@ def _render_ema_detail(r) -> None:
         '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:900;'
         'color:#E2E8F0">' + ticker + '</span>'
         '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
-        'color:#374151">EMA-XBO · Score ' + str(score) + '/10 · Vol ' + f"{vol:.1f}" + '×</span>'
+        'color:#374151">EMA-XBO · ' + _score_label + ' · Vol ' + f"{vol:.1f}" + '×</span>'
+        + _cap_badge +
         '<span style="background:' + v_col + '18;border:1px solid ' + v_col + '45;border-radius:var(--r-sm);'
         'padding:2px 10px;font-family:Orbitron,monospace;font-size:var(--text-xs);'
         'font-weight:700;color:' + v_col + ';margin-left:auto">' + verdict + '</span>'
@@ -1075,16 +1090,15 @@ if ema_results:
                 unsafe_allow_html=True
             )
         _wl_rows = []
-        for r in sorted(_watchlist_only, key=lambda x: -x.get("score", 0)):
-            _ticker = r.get("ticker", "").replace(".JK", "")
-            _capped = (
-                cycle in ("BEAR_CONSOLIDATION", "SPECULATIVE")
-                and r.get("score", 0) <= 4
-            )
-            _cap_note = " ⚠cap" if _capped else ""
+        for r in sorted(_watchlist_only, key=lambda x: -x.get("score_raw", x.get("score", 0))):
+            _ticker    = r.get("ticker", "").replace(".JK", "")
+            _score     = r.get("score", 0)
+            _score_raw = r.get("score_raw", _score)
+            _capped    = r.get("score_capped", False) or (_score_raw > _score)
+            _score_str = f"{_score_raw}/10 (cap→{_score})" if _capped else f"{_score}/10"
             _wl_rows.append({
                 "Ticker":  _ticker,
-                "Score":   str(r.get("score", 0)) + "/10" + _cap_note,
+                "Potensi": _score_str,
                 "Close":   r.get("close", 0),
                 "Vol×":    round(r.get("vol_ratio", 0), 2),
                 "RS%":     round(r.get("rs_vs_ihsg_4w", 0), 1),
@@ -1107,14 +1121,13 @@ if ema_results:
         )
 
     # ── PIPELINE SECTION — CORRECTING dengan RS kuat, approaching cross ───────
-    # Score threshold 4 (bukan 5) — regime SPECULATIVE cap score max 4.
-    # Saham genuinely bagus di bear akan di-cap ke 4, bukan 5.
-    # Threshold 5 akan exclude semua kandidat saat SPECULATIVE aktif.
+    # Score threshold pakai score_raw (sebelum cap) jika tersedia,
+    # fallback ke score biasa untuk data lama yang belum punya score_raw.
     _pipeline = [
         r for r in ema_results
         if r.get("signal") in ("CORRECTING", "DEEP_CORRECT", "COMPRESSING")
         and r.get("rs_vs_ihsg_4w", 0) >= 20.0
-        and r.get("score", 0) >= 4
+        and r.get("score_raw", r.get("score", 0)) >= 5
     ]
     if _pipeline:
         sec_head(f"◌ PIPELINE — {len(_pipeline)} approaching · RS kuat · pantau, bukan entry")
@@ -1137,25 +1150,28 @@ if ema_results:
                 unsafe_allow_html=True
             )
         _pl_rows = []
-        for r in sorted(_pipeline, key=lambda x: (-x.get("rs_vs_ihsg_4w", 0), -x.get("score", 0))):
-            _ticker = r.get("ticker", "").replace(".JK", "")
-            _sig    = r.get("signal", "")
+        for r in sorted(_pipeline, key=lambda x: (-x.get("rs_vs_ihsg_4w", 0), -x.get("score_raw", x.get("score", 0)))):
+            _ticker    = r.get("ticker", "").replace(".JK", "")
+            _sig       = r.get("signal", "")
+            _score     = r.get("score", 0)
+            _score_raw = r.get("score_raw", _score)
+            _capped    = r.get("score_capped", False) or (_score_raw > _score)
+            _score_str = f"{_score_raw}/10 (cap→{_score})" if _capped else f"{_score}/10"
             _pl_rows.append({
-                "Ticker":  _ticker,
-                "Signal":  _sig,
-                "Score":   r.get("score", 0),
-                "Close":   r.get("close", 0),
-                "RS%":     round(r.get("rs_vs_ihsg_4w", 0), 1),
-                "Vol×":    round(r.get("vol_ratio", 0), 2),
-                "MCF":     r.get("mcf_score", 0),
-                "Risk%":   round(r.get("risk_pct", 0), 1),
+                "Ticker":      _ticker,
+                "Signal":      _sig,
+                "Potensi":     _score_str,
+                "Close":       r.get("close", 0),
+                "RS%":         round(r.get("rs_vs_ihsg_4w", 0), 1),
+                "Vol×":        round(r.get("vol_ratio", 0), 2),
+                "MCF":         r.get("mcf_score", 0),
+                "Risk%":       round(r.get("risk_pct", 0), 1),
             })
         st.dataframe(
             _pl_rows,
             use_container_width=True,
             hide_index=True,
             column_config={
-                "Score":  st.column_config.NumberColumn("Score",  format="%d/10"),
                 "Close":  st.column_config.NumberColumn("Close",  format="Rp%,.0f"),
                 "RS%":    st.column_config.NumberColumn("RS%",    format="%+.1f%%"),
                 "Vol×":   st.column_config.NumberColumn("Vol×",   format="%.2f×"),
