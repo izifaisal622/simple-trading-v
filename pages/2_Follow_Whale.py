@@ -612,14 +612,32 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     else:
         _fp_badge = ""
 
+    # Pre-build "why not best long" — tampil jika ada blocker spesifik
+    _not_best_long_reasons = []
+    if ff > 60 and ctrl <= 3:
+        _not_best_long_reasons.append(f"supply bebas (float {ff:.0f}%, control {ctrl}/10)")
+    if ema_ok != "good":
+        _ema_block = "EMA belum BULLISH" if ema_ok == "warn" else "EMA masih BEARISH"
+        _not_best_long_reasons.append(_ema_block)
+    if close > entry_high * 1.02:
+        _not_best_long_reasons.append(f"harga Rp{close:,.0f} sudah di atas entry zone")
+    if slow_exit:
+        _not_best_long_reasons.append("slow exit terdeteksi")
+
+    if _not_best_long_reasons:
+        _not_best_long_str = " + ".join(_not_best_long_reasons)
+        _not_best_long_note = f" Menarik tapi belum masuk BEST LONG: {_not_best_long_str}."
+    else:
+        _not_best_long_note = ""
+
     if floor_ok == "bad":
-        action = f"**SKIP sekarang.** Harga terlalu jauh dari floor (+{pct_f:.0f}%). Tunggu koreksi ke Rp{entry_low:,.0f}–{entry_high:,.0f} dulu." + _fp_badge
+        action = f"**SKIP sekarang.** Harga terlalu jauh dari floor (+{pct_f:.0f}%). Tunggu koreksi ke Rp{entry_low:,.0f}–{entry_high:,.0f} dulu." + _not_best_long_note + _fp_badge
     elif ema_ok == "bad":
-        action = f"**WATCHLIST PASIF.** EMA masih BEARISH. Masukkan di list, pantau mingguan. Entry kalau EMA berubah BULLISH + pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}." + _fp_badge
+        action = f"**WATCHLIST PASIF.** EMA masih BEARISH. Masukkan di list, pantau mingguan. Entry kalau EMA berubah BULLISH + pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}." + _not_best_long_note + _fp_badge
     elif ema_ok == "warn" and floor_ok == "warn":
-        action = f"**WATCHLIST AKTIF.** Setup menarik tapi dua konfirmasi belum terpenuhi: (1) tunggu EMA jadi BULLISH, (2) harga pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}. Pasang alert." + _fp_badge
+        action = f"**WATCHLIST AKTIF.** Setup menarik tapi dua konfirmasi belum terpenuhi: (1) tunggu EMA jadi BULLISH, (2) harga pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}. Pasang alert." + _not_best_long_note + _fp_badge
     elif floor_ok == "warn":
-        action = f"**WATCHLIST AKTIF.** EMA sudah BULLISH, sinyal bagus. Tunggu pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f} untuk entry dengan R/R lebih baik. Kalau breakout dengan volume tinggi bisa kejar dengan sizing 50%." + _fp_badge
+        action = f"**WATCHLIST AKTIF.** EMA sudah BULLISH, sinyal bagus. Tunggu pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f} untuk entry dengan R/R lebih baik. Kalau breakout dengan volume tinggi bisa kejar dengan sizing 50%." + _not_best_long_note + _fp_badge
     else:
         action = f"**ENTRY ZONA** — Semua kriteria terpenuhi. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}. SL di bawah floor Rp{sl_price:,.0f}." + _fp_badge
 
