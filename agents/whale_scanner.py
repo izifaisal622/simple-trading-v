@@ -2296,6 +2296,19 @@ class WhaleScanner:
                 pengeringan_detected = peng_data.get("detected", False),
             )
 
+            # Fix A: trigger_confirmed — sinyal lebih kuat dari trigger_candle biasa
+            # trigger_candle hanya cek 1 candle terakhir — bisa kebetulan
+            # trigger_confirmed = trigger hari ini + ada konteks kuat sebelumnya:
+            # kemarin vol step-up ATAU pengeringan kuat (strength>=5) ATAU gradual>=2w
+            # Artinya: ada "jalan menuju" trigger, bukan muncul tiba-tiba
+            _yest_vol_stepup = (len(vol) >= 3 and float(vol.iloc[-2]) > float(vol.iloc[-3]))
+            _peng_kuat       = peng_data.get("detected") and peng_data.get("strength", 0) >= 5
+            _gradual_cukup   = ga_data.get("detected") or ga_data.get("strength", 0) >= 1
+            tc_confirmed = (
+                tc_data.get("detected") and
+                (_yest_vol_stepup or _peng_kuat or _gradual_cukup)
+            )
+
             # 9. V5: Relative Strength vs IHSG
             # RS > 0 = saham lebih kuat dari market = ada yang defend/beli diam-diam
             rs_5d = rs_20d = 0.0
@@ -2455,6 +2468,7 @@ class WhaleScanner:
                 "upper_wick_dom":      se_data["upper_wick_dominant"],
                 # Trigger candle — transisi akumulasi → markup
                 "trigger_candle":          tc_data["detected"],
+                "trigger_confirmed":       tc_confirmed,  # Fix A: trigger + konteks kuat
                 "trigger_strength":        tc_data["strength"],
                 "trigger_close_pos":       tc_data["close_position"],
                 "trigger_vol_stepup":      tc_data["vol_stepup"],
@@ -2588,7 +2602,11 @@ class WhaleScanner:
             # +1: Trigger candle detected = whale mulai push hari ini
             if tc_data.get("detected"):
                 _mrs += 1
-                _mrs_parts.append("trigger candle hari ini")
+                # Fix A: trigger_confirmed = konteks lebih kuat → label berbeda
+                if tc_confirmed:
+                    _mrs_parts.append("🕯 trigger CONFIRMED (ada konteks sebelumnya)")
+                else:
+                    _mrs_parts.append("trigger candle hari ini")
 
                 # Fix C: combinatorial bonus di MRS — sekuens pengeringan → trigger = paling kuat
                 # Pengeringan (barang kering) + trigger (push dimulai) = konfirmasi urutan sempurna

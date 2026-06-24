@@ -499,66 +499,33 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         verdict += " (STOP TRADE — build watchlist)"
 
     # ── Narrative generation ──────────────────────────────────────────────────
+    # Fix C: Urutan dioptimalkan untuk keypoint "riding smart whale"
+    # Timing info DULU (blocker → trigger → gradual → RS), screening BELAKANGAN
+    # User dapat sinyal actionable tanpa harus scroll screening info dulu
     narratives = []
 
-    # 1. Signal + Quality
-    if signal == "ACCUMULATION" and qual in ("SMART","LIKELY_SMART"):
-        narratives.append(f"**{score_icon(signal_ok)} Signal & Quality:** ACCUMULATION + {qual} — ada smart money aktif mengumpulkan. Bukan sekadar harga turun, ada yang beli diam-diam.")
-    else:
-        narratives.append(f"**{score_icon(signal_ok)} Signal & Quality:** {signal} + {qual} — sinyal ada tapi belum sekuat ACCUMULATION SMART.")
-
-    # 2. EMA
-    if ema_tr == "BULLISH":
-        narratives.append(f"**{score_icon(ema_ok)} EMA Trend: BULLISH** — momentum sudah berputar. Harga di atas EMA13 dan EMA89. Konfirmasi teknikal mendukung.")
-    elif ema_tr == "MIXED":
-        narratives.append(f"**{score_icon(ema_ok)} EMA Trend: MIXED** — harga di atas EMA13 tapi belum menembus EMA89. Tunggu EMA jadi BULLISH untuk konfirmasi lebih kuat.")
-    else:
-        narratives.append(f"**{score_icon(ema_ok)} EMA Trend: BEARISH** — masih downtrend. Recovery play yang butuh kesabaran ekstra.")
-
-    # 2a. Slow exit warning — tampil di awal jika detected, sebelum sinyal lain
+    # 1. BLOCKER — slow exit: kalau ini ada, user stop baca dan tidak entry
     if slow_exit and slow_exit_desc:
         narratives.append(
             f"**❌ PERINGATAN: {slow_exit_desc}** — "
             f"Ada indikasi whale sedang exit diam-diam. Jangan entry sebelum pola ini selesai.")
 
-    # 2b. Gradual accumulation — sinyal timing terpenting yang selama ini tersembunyi
-    # Makin banyak minggu, makin dekat ke akhir fase akumulasi
-    if ga_det and ga_weeks >= 2:
-        _ga_intensity = "KUAT" if ga_weeks >= 4 else "SEDANG"
-        _ga_close = " Akumulasi sudah cukup lama — fase markup makin dekat." if ga_weeks >= 4 else ""
-        narratives.append(
-            f"**✅ Gradual Accumulation: {ga_weeks} MINGGU BERTURUT ({_ga_intensity})** 📈 "
-            f"Volume naik bertahap {ga_volgain:.0f}% selama {ga_weeks} minggu, harga sideways. "
-            f"Ini tanda whale kumpul diam-diam tiap minggu supaya tidak ketahuan scanner retail.{_ga_close}"
-        )
-    elif ga_weeks >= 1:
-        narratives.append(
-            f"**⚠️ Gradual Accumulation: {ga_weeks} minggu terdeteksi** — "
-            f"Awal pola akumulasi bertahap. Butuh konfirmasi minggu berikutnya."
-        )
-
-    # 2c. Trigger candle — momen push dimulai, pakai bahasa chart
+    # 2. TIMING SIGNALS — trigger candle + gradual (paling actionable)
     if tc_det:
-        # Bahasa chart dari data numerik yang sudah ada
         _tc_close_pos = w.get("trigger_close_pos", 0.5)
         _tc_body = "hijau (bullish)" if w.get("trigger_candle") else "merah"
-
-        # Deskripsi close position dalam bahasa chart
         if _tc_close_pos >= 0.85:     _close_desc = "close mendekati high candle"
         elif _tc_close_pos >= 0.70:   _close_desc = "close di upper range candle"
         elif _tc_close_pos >= 0.55:   _close_desc = "close di atas midpoint"
         else:                          _close_desc = "close di midpoint"
-
-        # Vol context
         if tc_spike:     _vol_desc = "volume spike 2x+ rata-rata 3 hari sebelumnya"
         elif w.get("trigger_vol_stepup"): _vol_desc = "volume naik dari kemarin (step-up)"
         else:            _vol_desc = "volume elevated"
-
-        # Range context
         _range_desc = " · range candle melebar dari rata-rata (compression selesai)" if tc_expand else ""
-
+        # trigger_confirmed = konteks lebih kuat
+        _tc_prefix = "🕯 TRIGGER CONFIRMED" if w.get("trigger_confirmed") else "🕯 TRIGGER CANDLE TERDETEKSI"
         narratives.append(
-            f"**🕯 TRIGGER CANDLE TERDETEKSI (strength {tc_str}/4)** — "
+            f"**{_tc_prefix} (strength {tc_str}/4)** — "
             f"Candle hari ini: **body {_tc_body}**, {_close_desc} ({_tc_close_pos:.0%}), "
             f"{_vol_desc}{_range_desc}. "
             f"Di chart kamu akan lihat candle hijau dengan volume lebih besar dari beberapa hari sebelumnya "
@@ -573,7 +540,22 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
             f"Kalau iya dan volume terus naik besok → trigger candle terkonfirmasi, siap entry."
         )
 
-    # 2d. Relative Strength vs IHSG
+    # 3. GRADUAL ACCUMULATION — konteks durasi akumulasi
+    if ga_det and ga_weeks >= 2:
+        _ga_intensity = "KUAT" if ga_weeks >= 4 else "SEDANG"
+        _ga_close = " Akumulasi sudah cukup lama — fase markup makin dekat." if ga_weeks >= 4 else ""
+        narratives.append(
+            f"**✅ Gradual Accumulation: {ga_weeks} MINGGU BERTURUT ({_ga_intensity})** 📈 "
+            f"Volume naik bertahap {ga_volgain:.0f}% selama {ga_weeks} minggu, harga sideways. "
+            f"Ini tanda whale kumpul diam-diam tiap minggu supaya tidak ketahuan scanner retail.{_ga_close}"
+        )
+    elif ga_weeks >= 1:
+        narratives.append(
+            f"**⚠️ Gradual Accumulation: {ga_weeks} minggu terdeteksi** — "
+            f"Awal pola akumulasi bertahap. Butuh konfirmasi minggu berikutnya."
+        )
+
+    # 4. RELATIVE STRENGTH — momentum konfirmasi vs market
     if rs_ok:
         _rs_label = "STRONG" if rs_20d > 5 else "MILD"
         narratives.append(
@@ -584,7 +566,21 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
             f"**❌ Relative Strength vs IHSG: UNDERPERFORM** — Saham underperform IHSG "
             f"{rs_5d:.1f}% (5h) · {rs_20d:.1f}% (20h). Tidak ada yang defend saat market bergerak.")
 
-    # 3. Floor price
+    # 5. SIGNAL & QUALITY — kualitas whale (screening)
+    if signal == "ACCUMULATION" and qual in ("SMART","LIKELY_SMART"):
+        narratives.append(f"**{score_icon(signal_ok)} Signal & Quality:** ACCUMULATION + {qual} — ada smart money aktif mengumpulkan. Bukan sekadar harga turun, ada yang beli diam-diam.")
+    else:
+        narratives.append(f"**{score_icon(signal_ok)} Signal & Quality:** {signal} + {qual} — sinyal ada tapi belum sekuat ACCUMULATION SMART.")
+
+    # 6. EMA TREND
+    if ema_tr == "BULLISH":
+        narratives.append(f"**{score_icon(ema_ok)} EMA Trend: BULLISH** — momentum sudah berputar. Harga di atas EMA13 dan EMA89. Konfirmasi teknikal mendukung.")
+    elif ema_tr == "MIXED":
+        narratives.append(f"**{score_icon(ema_ok)} EMA Trend: MIXED** — harga di atas EMA13 tapi belum menembus EMA89. Tunggu EMA jadi BULLISH untuk konfirmasi lebih kuat.")
+    else:
+        narratives.append(f"**{score_icon(ema_ok)} EMA Trend: BEARISH** — masih downtrend. Recovery play yang butuh kesabaran ekstra.")
+
+    # 7. FLOOR PRICE — level entry
     if pct_f <= 5:
         narratives.append(f"**{score_icon(floor_ok)} Floor Price: Rp{floor_p:,.0f} — AT FLOOR** ✨ Harga sekarang Rp{close:,.0f} hanya {pct_f:.1f}% di atas floor. Ini zona entry ideal Hengky — R/R terbaik.")
     elif pct_f <= 15:
@@ -594,7 +590,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     else:
         narratives.append(f"**{score_icon(floor_ok)} Floor Price: Rp{floor_p:,.0f} — FAR** ❌ Harga {pct_f:.1f}% di atas floor. R/R buruk. Skip atau tunggu koreksi dalam ke Rp{entry_low:,.0f}.")
 
-    # 4. Conviction
+    # 8. CONVICTION + CONTROL
     _peng_suffix = ""
     if peng_false:
         _peng_suffix = " ⚠️ False pengeringan — harga drift turun, bukan akumulasi."
@@ -603,7 +599,6 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         _peng_suffix = f" Pengeringan aktif: {_peng_d_clean}"
     _def_suffix  = " Whale defend aktif." if def_ else ""
     _conv_label  = "High conviction, setup matang." if conv >= 7 else "Medium conviction, sizing kecil." if conv >= 4 else "Low conviction, watchlist saja."
-    # Control score label
     if ctrl >= 7:
         _ctrl_label = f"Control {ctrl}/10 — supply sangat terkontrol, mudah digerakkan"
     elif ctrl >= 5:
@@ -615,7 +610,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         _ctrl_label = f"Control {ctrl}/10 — supply tersebar, tidak ada pihak yang cukup besar untuk defend harga." + _ctrl_peng_note
     narratives.append(f"**{score_icon(conv_ok)} Conviction {conv}/10 · {_ctrl_label}** — {_conv_label}" + _peng_suffix + _def_suffix)
 
-    # 5. Supply concentration
+    # 9. SUPPLY CONCENTRATION
     if ff > 0:
         if ff <= 15:
             narratives.append(f"**{score_icon(supply_ok)} Supply: Insider {insider:.0f}% · Float {ff:.0f}% — SANGAT KETAT** ✨ " +
@@ -630,8 +625,8 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
             narratives.append(f"**{score_icon(supply_ok)} Supply: Float {ff:.0f}% — MODERATE/BEBAS** — " +
                 (f"Owner: {owner}. " if owner else "") +
                 "Supply lebih bebas, harga lebih sulit digerakkan." + _supply_cap_note)
-    
-    # 6. Order Block
+
+    # 10. ORDER BLOCK
     if ob_det:
         if in_ob:
             narratives.append(f"**{score_icon('good')} Order Block {ob_type}: Rp{ob_l:,.0f}–{ob_h:,.0f} — DI DALAM ZONE** ✨ Harga sekarang di zona institutional footprint. Entry zone paling ideal.")
@@ -640,7 +635,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         else:
             narratives.append(f"**{score_icon('warn')} Order Block {ob_type}: Rp{ob_l:,.0f}–{ob_h:,.0f} — OB TERBENTUK** — Zona institusional ada di sana. Pantau kalau harga revisit.")
 
-    # 7. Liquidity
+    # 11. LIQUIDITY
     if val_bn < 1:
         narratives.append(f"**{score_icon(liq_ok)} Likuiditas: Rp{val_bn*1000:.0f}Jt/hari — TIPIS** ⚠️ Hati-hati sizing. Sulit keluar kalau mau jual jumlah besar.")
     elif val_bn < 5:
@@ -648,7 +643,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     else:
         narratives.append(f"**{score_icon(liq_ok)} Likuiditas: Rp{val_bn:.1f}Bn/hari** ✅ Likuiditas bagus.")
 
-    # 8. Pump Fingerprint — selalu tampil, termasuk kasus tidak ada data
+    # 12. PUMP FINGERPRINT — historical context (terakhir, bukan blocker)
     fp_conf_label = {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low"}.get(fp_conf, "")
     fp_type_label = {
         "GRADUAL_INST":     "Akumulasi Institusi Bertahap",
@@ -658,107 +653,11 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         "MIXED_INST":       "Mixed: Pola Institusi",
         "MIXED":            "Mixed (Pola Tidak Dominan)",
     }.get(fp_type, fp_type)
-
-    # Similarity label kualitatif
     if fp_sim >= 0.75:   _sim_label = "STRONG MATCH"
     elif fp_sim >= 0.60: _sim_label = "MODERATE MATCH"
     elif fp_sim >= 0.40: _sim_label = "WEAK MATCH"
     else:                _sim_label = "NO MATCH"
-
-    # Temporal context — kapan pump terakhir (dari fp_desc jika ada)
     _fp_recency = w.get("pump_fp_desc", "")
-
-    if fp_cnt == 0:
-        _bars_note = "Data historis terbatas" if val_bn < 1 else "Belum ada pump >20% dalam 2 tahun terakhir"
-        narratives.append(
-            f"**❓ Pump Fingerprint: TIDAK ADA DATA** — {_bars_note}. "
-            f"Tidak bisa bandingkan kondisi sekarang dengan pre-pump historis. "
-            f"{'Saham illiquid/IPO baru — hati-hati sizing.' if val_bn < 1 else 'Saham baru atau belum pernah pump signifikan.'}")
-    elif fp_match:
-        fp_icon = score_icon("good")
-        _desc_suffix = _fp_recency.split("—")[1].strip() if "—" in _fp_recency else ""
-        narratives.append(
-            f"**{fp_icon} Pump Fingerprint ({fp_conf_label} conf): {fp_type_label}** 🎯 "
-            f"{_sim_label} — Kondisi sekarang mirip pre-pump historis ({fp_cnt}x pump, avg +{fp_avg:.0f}%). "
-            f"Similarity {fp_sim:.0%}. {_desc_suffix}"
-        )
-    else:
-        fp_icon = score_icon("warn")
-        narratives.append(
-            f"**{fp_icon} Pump Fingerprint ({fp_conf_label} conf): {fp_type_label}** — "
-            f"{_sim_label} · {fp_cnt}x pump historis (avg +{fp_avg:.0f}%), "
-            f"kondisi sekarang belum mirip. Similarity {fp_sim:.0%}."
-        )
-
-    # 9. Conclusion
-    # Pre-build pump fingerprint badge (hindari nested f-string)
-    if fp_match and fp_cnt > 0:
-        _fp_badge = f" · 🎯 {fp_cnt}x pump historis (+{fp_avg:.0f}% avg) · pola sekarang mirip {fp_sim:.0%} ({_sim_label}) · {fp_type_label}"
-    elif fp_cnt > 0:
-        _fp_badge = f" · {fp_cnt}x pump historis (+{fp_avg:.0f}% avg) · belum mirip {fp_sim:.0%} ({_sim_label}) · {fp_type_label}"
-    else:
-        _fp_badge = ""
-
-    # Pre-build "why not best long" — tampil jika ada blocker spesifik
-    _not_best_long_reasons = []
-    if ff > 60 and ctrl <= 3:
-        _not_best_long_reasons.append(f"supply bebas (float {ff:.0f}%, control {ctrl}/10)")
-    if ema_ok != "good":
-        _ema_block = "EMA belum BULLISH" if ema_ok == "warn" else "EMA masih BEARISH"
-        _not_best_long_reasons.append(_ema_block)
-    if close > entry_high * 1.02:
-        _not_best_long_reasons.append(f"harga Rp{close:,.0f} sudah di atas entry zone")
-    if slow_exit:
-        _not_best_long_reasons.append("slow exit terdeteksi")
-
-    if _not_best_long_reasons:
-        _not_best_long_str = " + ".join(_not_best_long_reasons)
-        _not_best_long_note = f" Menarik tapi belum masuk BEST LONG: {_not_best_long_str}."
-    else:
-        _not_best_long_note = ""
-
-    if floor_ok == "bad":
-        action = f"**SKIP sekarang.** Harga terlalu jauh dari floor (+{pct_f:.0f}%). Tunggu koreksi ke Rp{entry_low:,.0f}–{entry_high:,.0f} dulu." + _not_best_long_note + _fp_badge
-    elif ema_ok == "bad":
-        action = f"**WATCHLIST PASIF.** EMA masih BEARISH. Masukkan di list, pantau mingguan. Entry kalau EMA berubah BULLISH + pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}." + _not_best_long_note + _fp_badge
-    elif ema_ok == "warn" and floor_ok == "warn":
-        action = f"**WATCHLIST AKTIF.** Setup menarik tapi dua konfirmasi belum terpenuhi: (1) tunggu EMA jadi BULLISH, (2) harga pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f}. Pasang alert." + _not_best_long_note + _fp_badge
-    elif floor_ok == "warn":
-        action = f"**WATCHLIST AKTIF.** EMA sudah BULLISH, sinyal bagus. Tunggu pullback ke Rp{entry_low:,.0f}–{entry_high:,.0f} untuk entry dengan R/R lebih baik." + _not_best_long_note + _fp_badge
-    else:
-        # Priority 1: MRS menentukan urgency dan sizing dalam ENTRY ZONA
-        # Sebelumnya semua "ENTRY ZONA" sama — MRS ada di badge terpisah tapi tidak mengubah action
-        # Sekarang action ikut MRS agar kesimpulan mencerminkan timing, bukan hanya struktur
-        if mrs >= 4 and tc_det:
-            # MRS tinggi + trigger candle = timing terbaik, full size
-            action = (f"**🚀 ENTRY SEKARANG — MRS {mrs}/5 SIAP + TRIGGER CANDLE.** "
-                      f"Whale mulai push hari ini. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}, "
-                      f"SL Rp{sl_price:,.0f}. "
-                      f"**Full size** — semua sinyal konfluens." + _fp_badge)
-        elif mrs >= 4:
-            # MRS tinggi tanpa trigger candle — siap tapi belum push
-            action = (f"**✅ ENTRY ZONA — MRS {mrs}/5 SIAP.** "
-                      f"Struktur matang, timing mendekati. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}, "
-                      f"SL Rp{sl_price:,.0f}. "
-                      f"**Full size** direkomendasikan — tunggu candle konfirmasi sebelum masuk." + _fp_badge)
-        elif mrs >= 3:
-            # MRS sedang — setup bagus tapi timing belum optimal
-            action = (f"**⚠️ ENTRY ZONA — MRS {mrs}/5 MENDEKATI.** "
-                      f"Setup bagus tapi belum di timing terbaik. Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}, "
-                      f"SL Rp{sl_price:,.0f}. "
-                      f"**Half size (50%)** — tambah saat MRS naik ke 4+." + _fp_badge)
-        elif mrs >= 2:
-            # MRS rendah — struktur oke tapi akumulasi masih dalam proses
-            action = (f"**⏳ ENTRY ZONA — MRS {mrs}/5 DALAM PROSES.** "
-                      f"Semua kriteria struktural terpenuhi tapi whale masih akumulasi. "
-                      f"Entry di Rp{entry_low:,.0f}–{entry_high:,.0f}, SL Rp{sl_price:,.0f}. "
-                      f"**Partial size (25%)** atau tunggu MRS >= 3." + _fp_badge)
-        else:
-            # MRS 0-1 — struktur oke tapi belum ada sinyal timing
-            action = (f"**🔍 SETUP BAGUS TAPI BELUM TIMING.** "
-                      f"Kriteria terpenuhi namun MRS {mrs}/5 — whale belum selesai akumulasi. "
-                      f"Entry zone Rp{entry_low:,.0f}–{entry_high:,.0f} valid untuk pantau. "
-                      f"**Masuk ke watchlist aktif**, tunggu MRS naik ke 3+." + _fp_badge)
 
     # ── Render ────────────────────────────────────────────────────────────────
     _ = (zone, sc, ob_str, mom5, w52h, ff_vol, ticker, sector, action, v_col, v_bg, v_border)  # template vars
@@ -1840,20 +1739,32 @@ if whale_results:
     _dist_c  = len(distrib_list)
     _all_c   = len(whale_results)
 
-    # Fix #3: pre-compute ENTRY HARI INI list
-    # Filter: trigger_candle ATAU mrs >= 4, harus is_long_signal, sorted MRS desc
+    # Fix #3 + Fix A: pre-compute ENTRY HARI INI list
+    # trigger_confirmed = trigger + konteks kuat sebelumnya (lebih reliable dari trigger saja)
     entry_today_list = sorted(
         [w for w in whale_results
          if w.get("is_long_signal")
-         and (w.get("trigger_candle") or w.get("momentum_readiness", 0) >= 4)
+         and (w.get("trigger_confirmed") or w.get("trigger_candle") or w.get("momentum_readiness", 0) >= 4)
          and w.get("conviction", 0) >= min_conv_ui],
         key=lambda w: (
-            -(w.get("trigger_candle", False)),           # trigger candle duluan
-            -w.get("momentum_readiness", 0),             # MRS tertinggi
+            -(w.get("trigger_confirmed", False)),        # confirmed duluan
+            -(w.get("trigger_candle", False)),
+            -w.get("momentum_readiness", 0),
             -w.get("conviction", 0),
         )
     )
     _entry_today_c = len(entry_today_list)
+
+    # Fix B: PANTAU BESOK — MRS 3, tidak ada trigger, hampir siap
+    watch_tomorrow_list = sorted(
+        [w for w in whale_results
+         if w.get("is_long_signal")
+         and w.get("momentum_readiness", 0) == 3
+         and not w.get("trigger_candle")
+         and w.get("conviction", 0) >= min_conv_ui
+         and w not in entry_today_list],
+        key=lambda w: -w.get("conviction", 0)
+    )
 
     tab0,tab1,tab2,tab3,tab4,tab5,tab6,tab7 = st.tabs([
         f"🚀 ENTRY HARI INI ({_entry_today_c})",
@@ -1888,8 +1799,23 @@ if whale_results:
         else:
             render_empty_state("🚀", "TIDAK ADA ENTRY HARI INI",
                                "Tidak ada saham dengan trigger candle atau MRS ≥ 4 saat ini.\n"
-                               "Cek tab BEST LONG untuk setup yang mendekati.",
+                               "Cek section PANTAU BESOK di bawah untuk kandidat terdekat.",
                                "python orchestrator.py --mode whale")
+
+        # Fix B: PANTAU BESOK — MRS 3, belum trigger, tapi hampir siap
+        if watch_tomorrow_list:
+            st.markdown("<br>", unsafe_allow_html=True)
+            sec_head("◆ PANTAU BESOK — MRS 3, MENDEKATI SIAP")
+            st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+            color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.5rem">
+            Setup ini belum punya trigger candle tapi MRS = 3.
+            Kalau besok muncul candle hijau dengan volume naik dan close di atas midpoint
+            → masuk ke ENTRY HARI INI. Pasang alert sekarang.</p>""",
+            unsafe_allow_html=True)
+            _lw, _rw = st.columns(2)
+            for i, w in enumerate(watch_tomorrow_list[:6]):
+                with (_lw if i % 2 == 0 else _rw):
+                    st.markdown(whale_card(w, "var(--c-warning)"), unsafe_allow_html=True)
 
     with tab1:
         best = [w for w in smart_list
