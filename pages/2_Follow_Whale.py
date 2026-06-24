@@ -686,6 +686,43 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         <span style="color:{v_col};font-weight:700">→ KESIMPULAN: </span>{action}
         </div>""", unsafe_allow_html=True)
 
+        # LOG TRADE button — muncul di bawah conclusion
+        _log_key = f"log_whale_{ticker}"
+        if st.button(f"📋 LOG TRADE {ticker}", key=_log_key, use_container_width=True):
+            st.session_state[f"log_form_{ticker}"] = True
+
+        if st.session_state.get(f"log_form_{ticker}"):
+            with st.form(key=f"log_form_submit_{ticker}"):
+                _c1, _c2, _c3 = st.columns(3)
+                with _c1:
+                    _log_entry = st.number_input("Entry", value=float(close), min_value=0.0, format="%.0f")
+                with _c2:
+                    _log_sl    = st.number_input("SL", value=float(sl_price), min_value=0.0, format="%.0f")
+                with _c3:
+                    _log_date  = st.date_input("Tanggal Entry")
+                _log_notes = st.text_input("Notes (opsional)", value="")
+                _submitted = st.form_submit_button("✅ Simpan Trade", use_container_width=True)
+                if _submitted:
+                    try:
+                        from trade_logger import log_trade as _log_trade_fn
+                        _tid = _log_trade_fn(
+                            ticker           = ticker + ".JK",
+                            entry_price      = _log_entry,
+                            sl_price         = _log_sl,
+                            entry_date       = _log_date.strftime("%Y-%m-%d"),
+                            signal_type      = signal,
+                            signal_score     = conv,
+                            regime_tag       = w.get("regime_tag", ""),
+                            whale_quality    = qual,
+                            whale_conviction = conv,
+                            strategy         = "FOLLOW_WHALE",
+                            notes            = _log_notes,
+                        )
+                        st.success(f"✅ Trade {ticker} tersimpan (ID #{_tid})")
+                        st.session_state[f"log_form_{ticker}"] = False
+                    except Exception as _le:
+                        st.error(f"Error log trade: {_le}")
+
 
 
 def _render_broker_ksei_tab(whale_results: list, min_conv: int) -> None:

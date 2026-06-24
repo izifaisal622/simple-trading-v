@@ -61,10 +61,12 @@ def init_db():
             bars_held    INTEGER,
             strategy     TEXT    DEFAULT 'EMA_XBO',
             signal_type  TEXT,           -- NEW V4: BREAKOUT/WATCHLIST/CORRECTING
-            signal_score INTEGER,        -- NEW V4: score saat sinyal diambil
-            regime_tag   TEXT,           -- NEW V4: FULL/SPECULATIVE/WATCHLIST_ONLY
-            mcf_score    INTEGER,        -- NEW V4: MCF score saat entry
-            notes        TEXT
+            signal_score    INTEGER,     -- NEW V4: score saat sinyal diambil
+            regime_tag      TEXT,        -- NEW V4: FULL/SPECULATIVE/WATCHLIST_ONLY
+            mcf_score       INTEGER,     -- NEW V4: MCF score saat entry
+            whale_quality   TEXT,        -- V9: SMART/LIKELY_SMART/UNCERTAIN/DUMB
+            whale_conviction INTEGER,    -- V9: conviction score 0-10 saat entry
+            notes           TEXT
         );
 
         CREATE TABLE IF NOT EXISTS outcomes (
@@ -78,11 +80,13 @@ def init_db():
     """)
 
     # Migrasi: tambah kolom baru jika belum ada (untuk upgrade dari V5)
-    _migrate_add_column(conn, "manual_trades", "sl_price",     "REAL")
-    _migrate_add_column(conn, "manual_trades", "signal_type",  "TEXT")
-    _migrate_add_column(conn, "manual_trades", "signal_score", "INTEGER")
-    _migrate_add_column(conn, "manual_trades", "regime_tag",   "TEXT")
-    _migrate_add_column(conn, "manual_trades", "mcf_score",    "INTEGER")
+    _migrate_add_column(conn, "manual_trades", "sl_price",        "REAL")
+    _migrate_add_column(conn, "manual_trades", "signal_type",     "TEXT")
+    _migrate_add_column(conn, "manual_trades", "signal_score",    "INTEGER")
+    _migrate_add_column(conn, "manual_trades", "regime_tag",      "TEXT")
+    _migrate_add_column(conn, "manual_trades", "mcf_score",       "INTEGER")
+    _migrate_add_column(conn, "manual_trades", "whale_quality",   "TEXT")
+    _migrate_add_column(conn, "manual_trades", "whale_conviction", "INTEGER")
 
     conn.commit()
     conn.close()
@@ -97,17 +101,19 @@ def _migrate_add_column(conn: sqlite3.Connection, table: str, col: str, col_type
 
 
 def log_trade(
-    ticker:       str,
-    entry_price:  float,
-    sl_price:     float,              # FIX V4: parameter wajib
-    tp1_price:    float = 0.0,
-    signal_type:  str   = "UNKNOWN",  # NEW V4
-    signal_score: int   = 0,          # NEW V4
-    regime_tag:   str   = "",         # NEW V4
-    mcf_score:    int   = 0,          # NEW V4
-    strategy:     str   = "EMA_XBO",
-    notes:        str   = "",
-    entry_date:   str   = "",         # FIX 8.7.4: support custom entry date
+    ticker:           str,
+    entry_price:      float,
+    sl_price:         float,              # FIX V4: parameter wajib
+    tp1_price:        float = 0.0,
+    signal_type:      str   = "UNKNOWN",  # NEW V4
+    signal_score:     int   = 0,          # NEW V4
+    regime_tag:       str   = "",         # NEW V4
+    mcf_score:        int   = 0,          # NEW V4
+    whale_quality:    str   = "",         # V9: SMART/LIKELY_SMART/UNCERTAIN/DUMB
+    whale_conviction: int   = 0,          # V9: conviction score 0-10
+    strategy:         str   = "EMA_XBO",
+    notes:            str   = "",
+    entry_date:       str   = "",         # FIX 8.7.4: support custom entry date
 ) -> int:
     """
     Catat trade baru yang DIBUKA.
@@ -119,8 +125,9 @@ def log_trade(
     cur = conn.execute("""
         INSERT INTO manual_trades
         (ticker, entry_date, entry_price, sl_price, outcome,
-         signal_type, signal_score, regime_tag, mcf_score, strategy, notes)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?)
+         signal_type, signal_score, regime_tag, mcf_score,
+         whale_quality, whale_conviction, strategy, notes)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
         ticker,
         entry_date_val,
@@ -131,6 +138,8 @@ def log_trade(
         signal_score,
         regime_tag,
         mcf_score,
+        whale_quality,
+        whale_conviction,
         strategy,
         notes,
     ))
