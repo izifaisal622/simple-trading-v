@@ -1544,9 +1544,10 @@ def classify_whale_quality(result: dict) -> str:
     if result.get("ema_trend") == "BULLISH":  score += 1
 
     # Momentum (0–2)
+    # FIX: REVERSING (mom_5d>0, mom_10d<0) tidak dapat boost — tren 10h masih turun
     mom = result.get("momentum","")
     if mom == "ACCELERATING": score += 1
-    if mom == "REVERSING":    score += 1
+    # REVERSING sengaja tidak diberi score — false momentum signal
 
     # V4: Hitung Barang — supply concentration (0–2)
     ctrl = result.get("control_score", 0)
@@ -1660,7 +1661,11 @@ def classify_whale_quality(result: dict) -> str:
     else:
         # Control OK — terapkan threshold normalisasi + minimum requirement
         # SMART: score >=60% DAN wajib punya pengeringan/defense + floor
-        if score_pct >= 60 and _meets_smart_req:  return "SMART"
+        # FIX: tambah gate EMA — EMA bearish tidak bisa SMART (struktur tren berlawanan)
+        # Alasan: SMART whale seharusnya sudah push harga ke atas EMA, bukan masih di bawah
+        _ema_bearish = result.get("ema_trend", "") == "BEARISH"
+        if score_pct >= 60 and _meets_smart_req and not _ema_bearish: return "SMART"
+        if score_pct >= 60 and _meets_smart_req and _ema_bearish:    return "LIKELY_SMART"  # bearish EMA cap
         if score_pct >= 60:                        return "LIKELY_SMART"  # score tinggi tapi missing req
         if score_pct >= 40:                        return "LIKELY_SMART"
         if score_pct >= 20:                        return "UNCERTAIN"
@@ -1704,9 +1709,11 @@ def compute_conviction(r: dict, vol_ratio: float) -> int:
     # EMA
     if r.get("ema_trend") == "BULLISH": score += 1
 
-    # Momentum
+    # Momentum — FIX: REVERSING (mom_5d>0 tapi mom_10d<0) tidak dapat boost
+    # REVERSING = naik jangka pendek tapi tren 10h masih turun = false momentum signal
+    # Hanya ACCELERATING (mom_5d>0 DAN mom_10d>0) yang layak dapat conviction
     mom = r.get("momentum", "")
-    if mom in ("ACCELERATING", "REVERSING"): score += 1
+    if mom == "ACCELERATING": score += 1
 
     # V4: Hitung Barang — supply concentration bonus
     ctrl = r.get("control_score", 0)
@@ -1769,9 +1776,12 @@ def compute_conviction(r: dict, vol_ratio: float) -> int:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def classify_signal(vol_ratio: float, chg_pct: float,
-                    pengeringan: dict, defense: dict) -> Tuple[str, str, str]:
+                    pengeringan: dict, defense: dict,
+                    mom_5d: float = 0.0, mom_10d: float = 0.0) -> Tuple[str, str, str]:
     """
     Signal mengintegrasikan: vol, pergerakan harga, pengeringan, whale defense.
+    FIX: tambah structural momentum gate (mom_5d, mom_10d) agar ACCUMULATION
+    tidak terpicu saat struktur tren masih turun.
     """
     is_buy     = chg_pct >  0.5
     is_sell    = chg_pct < -0.5
@@ -1781,12 +1791,20 @@ def classify_signal(vol_ratio: float, chg_pct: float,
     is_moderate= vol_ratio >= 2.0
     pengeringan_ok = pengeringan.get("detected", False)
 
-    # Best case: pengeringan + heavy vol + price up + whale defend
-    if pengeringan_ok and is_heavy and (is_buy or is_neutral) and defense.get("defending"):
+    # FIX: structural momentum — kedua timeframe harus positif atau setidaknya netral
+    # REVERSING (mom_5d>0, mom_10d<0) tidak memenuhi syarat ACCUMULATION
+    mom_structural_ok = mom_5d >= 0 and mom_10d >= -2.0  # toleransi -2% untuk 10d
+
+    # Best case: pengeringan + heavy vol + price up/neutral + whale defend
+    # FIX: tambah gate momentum struktural — tidak bisa ACCUMULATION saat 10d tren negatif kuat
+    if pengeringan_ok and is_heavy and (is_buy or is_neutral) and defense.get("defending") and mom_structural_ok:
         return "ACCUMULATION", "🟢", "#00ff88"
-    # Pengeringan tanpa defense — masih bagus
-    if pengeringan_ok and is_heavy and (is_buy or is_neutral):
+    # Pengeringan tanpa defense — masih bagus, tapi tetap butuh momentum struktural
+    if pengeringan_ok and is_heavy and (is_buy or is_neutral) and mom_structural_ok:
         return "ACCUMULATION", "🟢", "#00ff88"
+    # Pengeringan tapi momentum struktural negatif — turunkan ke VOL_SPIKE_UP
+    if pengeringan_ok and is_heavy and (is_buy or is_neutral) and not mom_structural_ok:
+        return "VOL_SPIKE_UP", "🟡", "#f0b429"
     # Block buy — satu kali beli gede
     if is_block and is_buy:
         return "BLOCK_BUY", "🔵", "#60a5fa"
@@ -2290,15 +2308,16 @@ class WhaleScanner:
             _base_t = ticker.replace(".JK","").upper()
             sector  = _IDX_SECTOR_MAP.get(_base_t) or _IDX_PREFIX_MAP.get(_base_t[:2], "OTHER")
 
-            # Signal
-            signal, emoji, color = classify_signal(vol_ratio, chg_pct, peng_data, def_data)
+            # Signal — FIX: pass structural momentum agar ACCUMULATION tidak terpicu saat tren turun
+            signal, emoji, color = classify_signal(vol_ratio, chg_pct, peng_data, def_data,
+                                                   mom_5d=mom_5d, mom_10d=mom_10d)
 
             # Recovery overlay: beaten down + ada bukti whale buying
-            # BUG 5 fix: VOL_NEUTRAL tanpa whale evidence TIDAK di-override ke RECOVERY_EARLY
+            # FIX: vol_ratio >= 2.0 saja TIDAK cukup — retail panik juga bisa vol 2x
+            # Wajib ada pengeringan ATAU defense sebagai konfirmasi whale behavior nyata
             _has_whale_evidence = (
                 peng_data.get("detected") or
-                def_data.get("defending") or
-                vol_ratio >= 2.0
+                def_data.get("defending")
             )
             if signal not in ("DISTRIBUTION","BLOCK_SELL") and pct_52w_high < -20 and _has_whale_evidence:
                 signal = "RECOVERY_EARLY"
