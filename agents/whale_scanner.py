@@ -661,6 +661,131 @@ def detect_slow_exit(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# TRIGGER CANDLE DETECTION — Sinyal Whale Selesai Akumulasi, Siap Push
+# "Beli setelah barang kering, masuk saat pertama kali volume naik kembali" — Hengky
+#
+# Trigger candle = transisi dari akumulasi ke markup phase:
+# Setelah beberapa hari vol drying (pengeringan), muncul satu candle dengan:
+# 1. Close di upper 30% range candle (buyer control)
+# 2. Volume naik vs kemarin (vol step-up — whale mulai push)
+# 3. Close > open (candle hijau / bullish body)
+# 4. Price masih dalam entry zone (tidak sudah terlambat)
+#
+# Bonus signal:
+# - Vol spike setelah drying: vol hari ini 2x+ vol rata-rata 3 hari sebelumnya
+# - Range expansion: range candle hari ini lebih lebar dari rata-rata 3 hari sebelumnya
+#   (compression selesai, expansion dimulai)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def detect_trigger_candle(
+    close: pd.Series,
+    vol:   pd.Series,
+    high:  pd.Series,
+    low:   pd.Series,
+    open_: pd.Series,
+    vol_ma: float,
+    pengeringan_detected: bool = False,
+) -> dict:
+    """
+    Deteksi trigger candle — momen transisi akumulasi → markup.
+
+    Returns dict dengan:
+    - detected:        bool — trigger candle valid terdeteksi
+    - strength:        0-4 — makin tinggi makin kuat signal
+    - close_position:  float — posisi close dalam candle range (1.0=high, 0.0=low)
+    - vol_stepup:      bool — vol hari ini > vol kemarin (step-up)
+    - vol_spike:       bool — vol hari ini >= 2x rata-rata 3 hari sebelumnya
+    - range_expansion: bool — range hari ini lebih lebar dari rata-rata 3 hari sebelumnya
+    - is_bullish_body: bool — close > open (body hijau)
+    - description:     str
+    """
+    _empty = {
+        "detected": False, "strength": 0,
+        "close_position": 0.5, "vol_stepup": False,
+        "vol_spike": False, "range_expansion": False,
+        "is_bullish_body": False, "description": "",
+    }
+
+    if len(close) < 5:
+        return _empty
+
+    try:
+        # Candle hari ini (index -1)
+        c_today   = float(close.iloc[-1])
+        o_today   = float(open_.iloc[-1])
+        h_today   = float(high.iloc[-1])
+        l_today   = float(low.iloc[-1])
+        v_today   = float(vol.iloc[-1])
+
+        # Candle kemarin (index -2)
+        v_yest    = float(vol.iloc[-2])
+
+        # Rata-rata 3 hari sebelum hari ini (index -4 s/d -2)
+        v_3d_avg  = float(vol.iloc[-4:-1].mean()) if len(vol) >= 4 else v_yest
+        r_3d_avg  = float((high.iloc[-4:-1] - low.iloc[-4:-1]).mean()) if len(high) >= 4 else 0.0
+
+        candle_range = h_today - l_today
+
+        # 1. Close position dalam candle range — buyer control jika close di upper 30%
+        close_pos = ((c_today - l_today) / candle_range) if candle_range > 0 else 0.5
+
+        # 2. Bullish body
+        is_bullish = c_today > o_today
+
+        # 3. Vol step-up — hari ini lebih dari kemarin
+        vol_stepup = v_today > v_yest
+
+        # 4. Vol spike setelah drying — hari ini >= 2x rata-rata 3 hari sebelumnya
+        vol_spike = (v_3d_avg > 0) and (v_today >= v_3d_avg * 2.0)
+
+        # 5. Range expansion — candle lebih lebar dari 3 hari sebelumnya (compression selesai)
+        range_expansion = (r_3d_avg > 0) and (candle_range >= r_3d_avg * 1.3)
+
+        # Scoring
+        strength = 0
+        if close_pos >= 0.70:  strength += 1   # close di upper 30% = buyer control
+        if is_bullish:         strength += 1   # body hijau
+        if vol_stepup:         strength += 1   # volume mulai naik
+        if vol_spike:          strength += 1   # vol spike setelah drying
+        if range_expansion:    strength += 1   # range melebar = compression selesai
+
+        # Bonus: konteks pengeringan sebelumnya memperkuat signal
+        # Trigger setelah pengeringan jauh lebih bermakna
+        _context_bonus = pengeringan_detected and vol_stepup
+
+        # Minimum requirement: close di upper half + bullish body + vol stepup
+        # Tanpa 3 syarat ini, bukan trigger candle — hanya candle hijau biasa
+        detected = (close_pos >= 0.60 and is_bullish and vol_stepup and strength >= 3)
+
+        if not detected:
+            return {**_empty, "close_position": round(close_pos, 2),
+                    "vol_stepup": vol_stepup, "is_bullish_body": is_bullish}
+
+        parts = []
+        if close_pos >= 0.70:   parts.append(f"close di {close_pos:.0%} range")
+        if vol_spike:           parts.append(f"vol spike {v_today/v_3d_avg:.1f}x rata 3h")
+        elif vol_stepup:        parts.append(f"vol naik vs kemarin")
+        if range_expansion:     parts.append("range melebar — compression selesai")
+        if _context_bonus:      parts.append("setelah pengeringan → timing terbaik")
+
+        desc = "🕯 Trigger candle: " + " · ".join(parts)
+
+        return {
+            "detected":        True,
+            "strength":        min(strength, 4),
+            "close_position":  round(close_pos, 2),
+            "vol_stepup":      vol_stepup,
+            "vol_spike":       vol_spike,
+            "range_expansion": range_expansion,
+            "is_bullish_body": is_bullish,
+            "description":     desc,
+        }
+
+    except Exception:
+        return _empty
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Gradual Accumulation Detector — Weekly Step-Up Pattern
 # Smart whale afiliasi emiten jarang beli sekaligus — mereka naik bertahap
 # tiap minggu supaya tidak trigger scanner retail
@@ -2127,6 +2252,18 @@ class WhaleScanner:
             # 8. V6: Slow exit detection
             se_data     = detect_slow_exit(close, vol, high, low)
 
+            # 8b. Trigger candle — transisi akumulasi → markup
+            # Deteksi momen whale selesai kumpul dan mulai push
+            tc_data = detect_trigger_candle(
+                close = close,
+                vol   = vol,
+                high  = high,
+                low   = low,
+                open_ = open_,
+                vol_ma = vol_ma,
+                pengeringan_detected = peng_data.get("detected", False),
+            )
+
             # 9. V5: Relative Strength vs IHSG
             # RS > 0 = saham lebih kuat dari market = ada yang defend/beli diam-diam
             rs_5d = rs_20d = 0.0
@@ -2284,6 +2421,14 @@ class WhaleScanner:
                 "slow_exit_desc":      se_data["description"],
                 "price_vol_div":       se_data["price_vol_divergence"],
                 "upper_wick_dom":      se_data["upper_wick_dominant"],
+                # Trigger candle — transisi akumulasi → markup
+                "trigger_candle":          tc_data["detected"],
+                "trigger_strength":        tc_data["strength"],
+                "trigger_close_pos":       tc_data["close_position"],
+                "trigger_vol_stepup":      tc_data["vol_stepup"],
+                "trigger_vol_spike":       tc_data["vol_spike"],
+                "trigger_range_expansion": tc_data["range_expansion"],
+                "trigger_desc":            tc_data["description"],
             }
 
             # Phase 1+2: Ownership data (free float + static broker profile)
@@ -2376,6 +2521,66 @@ class WhaleScanner:
             _ctrl_final = result.get("control_score", 0)
             if _ff_final > 60 and _ctrl_final <= 3:
                 result["conviction"] = min(result["conviction"], 7)
+
+            # ── Momentum Readiness Score (0–5) ────────────────────────────────
+            # Menjawab: "Apakah whale sudah selesai akumulasi dan siap push SEKARANG?"
+            # Berbeda dari conviction (kualitas whale) — ini adalah TIMING score.
+            # Semua komponen sudah dihitung di pipeline atas, tinggal dikomposit.
+            _mrs = 0
+            _mrs_parts = []
+
+            # +2: Gradual accumulation >= 4 minggu = whale sudah kumpul cukup lama
+            # Makin lama akumulasi, makin dekat ke exit fase akumulasi
+            _ga_weeks = ga_data.get("weeks_confirmed", 0)
+            if _ga_weeks >= 4:
+                _mrs += 2
+                _mrs_parts.append(f"akumulasi {_ga_weeks}w bertahap")
+            elif _ga_weeks >= 2:
+                _mrs += 1
+                _mrs_parts.append(f"akumulasi {_ga_weeks}w")
+
+            # +1: Pengeringan strength >= 5 = barang sudah sangat kering
+            _peng_str = peng_data.get("strength", 0)
+            if peng_data.get("detected") and _peng_str >= 5:
+                _mrs += 1
+                _mrs_parts.append(f"pengeringan kuat ({_peng_str}/7)")
+            elif peng_data.get("detected") and _peng_str >= 3:
+                _mrs += 0  # pengeringan ada tapi belum cukup kuat untuk timing
+
+            # +1: Trigger candle detected = whale mulai push hari ini
+            if tc_data.get("detected"):
+                _mrs += 1
+                _mrs_parts.append("trigger candle hari ini")
+
+            # +1: Range compression — price range menyempit = tekanan akan release
+            _range_r = hb_data.get("range_ratio", 1.0)
+            if _range_r < 0.4:
+                _mrs += 1
+                _mrs_parts.append(f"compression {_range_r:.0%}")
+
+            # Bonus setengah point (dibulatkan): vol step-up tanpa trigger candle penuh
+            # Artinya ada awal tanda-tanda volume mulai naik kembali
+            if tc_data.get("vol_stepup") and not tc_data.get("detected"):
+                # Tidak cukup untuk trigger candle, tapi worth dicatat
+                _mrs_parts.append("vol mulai step-up")
+
+            # Hard block: slow exit override — tidak ada readiness kalau whale sedang exit
+            if se_data.get("detected") and se_data.get("strength", 0) >= 2:
+                _mrs = 0
+                _mrs_parts = ["⛔ SLOW EXIT OVERRIDE — whale sedang exit, bukan push"]
+
+            _mrs = min(_mrs, 5)
+
+            # Label readiness
+            if _mrs >= 4:    _mrs_label = "SIAP ENTRY"
+            elif _mrs >= 3:  _mrs_label = "MENDEKATI"
+            elif _mrs >= 2:  _mrs_label = "DALAM PROSES"
+            elif _mrs >= 1:  _mrs_label = "AKUMULASI AWAL"
+            else:            _mrs_label = "BELUM SIAP"
+
+            result["momentum_readiness"]       = _mrs
+            result["momentum_readiness_label"] = _mrs_label
+            result["momentum_readiness_parts"] = _mrs_parts
 
             return result
 

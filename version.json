@@ -1,7 +1,8 @@
 {
-  "version": "9.4.2",
+  "version": "9.4.3",
   "date": "2026-06-24",
   "changelog": [
+    "9.4.3 — FEAT engine: [1] detect_trigger_candle() — deteksi momen transisi akumulasi→markup: close di upper 60%+ range + bullish body + vol step-up + optional vol spike + range expansion; strength 0-4, konteks pengeringan memperkuat signal; [2] Momentum Readiness Score (0-5) per ticker — komposit: gradual_weeks(+2), pengeringan_strength(+1), trigger_candle(+1), compression(+1); label SIAP ENTRY/MENDEKATI/DALAM PROSES/AKUMULASI AWAL/BELUM SIAP; hard block jika slow exit detected",
     "9.4.2 — FIX Follow Whale page 6 bugs: [1] verdict PRIORITAS di-block jika EMA bearish — konsisten dengan engine 9.3.9 cap LIKELY_SMART; [2] badge REVERSING ubah warna merah+ikon ↘ — bukan sinyal positif; [3] _ema_ok bull+bear sama BULLISH+MIXED — sinkron dengan verdict WATCHLIST AKTIF di analysis card; [4] LOG TRADE form tambah input TP1/TP2 dengan default 1.5R/3R, inject ke notes sebagai token tp1=/tp2=; [6] scan simpan results_full top_n=100 ke storage — tab SEMUA tidak kehilangan data akibat cap top_n user",
     "9.4.1 — FIX whale scan pipeline: [3] IHSG cache 30 menit di instance var — sebelumnya fresh fetch setiap scan() dipanggil; [4] RS alignment fix — common_idx diambil tail 25 bar saja agar rs_5d/rs_20d selalu dari periode terkini, bukan dari awal series yang bisa jauh dari hari ini; [5] scan() max_workers 20→8 — _analyze_ticker adalah CPU-bound + memory, bukan I/O, GIL Python membuat 20 thread kontraproduktif",
     "9.4.0 — FIX fetch/enrich pipeline: [1] enrich_top_results re-compute conviction+whale_quality setelah Stockbit broker data masuk — sebelumnya broker_live boost tidak pernah teraplikasi ke output karena conviction sudah final saat scan; [2] IDX_EXTENDED filter EXCLUDED_TICKERS+DELISTED_TICKERS saat definisi — ticker suspended bisa lolos ke scan via mover path jika hanya difilter di _MOVER_SEED",
