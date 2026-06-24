@@ -403,11 +403,16 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     w52h     = w.get("pct_from_52w_high",0)
     val_bn   = w.get("value_bn",0)
     owner    = w.get("owner_name","")
-    peng     = w.get("pengeringan_detected",False)
-    peng_d   = w.get("pengeringan_desc","")
+    peng        = w.get("pengeringan_detected",False)
+    peng_d      = w.get("pengeringan_desc","")
+    peng_false  = w.get("is_false", False)  # False pengeringan: harga drift down
     def_     = w.get("whale_defending",False)
     ff_vol   = w.get("ff_adj_vol_ratio", w.get("vol_ratio",0))
     sector   = w.get("sector","")
+    # Relative Strength vs IHSG
+    rs_5d    = w.get("rs_5d", 0.0)
+    rs_20d   = w.get("rs_20d", 0.0)
+    rs_ok    = w.get("rs_ok", False)
     # Pump fingerprint
     fp_det   = w.get("pump_fp_detected", False)
     fp_match = w.get("pump_fp_matches", False)
@@ -482,6 +487,17 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     else:
         narratives.append(f"**{score_icon(ema_ok)} EMA Trend: BEARISH** — masih downtrend. Recovery play yang butuh kesabaran ekstra.")
 
+    # 2b. Relative Strength vs IHSG
+    if rs_ok:
+        _rs_label = "STRONG" if rs_20d > 5 else "MILD"
+        narratives.append(
+            f"**✅ Relative Strength vs IHSG: {_rs_label}** — Saham outperform IHSG "
+            f"+{rs_5d:.1f}% (5h) · +{rs_20d:.1f}% (20h). Ada yang defend/akumulasi saat market flat/turun.")
+    elif rs_5d < -3 and rs_20d < -3:
+        narratives.append(
+            f"**❌ Relative Strength vs IHSG: UNDERPERFORM** — Saham underperform IHSG "
+            f"{rs_5d:.1f}% (5h) · {rs_20d:.1f}% (20h). Tidak ada yang defend saat market bergerak.")
+
     # 3. Floor price
     if pct_f <= 5:
         narratives.append(f"**{score_icon(floor_ok)} Floor Price: Rp{floor_p:,.0f} — AT FLOOR** ✨ Harga sekarang Rp{close:,.0f} hanya {pct_f:.1f}% di atas floor. Ini zona entry ideal Hengky — R/R terbaik.")
@@ -493,9 +509,15 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         narratives.append(f"**{score_icon(floor_ok)} Floor Price: Rp{floor_p:,.0f} — FAR** ❌ Harga {pct_f:.1f}% di atas floor. R/R buruk. Skip atau tunggu koreksi dalam ke Rp{entry_low:,.0f}.")
 
     # 4. Conviction
-    narratives.append(f"**{score_icon(conv_ok)} Conviction {conv}/10 · Control {ctrl}/10** — {'High conviction, setup matang.' if conv>=7 else 'Medium conviction, sizing kecil.' if conv>=4 else 'Low conviction, watchlist saja.'}" +
-        (f" Pengeringan aktif: {peng_d.replace('Pengeringan: ','')}" if peng and peng_d else "") +
-        (" Whale defend aktif." if def_ else ""))
+    _peng_suffix = ""
+    if peng_false:
+        _peng_suffix = " ⚠️ False pengeringan — harga drift turun, bukan akumulasi."
+    elif peng and peng_d:
+        _peng_d_clean = peng_d.replace("Pengeringan: ", "")
+        _peng_suffix = f" Pengeringan aktif: {_peng_d_clean}"
+    _def_suffix  = " Whale defend aktif." if def_ else ""
+    _conv_label  = "High conviction, setup matang." if conv >= 7 else "Medium conviction, sizing kecil." if conv >= 4 else "Low conviction, watchlist saja."
+    narratives.append(f"**{score_icon(conv_ok)} Conviction {conv}/10 · Control {ctrl}/10** — {_conv_label}" + _peng_suffix + _def_suffix)
 
     # 5. Supply concentration
     if ff > 0:
@@ -538,8 +560,16 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         "MIXED":        "Mixed Pattern",
     }.get(fp_type, "")
 
+    # Similarity label kualitatif
+    if fp_sim >= 0.75:   _sim_label = "STRONG MATCH"
+    elif fp_sim >= 0.60: _sim_label = "MODERATE MATCH"
+    elif fp_sim >= 0.40: _sim_label = "WEAK MATCH"
+    else:                _sim_label = "NO MATCH"
+
+    # Temporal context — kapan pump terakhir (dari fp_desc jika ada)
+    _fp_recency = w.get("pump_fp_desc", "")
+
     if fp_cnt == 0:
-        # Tidak ada pump historis — informasikan ke user kenapa
         _bars_note = "Data historis terbatas" if val_bn < 1 else "Belum ada pump >20% dalam 2 tahun terakhir"
         narratives.append(
             f"**❓ Pump Fingerprint: TIDAK ADA DATA** — {_bars_note}. "
@@ -547,18 +577,18 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
             f"{'Saham illiquid/IPO baru — hati-hati sizing.' if val_bn < 1 else 'Saham baru atau belum pernah pump signifikan.'}")
     elif fp_match:
         fp_icon = score_icon("good")
-        _desc_suffix = fp_desc.split("—")[1].strip() if "—" in fp_desc else ""
+        _desc_suffix = _fp_recency.split("—")[1].strip() if "—" in _fp_recency else ""
         narratives.append(
             f"**{fp_icon} Pump Fingerprint ({fp_conf_label} conf): {fp_type_label}** 🎯 "
-            f"Kondisi sekarang mirip pre-pump historis ({fp_cnt}x pump, avg +{fp_avg:.0f}%). "
+            f"{_sim_label} — Kondisi sekarang mirip pre-pump historis ({fp_cnt}x pump, avg +{fp_avg:.0f}%). "
             f"Similarity {fp_sim:.0%}. {_desc_suffix}"
         )
     else:
         fp_icon = score_icon("warn")
         narratives.append(
             f"**{fp_icon} Pump Fingerprint ({fp_conf_label} conf): {fp_type_label}** — "
-            f"{fp_cnt}x pump historis terdeteksi (avg +{fp_avg:.0f}%), "
-            f"tapi kondisi sekarang belum mirip. Similarity {fp_sim:.0%}."
+            f"{_sim_label} · {fp_cnt}x pump historis (avg +{fp_avg:.0f}%), "
+            f"kondisi sekarang belum mirip. Similarity {fp_sim:.0%}."
         )
 
     # 9. Conclusion

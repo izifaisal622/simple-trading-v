@@ -485,6 +485,37 @@ def detect_pengeringan(close: pd.Series, vol: pd.Series, high: pd.Series, low: p
     elif vol_acceleration > 1.1 and price_5d_chg < 5:
         divergence_score = 1
 
+    # V6: False pengeringan detection — harga drift down = tidak ada yang beli
+    # Pengeringan sejati: harga SIDEWAYS (tidak turun) saat volume turun/stabil
+    # False pengeringan: harga DRIFT DOWN perlahan = retail kabur, bukan akumulasi
+    last_close  = float(close.iloc[-1])
+    close_10d   = float(close.iloc[-min(10, len(close))])
+    close_20d   = float(close.iloc[-min(20, len(close))])
+    price_trend_10d = (last_close / close_10d - 1) * 100 if close_10d > 0 else 0
+    price_trend_20d = (last_close / close_20d - 1) * 100 if close_20d > 0 else 0
+
+    # Drift down > 5% dalam 10 hari = false pengeringan
+    # Drift down > 8% dalam 20 hari = false pengeringan
+    is_false_pengeringan = (price_trend_10d < -5.0) or (price_trend_20d < -8.0)
+
+    # Lower wick saat drift down bisa tetap ada tapi tidak bermakna
+    # Jika false pengeringan, close_position harus sangat tinggi (>0.7) untuk override
+    if is_false_pengeringan and avg_close_position < 0.7:
+        # Override: reset signal ke false
+        return {
+            "detected":             False,
+            "strength":             0,
+            "days_elevated":        days_elevated,
+            "days_range_sempit":    days_range_sempit,
+            "avg_lower_wick":       round(avg_lower_wick, 2),
+            "price_drift_pct":      round(price_drift, 2),
+            "absorption_score":     0,
+            "close_position_score": round(avg_close_position, 2),
+            "vol_acceleration":     round(vol_acceleration, 2),
+            "description":          f"False pengeringan — harga drift {price_trend_10d:.1f}% dalam 10h (bukan akumulasi, retail kabur)",
+            "is_false":             True,
+        }
+
     strength = 0
     if days_elevated >= 3:       strength += 3
     elif days_elevated >= 2:     strength += 2
@@ -522,6 +553,7 @@ def detect_pengeringan(close: pd.Series, vol: pd.Series, high: pd.Series, low: p
         "close_position_score": round(avg_close_position, 2),
         "vol_acceleration":     round(vol_acceleration, 2),
         "description":          desc,
+        "is_false":             False,
     }
 
 
@@ -1403,6 +1435,13 @@ def classify_whale_quality(result: dict) -> str:
     ff = result.get("free_float", 100)
     if ff <= 15: score += 1
 
+    # V6: Relative Strength vs IHSG (0–2)
+    # Outperform market = ada yang defend/akumulasi diam-diam
+    if result.get("rs_ok"):
+        rs_20d = result.get("rs_20d", 0)
+        if rs_20d > 5:   score += 2   # strong outperform >5%
+        else:            score += 1   # mild outperform
+
     # V5: Gradual accumulation — weekly step-up (0–2)
     if result.get("gradual_accum"):
         ga_strength = result.get("gradual_strength", 1)
@@ -1529,6 +1568,10 @@ def compute_conviction(r: dict, vol_ratio: float) -> int:
     # V4: Market Structure boost from scanner (if available)
     ms_boost = r.get("ms_conviction_boost", 0)
     score += ms_boost
+
+    # V6: Relative Strength boost (0–1)
+    if r.get("rs_ok") and r.get("rs_20d", 0) > 3:
+        score += 1
 
     # V5: Gradual accumulation boost (0–2)
     if r.get("gradual_accum"):
@@ -1903,7 +1946,26 @@ class WhaleScanner:
             # 7. V5: Gradual accumulation — weekly step-up pattern (4 minggu)
             ga_data     = detect_gradual_accumulation(close, vol, high, low, min_weeks=4)
 
-            # 8. V5: Pump fingerprint — reverse-engineer pre-pump conditions dari historis
+            # 8. V5: Relative Strength vs IHSG
+            # RS > 0 = saham lebih kuat dari market = ada yang defend/beli diam-diam
+            rs_5d = rs_20d = 0.0
+            rs_ok  = False
+            try:
+                ihsg_close = getattr(self, "_ihsg_close", None)
+                if ihsg_close is not None and len(ihsg_close) >= 20:
+                    # Align index — ambil tanggal yang ada di kedua series
+                    common_idx = close.index.intersection(ihsg_close.index)
+                    if len(common_idx) >= 10:
+                        stk  = close.reindex(common_idx)
+                        mkt  = ihsg_close.reindex(common_idx)
+                        rs_5d  = float((stk.iloc[-1]/stk.iloc[-min(5,len(stk))] - 1) * 100) -                                  float((mkt.iloc[-1]/mkt.iloc[-min(5,len(mkt))] - 1) * 100)
+                        rs_20d = float((stk.iloc[-1]/stk.iloc[-min(20,len(stk))] - 1) * 100) -                                  float((mkt.iloc[-1]/mkt.iloc[-min(20,len(mkt))] - 1) * 100)
+                        # RS positif di 5d DAN 20d = outperform konsisten = sinyal defend
+                        rs_ok = rs_5d > 0 and rs_20d > 0
+            except Exception:
+                pass
+
+            # 9. V5: Pump fingerprint — reverse-engineer pre-pump conditions dari historis
             fp_data     = detect_pump_fingerprint(
                 ticker       = ticker,
                 close_daily  = close,
@@ -2025,6 +2087,10 @@ class WhaleScanner:
                 "pump_fp_cur_supply":   fp_data["cur_supply"],
                 "pump_fp_cur_peng":     fp_data["cur_pengeringan"],
                 "pump_fp_cur_stepup":   fp_data["cur_vol_stepup"],
+                # V6: Relative Strength vs IHSG
+                "rs_5d":               round(rs_5d, 1),
+                "rs_20d":              round(rs_20d, 1),
+                "rs_ok":               rs_ok,
             }
 
             # Phase 1+2: Ownership data (free float + static broker profile)
@@ -2142,6 +2208,21 @@ class WhaleScanner:
         # Batch pre-fetch all data at once
         # FIX 8.9.0: max_workers 30→4 untuk hindari HTTP 401 Invalid Crumb
         # (Yahoo expire session saat >10 request paralel simultan)
+        # Fetch IHSG daily untuk Relative Strength calculation
+        # Dilakukan sekali sebelum scan, shared ke semua _analyze_ticker via instance var
+        try:
+            import yfinance as _yf_ihsg
+            _ihsg_df = _yf_ihsg.download("^JKSE", period=self.lookback,
+                                          interval="1d", progress=False, auto_adjust=True)
+            if _ihsg_df is not None and len(_ihsg_df) >= 20:
+                if hasattr(_ihsg_df.columns, "get_level_values"):
+                    _ihsg_df.columns = _ihsg_df.columns.get_level_values(0)
+                self._ihsg_close = _ihsg_df["Close"]
+            else:
+                self._ihsg_close = None
+        except Exception:
+            self._ihsg_close = None
+
         print(f"[Whale] Batch downloading {len(tickers)} tickers...")
         import time as _time
         _t0 = _time.time()
