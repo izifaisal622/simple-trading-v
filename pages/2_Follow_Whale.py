@@ -537,21 +537,40 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
             f"Awal pola akumulasi bertahap. Butuh konfirmasi minggu berikutnya."
         )
 
-    # 2c. Trigger candle — momen push dimulai
+    # 2c. Trigger candle — momen push dimulai, pakai bahasa chart
     if tc_det:
-        _tc_extras = []
-        if tc_spike:    _tc_extras.append("vol spike 2x+")
-        if tc_expand:   _tc_extras.append("range melebar")
-        _tc_extra_str = " · " + " · ".join(_tc_extras) if _tc_extras else ""
+        # Bahasa chart dari data numerik yang sudah ada
+        _tc_close_pos = w.get("trigger_close_pos", 0.5)
+        _tc_body = "hijau (bullish)" if w.get("trigger_candle") else "merah"
+
+        # Deskripsi close position dalam bahasa chart
+        if _tc_close_pos >= 0.85:     _close_desc = "close mendekati high candle"
+        elif _tc_close_pos >= 0.70:   _close_desc = "close di upper range candle"
+        elif _tc_close_pos >= 0.55:   _close_desc = "close di atas midpoint"
+        else:                          _close_desc = "close di midpoint"
+
+        # Vol context
+        if tc_spike:     _vol_desc = "volume spike 2x+ rata-rata 3 hari sebelumnya"
+        elif w.get("trigger_vol_stepup"): _vol_desc = "volume naik dari kemarin (step-up)"
+        else:            _vol_desc = "volume elevated"
+
+        # Range context
+        _range_desc = " · range candle melebar dari rata-rata (compression selesai)" if tc_expand else ""
+
         narratives.append(
-            f"**🕯 TRIGGER CANDLE TERDETEKSI (strength {tc_str}/4){_tc_extra_str}** — "
-            f"{tc_desc} Ini adalah sinyal entry paling tepat waktu — whale mulai push hari ini."
+            f"**🕯 TRIGGER CANDLE TERDETEKSI (strength {tc_str}/4)** — "
+            f"Candle hari ini: **body {_tc_body}**, {_close_desc} ({_tc_close_pos:.0%}), "
+            f"{_vol_desc}{_range_desc}. "
+            f"Di chart kamu akan lihat candle hijau dengan volume lebih besar dari beberapa hari sebelumnya "
+            f"— ini adalah konfirmasi visual whale mulai push. Entry sekarang, SL di bawah candle ini."
         )
     elif w.get("trigger_vol_stepup") and not tc_det:
-        # Volume mulai naik tapi belum cukup untuk trigger candle penuh
+        _tc_close_pos2 = w.get("trigger_close_pos", 0.5)
         narratives.append(
-            f"**⚠️ Vol Mulai Step-Up** — Volume hari ini lebih dari kemarin. "
-            f"Belum trigger candle penuh, tapi perlu dipantau ketat. Bisa jadi awal push."
+            f"**⚠️ Vol Mulai Step-Up** — Volume hari ini lebih dari kemarin "
+            f"(close di {_tc_close_pos2:.0%} range candle). "
+            f"Di chart: lihat apakah candle hari ini hijau dengan body yang tegas. "
+            f"Kalau iya dan volume terus naik besok → trigger candle terkonfirmasi, siap entry."
         )
 
     # 2d. Relative Strength vs IHSG
@@ -785,6 +804,73 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
       </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # ── Fix #1: Action Summary Card — 3 hal dalam 5 detik ────────────────────
+    # Sebelumnya user harus scroll 12 narrative + MRS badge untuk dapat info actionable
+    # Sekarang summary langsung di atas: timing · entry · exit · sizing
+    _risk_val = max(float(close) - float(sl_price), 1.0)
+    if fp_cnt > 0 and fp_avg > 0:
+        _tp1_sum = round(float(close) * (1 + fp_avg * 0.004), 0)
+        _tp2_sum = round(float(close) * (1 + fp_avg * 0.008), 0)
+        _tp_basis = f"pump hist +{fp_avg:.0f}%"
+    else:
+        _tp1_sum = round(float(close) + _risk_val * 1.5, 0)
+        _tp2_sum = round(float(close) + _risk_val * 3.0, 0)
+        _tp_basis = "1.5R / 3R"
+
+    # Sizing label dari MRS
+    if mrs >= 4 and tc_det:   _sizing_lbl = "FULL SIZE 🚀"
+    elif mrs >= 4:             _sizing_lbl = "FULL SIZE ✅"
+    elif mrs >= 3:             _sizing_lbl = "HALF SIZE ⚠️"
+    elif mrs >= 2:             _sizing_lbl = "PARTIAL 25%"
+    else:                      _sizing_lbl = "WATCHLIST 👁"
+
+    # Trigger candle indicator
+    _tc_indicator = (
+        '<span style="background:rgba(0,255,102,0.15);border:1px solid rgba(0,255,102,0.5);'
+        'border-radius:3px;padding:2px 8px;font-size:0.7rem;color:#00FF66;font-weight:700'
+        ';margin-left:0.5rem">🕯 TRIGGER CANDLE</span>'
+    ) if tc_det else ""
+
+    # MRS color sudah dihitung di atas (_mrs_col)
+    _sum_card = (
+        '<div style="background:rgba(0,0,0,0.5);border:1px solid ' + _mrs_col + '30;'
+        'border-radius:6px;padding:0.8rem 1rem;margin-bottom:0.6rem">'
+        # Row 1: MRS + sizing + trigger badge
+        '<div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">'
+        '<span style="font-family:Orbitron,monospace;font-size:0.7rem;letter-spacing:0.1em;color:#64748B">TIMING</span>'
+        '<span style="font-family:Share Tech Mono,monospace;font-size:1.1rem;font-weight:700;color:' + _mrs_col + '">'
+        'MRS ' + str(mrs) + '/5 — ' + mrs_label + '</span>'
+        + _tc_indicator +
+        '<span style="margin-left:auto;font-family:Share Tech Mono,monospace;font-size:0.78rem;'
+        'font-weight:700;color:' + _mrs_col + '">' + _sizing_lbl + '</span>'
+        '</div>'
+        # Row 2: Entry · SL · TP1 · TP2
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem">'
+        '<div style="background:rgba(255,255,255,0.04);border-radius:4px;padding:0.4rem 0.6rem">'
+        '<div style="font-size:0.65rem;color:#64748B;letter-spacing:0.1em">ENTRY</div>'
+        '<div style="font-family:Share Tech Mono,monospace;font-size:0.85rem;font-weight:700;color:#E2E8F0">'
+        'Rp' + f"{entry_low:,.0f}" + '–' + f"{entry_high:,.0f}" + '</div></div>'
+        '<div style="background:rgba(239,68,68,0.08);border-radius:4px;padding:0.4rem 0.6rem">'
+        '<div style="font-size:0.65rem;color:#64748B;letter-spacing:0.1em">SL</div>'
+        '<div style="font-family:Share Tech Mono,monospace;font-size:0.85rem;font-weight:700;color:#EF4444">'
+        'Rp' + f"{sl_price:,.0f}" + '</div></div>'
+        '<div style="background:rgba(0,255,102,0.06);border-radius:4px;padding:0.4rem 0.6rem">'
+        '<div style="font-size:0.65rem;color:#64748B;letter-spacing:0.1em">TP1 (trim 50%)</div>'
+        '<div style="font-family:Share Tech Mono,monospace;font-size:0.85rem;font-weight:700;color:#00FF66">'
+        'Rp' + f"{_tp1_sum:,.0f}" + '</div></div>'
+        '<div style="background:rgba(0,255,102,0.06);border-radius:4px;padding:0.4rem 0.6rem">'
+        '<div style="font-size:0.65rem;color:#64748B;letter-spacing:0.1em">TP2 (sisa)</div>'
+        '<div style="font-family:Share Tech Mono,monospace;font-size:0.85rem;font-weight:700;color:#00FF66">'
+        'Rp' + f"{_tp2_sum:,.0f}" + '</div></div>'
+        '</div>'
+        # Row 3: TP basis
+        '<div style="font-family:Share Tech Mono,monospace;font-size:0.65rem;color:#475569;margin-top:0.35rem">'
+        'TP basis: ' + _tp_basis + ' · SL basis: floor Rp' + f"{floor_p:,.0f}" + ' −2%'
+        '</div>'
+        '</div>'
+    )
+    st.markdown(_sum_card, unsafe_allow_html=True)
 
     # Render narratives as markdown in container
     with st.container():
@@ -1528,6 +1614,19 @@ def whale_card(w: dict, border_color: str = NEON_GREEN) -> str:
     # FIX #2: REVERSING bukan sinyal positif — mom_5d>0 tapi mom_10d<0 = tren 10h masih turun
     # Engine 9.3.9 sudah hapus conviction boost untuk REVERSING, UI harus konsisten
     elif mom=="REVERSING":  tags.append('<span style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--r-sm);padding:2px 8px;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--c-danger)">↘ rev</span>')
+    # Fix #2 (sesi ini): trigger candle badge — paling pertama, paling eye-catching
+    # Saham yang trigger candle hari ini harus langsung terlihat di grid card
+    if w.get("trigger_candle"):
+        tags.insert(0, '<span style="background:rgba(0,255,102,0.2);border:1px solid rgba(0,255,102,0.7);border-radius:var(--r-sm);padding:2px 10px;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#00FF66;font-weight:700;letter-spacing:0.05em">🕯 TRIGGER</span>')
+    # MRS badge di whale_card — tampil jika MRS >= 3
+    _mrs_wc = w.get("momentum_readiness", 0)
+    _mrs_lbl_wc = w.get("momentum_readiness_label", "")
+    if _mrs_wc >= 4:
+        tags.insert(1 if w.get("trigger_candle") else 0,
+            '<span style="background:rgba(0,255,102,0.1);border:1px solid rgba(0,255,102,0.4);border-radius:var(--r-sm);padding:2px 8px;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:#00FF66">⏱ MRS ' + str(_mrs_wc) + '/5</span>')
+    elif _mrs_wc >= 3:
+        tags.insert(1 if w.get("trigger_candle") else 0,
+            '<span style="background:rgba(240,180,41,0.08);border:1px solid rgba(240,180,41,0.3);border-radius:var(--r-sm);padding:2px 8px;font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:var(--c-warning)">⏱ MRS ' + str(_mrs_wc) + '/5</span>')
     tags_html_str = " ".join(tags)
 
     sec_html = ('<span style="background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.2);'
@@ -1741,7 +1840,23 @@ if whale_results:
     _dist_c  = len(distrib_list)
     _all_c   = len(whale_results)
 
-    tab1,tab2,tab3,tab4,tab5,tab6,tab7 = st.tabs([
+    # Fix #3: pre-compute ENTRY HARI INI list
+    # Filter: trigger_candle ATAU mrs >= 4, harus is_long_signal, sorted MRS desc
+    entry_today_list = sorted(
+        [w for w in whale_results
+         if w.get("is_long_signal")
+         and (w.get("trigger_candle") or w.get("momentum_readiness", 0) >= 4)
+         and w.get("conviction", 0) >= min_conv_ui],
+        key=lambda w: (
+            -(w.get("trigger_candle", False)),           # trigger candle duluan
+            -w.get("momentum_readiness", 0),             # MRS tertinggi
+            -w.get("conviction", 0),
+        )
+    )
+    _entry_today_c = len(entry_today_list)
+
+    tab0,tab1,tab2,tab3,tab4,tab5,tab6,tab7 = st.tabs([
+        f"🚀 ENTRY HARI INI ({_entry_today_c})",
         f"◉ BEST LONG ({_best_c})",
         f"💧 PENGERINGAN ({_peng_c})",
         f"🎯 AT FLOOR ({_floor_c})",
@@ -1750,6 +1865,31 @@ if whale_results:
         f"◆ SEMUA ({_all_c})",
         "🏦 BROKER · KSEI",
     ])
+
+    with tab0:
+        st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
+        color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.3rem">
+        TRIGGER CANDLE AKTIF ATAU MRS ≥ 4 — SAHAM YANG LAYAK DIAKSI HARI INI</p>""",
+        unsafe_allow_html=True)
+        if entry_today_list:
+            _l0, _r0 = st.columns(2)
+            for i, w in enumerate(entry_today_list):
+                with (_l0 if i % 2 == 0 else _r0):
+                    with st.container():
+                        st.markdown(whale_card(w, NEON_GREEN), unsafe_allow_html=True)
+                    _t0 = w["ticker"].replace(".JK","")
+                    if st.button(f"📋 LOG {_t0}", key=f"log_today_{_t0}_{i}", use_container_width=True):
+                        st.session_state[f"log_form_{_t0}"] = True
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            sec_head("◆ RINGKASAN ANALISIS")
+            for _w in entry_today_list:
+                _render_analysis_card(_w, tradeable)
+        else:
+            render_empty_state("🚀", "TIDAK ADA ENTRY HARI INI",
+                               "Tidak ada saham dengan trigger candle atau MRS ≥ 4 saat ini.\n"
+                               "Cek tab BEST LONG untuk setup yang mendekati.",
+                               "python orchestrator.py --mode whale")
 
     with tab1:
         best = [w for w in smart_list
