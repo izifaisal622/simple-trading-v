@@ -363,21 +363,29 @@ class OwnershipAgent:
                 enriched += 1
                 logger.debug(f"[Enrich] {t} ✓")
 
-                # FIX: re-compute conviction + whale_quality setelah broker data masuk
-                # compute_conviction dan classify_whale_quality membaca broker_live
-                # dari result dict — tapi conviction sudah final saat scan.
-                # Tanpa re-compute, broker live boost tidak pernah teraplikasi.
+                # Re-compute conviction + whale_quality setelah broker live data masuk.
+                # compute_conviction sekarang sudah unified (9.4.6) — semua boost dan
+                # cap ada di dalamnya, tidak perlu manual cap lagi di sini.
+                # Tambah reconciliation quality↔conviction agar konsisten dengan
+                # pipeline _analyze_ticker.
                 try:
                     from agents.whale_scanner import compute_conviction, classify_whale_quality
                     _vol_ratio = r.get("ff_adj_vol_ratio", r.get("vol_ratio", 1.0))
-                    _new_conv  = compute_conviction(r, _vol_ratio)
-                    # Re-apply supply freedom cap (konsisten dengan _analyze_ticker)
-                    _ff   = r.get("free_float", 100)
-                    _ctrl = r.get("control_score", 0)
-                    if _ff > 60 and _ctrl <= 3:
-                        _new_conv = min(_new_conv, 7)
-                    r["conviction"]    = max(0, min(10, _new_conv))
+                    r["conviction"]    = compute_conviction(r, _vol_ratio)
                     r["whale_quality"] = classify_whale_quality(r)
+
+                    # Reconciliation quality ↔ conviction — sama persis dengan
+                    # yang dijalankan di _analyze_ticker setelah compute_conviction
+                    _wq  = r.get("whale_quality", "")
+                    _cnv = r.get("conviction", 0)
+                    _sig = r.get("signal", "")
+                    if _sig == "DISTRIBUTION" and _wq in ("SMART", "LIKELY_SMART"):
+                        r["whale_quality"] = "UNCERTAIN"
+                        _wq = "UNCERTAIN"
+                    if _wq == "SMART" and _cnv <= 4:
+                        r["whale_quality"] = "LIKELY_SMART"
+                    elif _wq == "LIKELY_SMART" and _cnv <= 2:
+                        r["whale_quality"] = "UNCERTAIN"
                 except Exception as _ce:
                     logger.debug(f"[Enrich] {t} re-compute failed: {_ce}")
             else:
