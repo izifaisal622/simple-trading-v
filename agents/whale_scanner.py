@@ -535,6 +535,7 @@ def hitung_barang(
     vol: pd.Series,
     high: pd.Series,
     low: pd.Series,
+    open_: pd.Series = None,
 ) -> dict:
     """
     Estimates supply concentration from price + volume behavior.
@@ -556,36 +557,60 @@ def hitung_barang(
        We estimate: berapa % dari average daily vol yang "absorbed"
        oleh buyer institusional (vol spike days with flat price)
 
+    V5: Tambah candle body direction filter.
+    Volume tinggi + harga flat bisa = akumulasi ATAU distribusi tersembunyi.
+    Bedanya ada di candle body:
+    - Close di upper half candle (close > midpoint) = buyer yang nampung → AKUMULASI
+    - Close di lower half candle (close < midpoint) = seller yang mendominasi → DISTRIBUSI
+
     Returns dict with:
     - absorbed_pct: estimated % of float absorbed by smart money
     - supply_tightness: 0-10 (10 = supply sangat langka)
     - control_score: 0-10 (Hengky's math equivalent)
     - hitung_barang_desc: human-readable summary
     - is_centralized: bool (True = supply dominated by 1 party)
+    - distribution_days: hari dengan pola distribusi tersembunyi
     """
     if len(close) < 20:
         return {"absorbed_pct": 0, "supply_tightness": 0,
                 "control_score": 0, "hitung_barang_desc": "",
-                "is_centralized": False}
+                "is_centralized": False, "distribution_days": 0}
+
+    # Fallback open_ jika tidak tersedia
+    if open_ is None:
+        open_ = close.shift(1).fillna(close)
 
     vol_ma20 = float(vol.rolling(20).mean().iloc[-1])
     vol_ma60 = float(vol.rolling(60).mean().iloc[-1]) if len(vol) >= 60 else vol_ma20
 
     # Days where volume was high but price barely moved (accumulation signature)
-    accum_days = 0
-    accum_vol_total = 0.0
-    total_vol_20d = float(vol.tail(20).sum())
+    accum_days        = 0
+    accum_vol_total   = 0.0
+    distribution_days = 0  # V5: pola distribusi tersembunyi
+    total_vol_20d     = float(vol.tail(20).sum())
 
     for i in range(min(20, len(close) - 1)):
         v     = float(vol.iloc[-(i+1)])
         c     = float(close.iloc[-(i+1)])
+        lo    = float(low.iloc[-(i+1)])
+        hi    = float(high.iloc[-(i+1)])
         c_prev= float(close.iloc[-(i+2)])
         price_move = (abs(c - c_prev) / c_prev * 100) if c_prev > 0 else 0.0
 
-        # High volume + low price movement = accumulation (pengeringan proxy)
+        # V5: Candle body direction — close position dalam candle range
+        candle_range = hi - lo
+        # close_pos: 1.0 = close di high, 0.0 = close di low
+        close_pos = ((c - lo) / candle_range) if candle_range > 0 else 0.5
+
+        # High volume + low price movement
         if v > vol_ma20 * 1.5 and price_move < 1.5:
-            accum_days += 1
-            accum_vol_total += v
+            if close_pos >= 0.5:
+                # Close di upper half = buyer yang absorb → AKUMULASI
+                accum_days += 1
+                accum_vol_total += v
+            else:
+                # Close di lower half = seller yang mendominasi → DISTRIBUSI TERSEMBUNYI
+                distribution_days += 1
 
     # What % of 20d volume was "absorbed" (accumulation-type days)
     absorbed_pct = (accum_vol_total / total_vol_20d * 100) if total_vol_20d > 0 else 0
@@ -618,6 +643,13 @@ def hitung_barang(
     if range_ratio < 0.4: control_score += 2  # strong compression
     elif range_ratio < 0.6: control_score += 1
 
+    # V5: Penalti distribusi tersembunyi
+    # Kalau lebih banyak distribution_days vs accum_days = sinyal palsu
+    if distribution_days > accum_days:
+        control_score = max(0, control_score - 2)  # penalti signifikan
+    elif distribution_days > 0:
+        control_score = max(0, control_score - 1)  # penalti ringan
+
     control_score = min(control_score, 10)
     is_centralized = control_score >= 6
 
@@ -627,6 +659,8 @@ def hitung_barang(
         parts.append(f"~{absorbed_pct:.0f}% vol diserap institusi")
     if accum_days >= 3:
         parts.append(f"akumulasi {accum_days}h tanpa harga naik")
+    if distribution_days >= 2:
+        parts.append(f"⚠️ {distribution_days}h distribusi tersembunyi terdeteksi")
     if range_ratio < 0.5:
         parts.append(f"range menyempit {range_ratio:.0%} → compression")
     if tightness_score >= 6:
@@ -640,6 +674,7 @@ def hitung_barang(
         "control_score":        control_score,
         "range_ratio":          round(range_ratio, 2),
         "accum_days_20d":       accum_days,
+        "distribution_days":    distribution_days,
         "vol_trend":            round(vol_trend, 2),
         "hitung_barang_desc":   desc,
         "is_centralized":       is_centralized,
@@ -801,13 +836,22 @@ def test_whale_defense(close: pd.Series, vol: pd.Series, low: pd.Series, high: p
     """
     Simulates the 'bit-over test' Hengky uses:
     Kalau ada hari di mana volume spike tapi harga tidak jatuh jauh → ada whale yang defend.
+
+    V5: Window diperlebar 5 → 20 hari.
+    Smart whale afiliasi emiten biasanya defend bertahap 2-4 minggu, bukan hanya 5 hari.
+    Defense dinilai dalam dua tier:
+    - Recent (5 hari): bobot lebih tinggi — defend aktif sekarang
+    - Extended (6-20 hari): bobot lebih rendah — pola defend historis
     """
     vol_ma = float(vol.rolling(20).mean().iloc[-1])
     if vol_ma <= 0:
         return {"defending": False, "defense_score": 0}
 
-    defense_days = 0
-    for i in range(min(5, len(close)-2)):
+    defense_days_recent   = 0  # 5 hari terakhir
+    defense_days_extended = 0  # 6-20 hari terakhir
+
+    window = min(20, len(close) - 2)
+    for i in range(window):
         v      = float(vol.iloc[-(i+1)])
         c      = float(close.iloc[-(i+1)])
         lo     = float(low.iloc[-(i+1)])
@@ -815,18 +859,37 @@ def test_whale_defense(close: pd.Series, vol: pd.Series, low: pd.Series, high: p
         prev_c = float(close.iloc[-(i+2)])
 
         is_heavy_vol  = v > vol_ma * 2.0
-        price_dropped = c < prev_c                    # harga turun
-        recovered     = ((c - lo) / (hi - lo) > 0.5) if (hi - lo) > 0 else False   # guard flat candle
+        price_dropped = c < prev_c
+        recovered     = ((c - lo) / (hi - lo) > 0.5) if (hi - lo) > 0 else False
         defended      = is_heavy_vol and price_dropped and recovered
-        if defended:
-            defense_days += 1
 
-    defense_score = min(defense_days * 3, 5)
+        if defended:
+            if i < 5:
+                defense_days_recent += 1
+            else:
+                defense_days_extended += 1
+
+    defense_days = defense_days_recent + defense_days_extended
+    # Recent defense bernilai 3x, extended 1x — reflect urgency temporal
+    defense_score = min(defense_days_recent * 3 + defense_days_extended * 1, 5)
+    is_defending  = defense_days_recent >= 1 or defense_days_extended >= 2
+
+    if defense_days_recent > 0 and defense_days_extended > 0:
+        desc = f"Whale defend {defense_days_recent}x (5h) + {defense_days_extended}x (20h) — pola bertahap"
+    elif defense_days_recent > 0:
+        desc = f"Whale defend {defense_days_recent}x dalam 5 hari"
+    elif defense_days_extended > 0:
+        desc = f"Whale defend {defense_days_extended}x dalam 20 hari — akumulasi bertahap"
+    else:
+        desc = ""
+
     return {
-        "defending":     defense_days >= 1,
-        "defense_days":  defense_days,
-        "defense_score": defense_score,
-        "description":   f"Whale defend {defense_days}x dalam 5 hari" if defense_days > 0 else "",
+        "defending":              is_defending,
+        "defense_days":           defense_days,
+        "defense_days_recent":    defense_days_recent,
+        "defense_days_extended":  defense_days_extended,
+        "defense_score":          defense_score,
+        "description":            desc,
     }
 
 
@@ -883,7 +946,30 @@ def classify_whale_quality(result: dict) -> str:
     ff = result.get("free_float", 100)
     if ff <= 15: score += 1
 
-    # Threshold adjusted: max score ~20
+    # V5: Afiliasi emiten — owner broker diketahui (0–3)
+    # Ini signal terkuat: kalau broker owner emiten yang beli = insider accumulation
+    owner_broker    = result.get("owner_broker", "")
+    broker_signal   = result.get("broker_signal", "")
+    broker_type     = result.get("broker_type", "")
+    broker_live     = result.get("broker_live", False)
+    ownership_data  = result.get("_ownership", {})
+    owner_confidence = ownership_data.get("confidence", "") if ownership_data else ""
+
+    if owner_broker:
+        # Owner broker diketahui — afiliasi emiten confirmed
+        if owner_confidence == "HIGH":   score += 3
+        elif owner_confidence == "MEDIUM": score += 2
+        else:                              score += 1
+        # Bonus: kalau broker live data confirm aktif beli hari ini
+        if broker_live and broker_signal == "SMART": score += 1
+    elif broker_signal == "SMART":
+        # Tidak tahu owner broker-nya, tapi broker yang aktif adalah institusi smart
+        score += 1
+        if broker_type in ("OWNER_PROXY", "MARKET_MAKER") and broker_live:
+            score += 1  # live confirmation dari broker yang biasa dipakai owner
+
+    # Threshold adjusted: max score ~24 (dengan afiliasi emiten HIGH + broker live)
+    # SMART threshold tetap 13 — emiten afiliasi otomatis naik ke SMART jika kriteria lain terpenuhi
     if score >= 13:  return "SMART"
     if score >= 8:   return "LIKELY_SMART"
     if score >= 4:   return "UNCERTAIN"
@@ -943,6 +1029,21 @@ def compute_conviction(r: dict, vol_ratio: float) -> int:
     # V4: Market Structure boost from scanner (if available)
     ms_boost = r.get("ms_conviction_boost", 0)
     score += ms_boost
+
+    # V5: Afiliasi emiten boost (0–2)
+    # Owner broker diketahui = conviction lebih tinggi karena insider accumulation
+    _owner_broker   = r.get("owner_broker", "")
+    _broker_signal  = r.get("broker_signal", "")
+    _broker_live    = r.get("broker_live", False)
+    _own_data       = r.get("_ownership", {})
+    _confidence     = _own_data.get("confidence", "") if _own_data else ""
+
+    if _owner_broker and _confidence == "HIGH":
+        score += 2
+    elif _owner_broker and _confidence == "MEDIUM":
+        score += 1
+    elif _broker_signal == "SMART" and _broker_live:
+        score += 1  # live data confirm smart broker aktif
 
     return max(0, min(10, score))
 
@@ -1209,6 +1310,8 @@ class WhaleScanner:
             close = df["Close"]
             high  = df["High"]
             low   = df["Low"]
+            # Open tersedia di yfinance — dipakai untuk candle body direction di hitung_barang
+            open_ = df["Open"] if "Open" in df.columns else close.shift(1).fillna(close)
 
             # Volume baseline
             vol_ma = float(vol.rolling(self.ma_period).mean().iloc[-1])
@@ -1279,7 +1382,7 @@ class WhaleScanner:
             def_data    = test_whale_defense(close, vol, low, high)
 
             # 5. V4: Hitung Barang (Hengky supply concentration math)
-            hb_data     = hitung_barang(close, vol, high, low)
+            hb_data     = hitung_barang(close, vol, high, low, open_)
 
             # 6. V4: Order Block (institutional footprint / compression zone)
             ob_data     = detect_order_block(close, high, low, vol)
@@ -1351,6 +1454,7 @@ class WhaleScanner:
                 "is_centralized":      hb_data["is_centralized"],
                 "hitung_barang_desc":  hb_data["hitung_barang_desc"],
                 "accum_days_20d":      hb_data["accum_days_20d"],
+                "distribution_days":   hb_data.get("distribution_days", 0),
                 "range_ratio":         hb_data["range_ratio"],
                 # V4: Order Block
                 "ob_detected":         ob_data["ob_detected"],
