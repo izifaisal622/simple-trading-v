@@ -655,6 +655,334 @@ def detect_gradual_accumulation(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Pump Fingerprint Detector — Historical Pre-Pump Pattern Recognition
+# Reverse-engineer kondisi sebelum pump terjadi dari data historis
+# "Market mover ada kepentingan" — kita cari jejaknya di OHLCV
+# ─────────────────────────────────────────────────────────────────────────────
+
+def detect_pump_fingerprint(
+    ticker: str,
+    close_daily: pd.Series,
+    vol_daily: pd.Series,
+    high_daily: pd.Series,
+    low_daily: pd.Series,
+    floor_price: float = 0.0,
+    pump_threshold_pct: float = 20.0,
+    pump_window_days: int = 10,
+    pre_pump_days: int = 20,
+    min_pumps: int = 1,
+) -> dict:
+    """
+    Detect pump fingerprint dari historis OHLCV.
+
+    Alur:
+    1. Aggregate daily → weekly untuk identifikasi pump events (lebih banyak historis)
+    2. Untuk setiap pump, analisis 20 hari pre-pump di daily:
+       - supply concentration (market_mover_proxy)
+       - pengeringan detected
+       - vol step-up pattern
+       - floor proximity
+    3. Build fingerprint dari rata-rata kondisi pre-pump
+    4. Bandingkan kondisi hari ini vs fingerprint → similarity_score
+
+    Similarity bobot:
+       market_mover_proxy  35%  (supply ketat = ada kepentingan)
+       pengeringan         30%  (barang kering = siap digerakkan)
+       vol_step_up         20%  (akumulasi gradual)
+       floor_proximity     15%  (entry point market mover)
+
+    Confidence:
+       HIGH/MEDIUM  jika pump_count >= 2
+       LOW          jika pump_count == 1
+       None         jika pump_count == 0 → return empty
+    """
+    _empty = {
+        "detected":          False,
+        "pump_count":        0,
+        "confidence":        "NONE",
+        "fingerprint":       "",
+        "avg_pre_pump_days": 0,
+        "avg_pengeringan":   False,
+        "avg_vol_stepup":    False,
+        "avg_supply_tight":  0.0,
+        "avg_floor_dist":    0.0,
+        "currently_matches": False,
+        "similarity_score":  0.0,
+        "description":       "",
+    }
+
+    if len(close_daily) < 60:
+        return _empty
+
+    try:
+        # ── Step 1: Aggregate daily → weekly, identifikasi pump events ────────
+        df_d = pd.DataFrame({
+            "close": close_daily.values,
+            "vol":   vol_daily.values,
+            "high":  high_daily.values,
+            "low":   low_daily.values,
+        }, index=close_daily.index)
+
+        weekly = df_d.resample("W").agg({
+            "close": "last",
+            "vol":   "sum",
+            "high":  "max",
+            "low":   "min",
+        }).dropna()
+
+        # Pump = close naik >threshold% dalam 2 minggu (weekly equivalent dari 10 hari)
+        pump_events = []  # list of (pump_start_daily_idx, pump_pct)
+        pump_window_weeks = max(2, pump_window_days // 5)
+
+        for i in range(pump_window_weeks, len(weekly)):
+            prev_close = float(weekly["close"].iloc[i - pump_window_weeks])
+            curr_close = float(weekly["close"].iloc[i])
+            if prev_close <= 0:
+                continue
+            ret = (curr_close / prev_close - 1) * 100
+            if ret >= pump_threshold_pct:
+                # Map weekly pump start back ke daily index
+                pump_week_start = weekly.index[i - pump_window_weeks]
+                # Cari daily index yang paling dekat dengan tanggal ini
+                daily_candidates = close_daily.index[close_daily.index <= pump_week_start]
+                if len(daily_candidates) == 0:
+                    continue
+                daily_idx = len(close_daily.index) - len(close_daily.index[close_daily.index >= daily_candidates[-1]])
+                if daily_idx < pre_pump_days:
+                    continue  # tidak cukup pre-pump data
+                pump_events.append({
+                    "daily_idx":  daily_idx,
+                    "pump_pct":   round(ret, 1),
+                    "pump_date":  str(pump_week_start)[:10],
+                })
+
+        # Deduplicate: kalau 2 pump terlalu dekat (< 20 hari), ambil yang lebih besar
+        deduped = []
+        for ev in pump_events:
+            if deduped and (ev["daily_idx"] - deduped[-1]["daily_idx"]) < 20:
+                if ev["pump_pct"] > deduped[-1]["pump_pct"]:
+                    deduped[-1] = ev
+            else:
+                deduped.append(ev)
+        pump_events = deduped
+
+        pump_count = len(pump_events)
+        if pump_count < min_pumps:
+            return _empty
+
+        # ── Step 2: Analisis pre-pump conditions untuk setiap pump event ──────
+        vol_ma_global = float(vol_daily.rolling(20).mean().iloc[-1])
+
+        fingerprints = []
+        for ev in pump_events:
+            idx = ev["daily_idx"]
+            pre_start = max(0, idx - pre_pump_days)
+            pre_end   = idx
+
+            pre_close = close_daily.iloc[pre_start:pre_end]
+            pre_vol   = vol_daily.iloc[pre_start:pre_end]
+            pre_high  = high_daily.iloc[pre_start:pre_end]
+            pre_low   = low_daily.iloc[pre_start:pre_end]
+
+            if len(pre_close) < 10:
+                continue
+
+            pre_vol_ma = float(pre_vol.mean())
+
+            # (A) Market mover proxy — supply concentration score (0-1)
+            # High vol + flat price days = supply diserap institusi
+            accum_days = 0
+            distrib_days = 0
+            for j in range(len(pre_close) - 1):
+                v  = float(pre_vol.iloc[j])
+                c  = float(pre_close.iloc[j])
+                lo = float(pre_low.iloc[j])
+                hi = float(pre_high.iloc[j])
+                c_prev = float(pre_close.iloc[j - 1]) if j > 0 else c
+                price_move = abs(c - c_prev) / c_prev * 100 if c_prev > 0 else 0
+                candle_range = hi - lo
+                close_pos = ((c - lo) / candle_range) if candle_range > 0 else 0.5
+                if v > pre_vol_ma * 1.5 and price_move < 1.5:
+                    if close_pos >= 0.5:
+                        accum_days += 1
+                    else:
+                        distrib_days += 1
+            supply_score = max(0.0, min(1.0,
+                (accum_days - distrib_days) / max(len(pre_close) * 0.3, 1)
+            ))
+
+            # (B) Pengeringan — vol declining + range narrowing (bool)
+            vol_first_half = float(pre_vol.iloc[:len(pre_vol)//2].mean())
+            vol_second_half = float(pre_vol.iloc[len(pre_vol)//2:].mean())
+            range_20d = float((pre_high.max() - pre_low.min()) / float(pre_close.iloc[-1]) * 100) if float(pre_close.iloc[-1]) > 0 else 999
+            pengeringan_pre = (vol_second_half < vol_first_half * 0.85 and range_20d < 15)
+
+            # (C) Vol step-up — weekly aggregate dari pre-pump period (bool)
+            pre_df_temp = pd.DataFrame({
+                "vol": pre_vol.values, "close": pre_close.values
+            }, index=pre_vol.index)
+            pre_weekly_vol = pre_df_temp["vol"].resample("W").sum().dropna()
+            stepup_count = sum(
+                1 for k in range(1, len(pre_weekly_vol))
+                if float(pre_weekly_vol.iloc[k]) > float(pre_weekly_vol.iloc[k-1])
+            )
+            vol_stepup_pre = stepup_count >= max(2, len(pre_weekly_vol) - 1)
+
+            # (D) Floor proximity — seberapa dekat harga dari floor saat pre-pump
+            last_pre_close = float(pre_close.iloc[-1])
+            fp = floor_price if floor_price > 0 else float(pre_low.min())
+            floor_dist_pre = ((last_pre_close - fp) / fp * 100) if fp > 0 else 50.0
+
+            fingerprints.append({
+                "supply_score":    supply_score,
+                "pengeringan":     pengeringan_pre,
+                "vol_stepup":      vol_stepup_pre,
+                "floor_dist":      floor_dist_pre,
+                "pump_pct":        ev["pump_pct"],
+            })
+
+        if not fingerprints:
+            return _empty
+
+        # ── Step 3: Build aggregate fingerprint ───────────────────────────────
+        n = len(fingerprints)
+        avg_supply   = float(np.mean([f["supply_score"] for f in fingerprints]))
+        avg_peng     = sum(1 for f in fingerprints if f["pengeringan"]) / n >= 0.5
+        avg_stepup   = sum(1 for f in fingerprints if f["vol_stepup"]) / n >= 0.5
+        avg_floor    = float(np.mean([f["floor_dist"] for f in fingerprints]))
+        avg_pump_pct = float(np.mean([f["pump_pct"] for f in fingerprints]))
+
+        # Fingerprint type
+        if avg_supply >= 0.5 and avg_peng:
+            fingerprint_type = "GRADUAL_INST"   # institusi akumulasi bertahap
+        elif avg_supply >= 0.5 and avg_stepup:
+            fingerprint_type = "STEP_UP_INST"   # institusi dengan vol step-up
+        elif avg_supply < 0.3 and avg_pump_pct > 40:
+            fingerprint_type = "GORENGAN"        # pump cepat tanpa akumulasi
+        else:
+            fingerprint_type = "MIXED"
+
+        confidence = "HIGH" if pump_count >= 3 else "MEDIUM" if pump_count >= 2 else "LOW"
+
+        # ── Step 4: Compare kondisi hari ini vs fingerprint ───────────────────
+        # Current conditions
+        last_20d_close = close_daily.tail(pre_pump_days)
+        last_20d_vol   = vol_daily.tail(pre_pump_days)
+        last_20d_high  = high_daily.tail(pre_pump_days)
+        last_20d_low   = low_daily.tail(pre_pump_days)
+
+        # Current supply score
+        cur_accum = cur_distrib = 0
+        cur_vol_ma = float(last_20d_vol.mean())
+        for j in range(len(last_20d_close) - 1):
+            v  = float(last_20d_vol.iloc[j])
+            c  = float(last_20d_close.iloc[j])
+            lo = float(last_20d_low.iloc[j])
+            hi = float(last_20d_high.iloc[j])
+            c_prev = float(last_20d_close.iloc[j-1]) if j > 0 else c
+            price_move = abs(c - c_prev) / c_prev * 100 if c_prev > 0 else 0
+            candle_range = hi - lo
+            close_pos = ((c - lo) / candle_range) if candle_range > 0 else 0.5
+            if v > cur_vol_ma * 1.5 and price_move < 1.5:
+                if close_pos >= 0.5:
+                    cur_accum += 1
+                else:
+                    cur_distrib += 1
+        cur_supply = max(0.0, min(1.0,
+            (cur_accum - cur_distrib) / max(len(last_20d_close) * 0.3, 1)
+        ))
+
+        # Current pengeringan
+        v_first = float(last_20d_vol.iloc[:10].mean())
+        v_last  = float(last_20d_vol.iloc[10:].mean())
+        cur_range = float((last_20d_high.max() - last_20d_low.min()) / float(last_20d_close.iloc[-1]) * 100) if float(last_20d_close.iloc[-1]) > 0 else 999
+        cur_peng = (v_last < v_first * 0.85 and cur_range < 15)
+
+        # Current vol step-up (weekly)
+        cur_df_temp = pd.DataFrame({"vol": last_20d_vol.values}, index=last_20d_vol.index)
+        cur_weekly_vol = cur_df_temp["vol"].resample("W").sum().dropna()
+        cur_stepup_count = sum(
+            1 for k in range(1, len(cur_weekly_vol))
+            if float(cur_weekly_vol.iloc[k]) > float(cur_weekly_vol.iloc[k-1])
+        )
+        cur_stepup = cur_stepup_count >= max(2, len(cur_weekly_vol) - 1)
+
+        # Current floor proximity
+        last_close = float(close_daily.iloc[-1])
+        fp_now = floor_price if floor_price > 0 else float(low_daily.tail(60).min())
+        cur_floor_dist = ((last_close - fp_now) / fp_now * 100) if fp_now > 0 else 50.0
+
+        # ── Similarity scoring (weighted) ─────────────────────────────────────
+        # Market mover proxy (35%): supply score similarity
+        supply_sim = 1.0 - min(1.0, abs(cur_supply - avg_supply) / max(avg_supply, 0.1))
+
+        # Pengeringan (30%): boolean match
+        peng_sim = 1.0 if (cur_peng == avg_peng) else 0.3
+
+        # Vol step-up (20%): boolean match
+        stepup_sim = 1.0 if (cur_stepup == avg_stepup) else 0.3
+
+        # Floor proximity (15%): within 10% of historical floor distance
+        floor_diff = abs(cur_floor_dist - avg_floor)
+        floor_sim = max(0.0, 1.0 - floor_diff / 20.0)
+
+        similarity_score = (
+            supply_sim  * 0.35 +
+            peng_sim    * 0.30 +
+            stepup_sim  * 0.20 +
+            floor_sim   * 0.15
+        )
+
+        # LOW confidence → bobot similarity dikurangi 50%
+        if confidence == "LOW":
+            similarity_score *= 0.5
+
+        currently_matches = similarity_score >= 0.60
+
+        # Description
+        match_parts = []
+        if cur_supply >= avg_supply * 0.8:
+            match_parts.append("supply ketat")
+        if cur_peng and avg_peng:
+            match_parts.append("pengeringan aktif")
+        if cur_stepup and avg_stepup:
+            match_parts.append("vol step-up")
+        if cur_floor_dist <= avg_floor * 1.2:
+            match_parts.append(f"dekat floor ({cur_floor_dist:.0f}%)")
+
+        if currently_matches:
+            desc = (f"Mirip pre-pump historis ({pump_count}x pump, avg +{avg_pump_pct:.0f}%) — "
+                    f"{', '.join(match_parts) if match_parts else 'pola terkonfirmasi'}")
+        else:
+            desc = (f"Belum mirip pre-pump historis ({pump_count}x pump) — "
+                    f"similarity {similarity_score:.0%}")
+
+        return {
+            "detected":           currently_matches,
+            "pump_count":         pump_count,
+            "confidence":         confidence,
+            "fingerprint":        fingerprint_type,
+            "avg_pre_pump_days":  pre_pump_days,
+            "avg_pengeringan":    avg_peng,
+            "avg_vol_stepup":     avg_stepup,
+            "avg_supply_tight":   round(avg_supply, 2),
+            "avg_floor_dist":     round(avg_floor, 1),
+            "avg_pump_pct":       round(avg_pump_pct, 1),
+            "currently_matches":  currently_matches,
+            "similarity_score":   round(similarity_score, 2),
+            "cur_supply":         round(cur_supply, 2),
+            "cur_pengeringan":    cur_peng,
+            "cur_vol_stepup":     cur_stepup,
+            "cur_floor_dist":     round(cur_floor_dist, 1),
+            "description":        desc,
+        }
+
+    except Exception as _e:
+        logger.debug(f"[PumpFP] {ticker} error: {_e}")
+        return _empty
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Whale Defense Test
 # "Kalau dihantam tapi tidak jatuh → ada yang nampung" (Hengky)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1076,12 +1404,19 @@ def classify_whale_quality(result: dict) -> str:
     if ff <= 15: score += 1
 
     # V5: Gradual accumulation — weekly step-up (0–2)
-    # Smart whale jarang beli sekaligus, mereka naik bertahap tiap minggu
     if result.get("gradual_accum"):
         ga_strength = result.get("gradual_strength", 1)
         score += min(ga_strength, 2)
     elif result.get("gradual_strength", 0) == 1:
-        score += 1  # partial — 3 dari 4 minggu terkonfirmasi
+        score += 1
+
+    # V5: Pump fingerprint — kondisi sekarang mirip pre-pump historis (0–3)
+    if result.get("pump_fp_matches"):
+        sim  = result.get("pump_fp_similarity", 0.0)
+        conf = result.get("pump_fp_confidence", "LOW")
+        if conf == "HIGH" and sim >= 0.75:   score += 3
+        elif conf in ("HIGH","MEDIUM") and sim >= 0.60: score += 2
+        else:                                  score += 1  # LOW confidence match
 
     # V5: Afiliasi emiten — owner broker diketahui (0–3)
     # Ini signal terkuat: kalau broker owner emiten yang beli = insider accumulation
@@ -1172,6 +1507,13 @@ def compute_conviction(r: dict, vol_ratio: float) -> int:
         score += min(r.get("gradual_strength", 1), 2)
     elif r.get("gradual_strength", 0) == 1:
         score += 1
+
+    # V5: Pump fingerprint boost (0–2)
+    if r.get("pump_fp_matches"):
+        sim  = r.get("pump_fp_similarity", 0.0)
+        conf = r.get("pump_fp_confidence", "LOW")
+        if conf in ("HIGH","MEDIUM") and sim >= 0.70: score += 2
+        else:                                           score += 1
 
     # V5: Afiliasi emiten boost (0–2)
     # Owner broker diketahui = conviction lebih tinggi karena insider accumulation
@@ -1533,6 +1875,16 @@ class WhaleScanner:
             # 7. V5: Gradual accumulation — weekly step-up pattern (4 minggu)
             ga_data     = detect_gradual_accumulation(close, vol, high, low, min_weeks=4)
 
+            # 8. V5: Pump fingerprint — reverse-engineer pre-pump conditions dari historis
+            fp_data     = detect_pump_fingerprint(
+                ticker       = ticker,
+                close_daily  = close,
+                vol_daily    = vol,
+                high_daily   = high,
+                low_daily    = low,
+                floor_price  = floor_data.get("floor_price", 0.0),
+            )
+
             # 4. Multi-day accumulation
             accum_days  = int((vol.tail(5) > vol_ma * 1.5).sum())
             pattern     = "SUSTAINED" if accum_days >= 3 else "SINGLE_DAY"
@@ -1633,6 +1985,18 @@ class WhaleScanner:
                 "gradual_range_pct":    ga_data["avg_weekly_range_pct"],
                 "gradual_strength":     ga_data["strength"],
                 "gradual_desc":         ga_data["description"],
+                # V5: Pump fingerprint
+                "pump_fp_detected":     fp_data["detected"],
+                "pump_fp_count":        fp_data["pump_count"],
+                "pump_fp_confidence":   fp_data["confidence"],
+                "pump_fp_type":         fp_data["fingerprint"],
+                "pump_fp_similarity":   fp_data["similarity_score"],
+                "pump_fp_matches":      fp_data["currently_matches"],
+                "pump_fp_avg_pct":      fp_data["avg_pump_pct"],
+                "pump_fp_desc":         fp_data["description"],
+                "pump_fp_cur_supply":   fp_data["cur_supply"],
+                "pump_fp_cur_peng":     fp_data["cur_pengeringan"],
+                "pump_fp_cur_stepup":   fp_data["cur_vol_stepup"],
             }
 
             # Phase 1+2: Ownership data (free float + static broker profile)
