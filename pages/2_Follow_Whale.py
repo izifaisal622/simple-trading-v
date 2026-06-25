@@ -25,6 +25,12 @@ from assets_ui import (
 )
 _ = (sparkline_svg, fmt_rp, fmt_pct, fmt_vol, fmt_bn, fmt_conv, SIG_COLORS, VP_ZONE_COLORS, REGIME_COLORS, BG_CARD, BG_DEEP, TEXT_DIM, TEXT_MUTED, score_badge, vp_zone_pill, signal_badge)  # used in st.markdown HTML templates
 try:
+    from agents.scanner_agent import detect_dividend_rally_risk as _detect_div_risk
+    _HAS_DIV_RISK = True
+except Exception:
+    _HAS_DIV_RISK = False
+    def _detect_div_risk(df): return {"div_rally_risk": False, "div_risk_reason": "", "div_gap_payer": False, "div_velocity": False, "div_est_gap_pct": 0.0}
+try:
     from agents.ownership_agent import OwnershipAgent, get_broker_html as _get_broker_html
     _own_agent = OwnershipAgent()
     _HAS_OWNERSHIP = True
@@ -503,6 +509,40 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     # Timing info DULU (blocker → trigger → gradual → RS), screening BELAKANGAN
     # User dapat sinyal actionable tanpa harus scroll screening info dulu
     narratives = []
+
+    # 0. DIVIDEND RALLY RISK — cek sebelum slow exit
+    # Pakai data dari w jika sudah di-compute (whale scan path),
+    # atau compute on-the-fly jika belum ada (fallback)
+    _div_risk_flag   = w.get("div_rally_risk", None)
+    _div_risk_reason = w.get("div_risk_reason", "")
+    _div_est_gap     = w.get("div_est_gap_pct", 0.0)
+    if _div_risk_flag is None and _HAS_DIV_RISK:
+        # Whale scanner tidak compute ini — fallback: ambil daily data dari yfinance
+        try:
+            import yfinance as yf
+            _t = w.get("ticker", "").replace(".JK", "") + ".JK"
+            _df_d = yf.download(_t, period="1y", interval="1d",
+                                progress=False, auto_adjust=True)
+            if _df_d is not None and len(_df_d) >= 30:
+                if hasattr(_df_d.columns, "get_level_values"):
+                    _df_d.columns = _df_d.columns.get_level_values(0)
+                _div_res         = _detect_div_risk(_df_d)
+                _div_risk_flag   = _div_res.get("div_rally_risk", False)
+                _div_risk_reason = _div_res.get("div_risk_reason", "")
+                _div_est_gap     = _div_res.get("div_est_gap_pct", 0.0)
+            else:
+                _div_risk_flag = False
+        except Exception:
+            _div_risk_flag = False
+
+    if _div_risk_flag:
+        _est_txt = f" · estimasi gap ~-{_div_est_gap:.1f}% saat ex-date" if _div_est_gap > 0 else ""
+        narratives.append(
+            f"**⚠ POTENSI DIVIDEN RALLY — bukan breakout organik.** "
+            f"{_div_risk_reason}{_est_txt}. "
+            f"Spike harga ini kemungkinan cum-date chasing oleh retail. "
+            f"Harga akan gap down sebesar nilai dividen setelah ex-date — net gain bisa nol atau negatif kalau beli sekarang."
+        )
 
     # 1. BLOCKER — slow exit: kalau ini ada, user stop baca dan tidak entry
     if slow_exit and slow_exit_desc:

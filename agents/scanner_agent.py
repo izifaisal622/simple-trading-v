@@ -53,25 +53,26 @@ def _flatten_multiindex(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Dividend Rally Risk Detection — A + C
-# Deteksi tanpa butuh calendar API:
-#   A) Gap down historis: apakah ticker ini punya pola gap down tahunan
-#   C) Price velocity: apakah spike terlalu cepat tanpa base matang
+# Dividend Rally Risk Detection — A + C (v2)
+# A = gap down interval-consistent (dividen payer genuine, bukan random volatility)
+# C = price velocity amplifier — hanya memperkuat A, tidak trigger sendiri
 # ─────────────────────────────────────────────────────────────────────────────
 
 def detect_dividend_rally_risk(df_daily: pd.DataFrame) -> dict:
     """
     Return dict:
-        div_rally_risk   : bool  — True jika ada warning
-        div_risk_reason  : str   — deskripsi singkat penyebab
-        div_gap_payer    : bool  — punya pola gap down historis
-        div_velocity     : bool  — spike terlalu cepat tanpa base
+        div_rally_risk   : bool  — True jika warning aktif
+        div_risk_reason  : str   — deskripsi spesifik
+        div_gap_payer    : bool  — gap down interval-consistent (genuine div payer)
+        div_velocity     : bool  — spike cepat saat gap payer aktif (amplifier)
+        div_est_gap_pct  : float — estimasi % gap down berikutnya (avg gap historis)
     """
     result = {
         "div_rally_risk":  False,
         "div_risk_reason": "",
         "div_gap_payer":   False,
         "div_velocity":    False,
+        "div_est_gap_pct": 0.0,
     }
 
     if df_daily is None or len(df_daily) < 30:
@@ -81,21 +82,52 @@ def detect_dividend_rally_risk(df_daily: pd.DataFrame) -> dict:
         close = df_daily["Close"].astype(float)
         open_ = df_daily["Open"].astype(float)
 
-        # ── A: Deteksi gap down historis ─────────────────────────────────────
-        # Gap down = open hari ini < close kemarin * 0.95 (≥5% gap)
-        prev_close = close.shift(1)
-        gap_down   = (open_ < prev_close * 0.95) & (open_ > 0) & (prev_close > 0)
-        n_gap_down = int(gap_down.sum())
+        # ── A: Gap down interval-consistent ──────────────────────────────────
+        # Gap down = open < close_kemarin * 0.95 (≥5%)
+        # Dividen payer: gap terjadi dengan interval KONSISTEN (±45 hari antar gap)
+        # Bukan random volatility yang gap down tidak beraturan
+        prev_close  = close.shift(1)
+        gap_mask    = (open_ < prev_close * 0.95) & (open_ > 0) & (prev_close > 0)
+        gap_indices = [i for i, v in enumerate(gap_mask) if v]
+        n_gap_down  = len(gap_indices)
 
-        # 2+ gap down dalam 1 tahun = pola dividen payer yang konsisten
+        is_consistent = False
+        gap_sizes     = []
+
         if n_gap_down >= 2:
-            result["div_gap_payer"] = True
+            # Hitung interval antar gap dalam hari trading
+            intervals = [
+                gap_indices[i+1] - gap_indices[i]
+                for i in range(len(gap_indices) - 1)
+            ]
+            # Interval konsisten = semua gap dalam ±45 hari satu sama lain
+            # Dividen semi-annual ≈ 125 hari, annual ≈ 250 hari trading
+            # Toleransi 45 hari untuk variasi jadwal RUPS
+            max_interval_diff = max(intervals) - min(intervals) if intervals else 999
+            if max_interval_diff <= 45:
+                is_consistent = True
 
-        # ── C: Price velocity anomaly ─────────────────────────────────────────
-        # Naik >8% dalam 3 hari terakhir DAN >12% dalam 10 hari = late-stage rally
+            # Hitung rata-rata gap size untuk estimasi
+            for idx in gap_indices:
+                if idx > 0:
+                    g_open  = float(open_.iloc[idx])
+                    g_prev  = float(prev_close.iloc[idx])
+                    gap_pct = (g_prev - g_open) / g_prev * 100 if g_prev > 0 else 0
+                    gap_sizes.append(gap_pct)
+
+        avg_gap_pct = sum(gap_sizes) / len(gap_sizes) if gap_sizes else 0.0
+
+        if is_consistent and n_gap_down >= 2:
+            result["div_gap_payer"]   = True
+            result["div_est_gap_pct"] = round(avg_gap_pct, 1)
+
+        # ── C: Price velocity — amplifier A saja ─────────────────────────────
+        # Hanya dihitung jika A sudah True — bukan trigger mandiri
+        # Logika: kalau ticker ini dividen payer + harga naik cepat sekarang
+        # → kemungkinan sedang dalam fase cum-date rally
         gain_3d  = 0.0
         gain_10d = 0.0
-        if len(close) >= 11:
+        if result["div_gap_payer"] and len(close) >= 11:
             price_now  = float(close.iloc[-1])
             price_3d   = float(close.iloc[-4])
             price_10d  = float(close.iloc[-11])
@@ -104,14 +136,13 @@ def detect_dividend_rally_risk(df_daily: pd.DataFrame) -> dict:
             if gain_3d > 8.0 and gain_10d > 12.0:
                 result["div_velocity"] = True
 
-        # ── Combine ───────────────────────────────────────────────────────────
-        reasons = []
+        # ── Combine — A wajib ada ─────────────────────────────────────────────
         if result["div_gap_payer"]:
-            reasons.append(f"gap down {n_gap_down}x/tahun — pola dividen payer")
-        if result["div_velocity"]:
-            reasons.append(f"spike +{gain_3d:.1f}% dalam 3 hari tanpa base matang")
-
-        if reasons:
+            reasons = [f"gap down {n_gap_down}x interval konsisten — dividen payer"]
+            if avg_gap_pct > 0:
+                reasons.append(f"estimasi gap ~-{avg_gap_pct:.1f}% saat ex-date")
+            if result["div_velocity"]:
+                reasons.append(f"sedang spike +{gain_3d:.1f}% — kemungkinan cum-date rally")
             result["div_rally_risk"]  = True
             result["div_risk_reason"] = " · ".join(reasons)
 
