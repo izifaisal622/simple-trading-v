@@ -1130,55 +1130,55 @@ if ema_results:
         and r.get("score_raw", r.get("score", 0)) >= 5
     ]
     if _pipeline:
-        sec_head(f"◌ PIPELINE — {len(_pipeline)} approaching · RS kuat · pantau, bukan entry")
-        st.markdown(
-            '<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:#64748B;'
-            'margin:-0.3rem 0 0.4rem 0">Saham dengan RS ≥ +20% vs IHSG dan score ≥ 5, '
-            'tapi EMA masih dalam fase CORRECTING. '
-            '<b style="color:#F0B429">Bukan sinyal entry</b> — watchlist untuk minggu depan.</div>',
-            unsafe_allow_html=True
-        )
-        # Score cap notice
-        if cycle in ("BEAR_CONSOLIDATION", "SPECULATIVE"):
+        with st.expander(f"◌ PIPELINE — {len(_pipeline)} approaching · RS kuat · pantau, bukan entry", expanded=False):
             st.markdown(
-                '<div style="background:rgba(240,180,41,0.07);border:1px solid rgba(240,180,41,0.3);'
-                'border-radius:6px;padding:0.5rem 0.8rem;margin-bottom:0.6rem">'
-                '<span style="font-family:Share Tech Mono,monospace;font-size:11px;color:#F0B429">'
-                '⚠ REGIME SPECULATIVE — score di-cap 4/10. Score yang ditampilkan adalah score aktual '
-                'sebelum cap — menunjukkan potensi saham jika regime membaik.</span>'
-                '</div>',
+                '<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:#64748B;'
+                'margin:-0.3rem 0 0.4rem 0">Saham dengan RS ≥ +20% vs IHSG dan score ≥ 5, '
+                'tapi EMA masih dalam fase CORRECTING. '
+                '<b style="color:#F0B429">Bukan sinyal entry</b> — watchlist untuk minggu depan.</div>',
                 unsafe_allow_html=True
             )
-        _pl_rows = []
-        for r in sorted(_pipeline, key=lambda x: (-x.get("rs_vs_ihsg_4w", 0), -x.get("score_raw", x.get("score", 0)))):
-            _ticker    = r.get("ticker", "").replace(".JK", "")
-            _sig       = r.get("signal", "")
-            _score     = r.get("score", 0)
-            _score_raw = r.get("score_raw", _score)
-            _capped    = r.get("score_capped", False) or (_score_raw > _score)
-            _score_str = f"{_score_raw}/10 (cap→{_score})" if _capped else f"{_score}/10"
-            _pl_rows.append({
-                "Ticker":      _ticker,
-                "Signal":      _sig,
-                "Potensi":     _score_str,
-                "Close":       r.get("close", 0),
-                "RS%":         round(r.get("rs_vs_ihsg_4w", 0), 1),
-                "Vol×":        round(r.get("vol_ratio", 0), 2),
-                "MCF":         r.get("mcf_score", 0),
-                "Risk%":       round(r.get("risk_pct", 0), 1),
-            })
-        st.dataframe(
-            _pl_rows,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Close":  st.column_config.NumberColumn("Close",  format="Rp%,.0f"),
-                "RS%":    st.column_config.NumberColumn("RS%",    format="%+.1f%%"),
-                "Vol×":   st.column_config.NumberColumn("Vol×",   format="%.2f×"),
-                "MCF":    st.column_config.NumberColumn("MCF",    format="%d/10"),
-                "Risk%":  st.column_config.NumberColumn("Risk%",  format="%.1f%%"),
-            }
-        )
+            # Score cap notice
+            if cycle in ("BEAR_CONSOLIDATION", "SPECULATIVE"):
+                st.markdown(
+                    '<div style="background:rgba(240,180,41,0.07);border:1px solid rgba(240,180,41,0.3);'
+                    'border-radius:6px;padding:0.5rem 0.8rem;margin-bottom:0.6rem">'
+                    '<span style="font-family:Share Tech Mono,monospace;font-size:11px;color:#F0B429">'
+                    '⚠ REGIME SPECULATIVE — score di-cap 4/10. Score yang ditampilkan adalah score aktual '
+                    'sebelum cap — menunjukkan potensi saham jika regime membaik.</span>'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
+            _pl_rows = []
+            for r in sorted(_pipeline, key=lambda x: (-x.get("rs_vs_ihsg_4w", 0), -x.get("score_raw", x.get("score", 0)))):
+                _ticker    = r.get("ticker", "").replace(".JK", "")
+                _sig       = r.get("signal", "")
+                _score     = r.get("score", 0)
+                _score_raw = r.get("score_raw", _score)
+                _capped    = r.get("score_capped", False) or (_score_raw > _score)
+                _score_str = f"{_score_raw}/10 (cap→{_score})" if _capped else f"{_score}/10"
+                _pl_rows.append({
+                    "Ticker":      _ticker,
+                    "Signal":      _sig,
+                    "Potensi":     _score_str,
+                    "Close":       r.get("close", 0),
+                    "RS%":         round(r.get("rs_vs_ihsg_4w", 0), 1),
+                    "Vol×":        round(r.get("vol_ratio", 0), 2),
+                    "MCF":         r.get("mcf_score", 0),
+                    "Risk%":       round(r.get("risk_pct", 0), 1),
+                })
+            st.dataframe(
+                _pl_rows,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Close":  st.column_config.NumberColumn("Close",  format="Rp%,.0f"),
+                    "RS%":    st.column_config.NumberColumn("RS%",    format="%+.1f%%"),
+                    "Vol×":   st.column_config.NumberColumn("Vol×",   format="%.2f×"),
+                    "MCF":    st.column_config.NumberColumn("MCF",    format="%d/10"),
+                    "Risk%":  st.column_config.NumberColumn("Risk%",  format="%.1f%%"),
+                }
+            )
 
     # ── ALL SETUPS with filter controls ──────────────────────────────────────
     rest = [r for r in ema_results if r.get("signal") not in ("BREAKOUT", "STRONG_BREAKOUT")]

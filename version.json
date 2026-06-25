@@ -1,7 +1,8 @@
 {
-  "version": "9.5.6",
+  "version": "9.5.7",
   "date": "2026-06-25",
   "changelog": [
+    "9.5.7 — FIX Page 1: PIPELINE section jadi st.expander collapsed — section utama WATCHLIST/BREAKOUT langsung terlihat tanpa scroll",
     "9.5.6 — FIX Page 2 whale: IHSG UNKNOWN — retry 3x+timeout15s di get_ihsg_regime(); tambah mom_2w+pct_from_low ke adapt_to_market return dict dan fallback",
     "9.5.5 — FIX Page 2 whale: IHSG UNKNOWN — retry 3x+timeout15s di get_ihsg_regime(); tambah mom_2w+pct_from_low ke adapt_to_market return dict dan fallback",
     {
