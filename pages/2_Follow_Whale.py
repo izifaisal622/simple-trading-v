@@ -1364,6 +1364,8 @@ def _trading_summary_row(w: dict) -> str:
     # ── Verdict logic ────────────────────────────────────────────────────────
     # P02-W5: weighted positive_signals — bobot sesuai Hengky priority
     # Defending + ctrl tinggi = bukti terkuat. EMA/vol = konfirmasi saja.
+    tc_det = w.get("trigger_candle", False)
+    mrs    = w.get("momentum_readiness", 0)
     positive_signals = sum([
         defending * 2,                              # 2pt: whale defend = bukti terkuat
         (ctrl >= 6) * 2,                            # 2pt: control score tinggi
@@ -1375,9 +1377,11 @@ def _trading_summary_row(w: dict) -> str:
         (ema_tr == "BULLISH") * 1,                  # 1pt: EMA trend
         (ff_vol >= 1.5) * 1,                        # 1pt: volume konfirmasi
         (conv >= 6) * 1,                            # 1pt: conviction
+        tc_det * 2,                                 # 2pt: trigger candle — momen push dimulai
+        (mrs >= 4) * 1,                             # 1pt: MRS >= 4 = timing siap
     ])
-    # Max score = 12 — normalisasi ke skala 10 (proporsional terhadap conviction /10)
-    positive_signals = round(positive_signals * 10 / 12)
+    # Max score = 14 — normalisasi ke skala 10
+    positive_signals = round(positive_signals * 10 / 14)
 
     if is_dist:
         verdict      = "DISTRIBUSI"
