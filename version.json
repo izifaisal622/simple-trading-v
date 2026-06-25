@@ -1,7 +1,8 @@
 {
-  "version": "9.5.9",
+  "version": "9.6.0",
   "date": "2026-06-25",
   "changelog": [
+    "9.6.0 — FEAT Page 1: dividend rally risk warning — deteksi A) gap down historis 2x+/tahun (pola dividen payer) + C) price velocity >8% dalam 3 hari tanpa base matang; badge kuning di breakout card tanpa block sinyal",
     "9.5.9 — FIX Page 2: NameError action not defined di _render_analysis_card — ganti action dengan verdict di conclusion box; hapus action dari template vars tuple",
     "9.5.8 — FIX Page 2: market_bias dihitung dari results_full (semua ticker teranalisis) bukan results top_n — eliminasi STRONG SELL false positive akibat sample size 3 ticker",
     "9.5.7 — FIX Page 1: PIPELINE section jadi st.expander collapsed — section utama WATCHLIST/BREAKOUT langsung terlihat tanpa scroll",

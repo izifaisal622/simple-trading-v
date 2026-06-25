@@ -52,6 +52,75 @@ def _flatten_multiindex(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Dividend Rally Risk Detection — A + C
+# Deteksi tanpa butuh calendar API:
+#   A) Gap down historis: apakah ticker ini punya pola gap down tahunan
+#   C) Price velocity: apakah spike terlalu cepat tanpa base matang
+# ─────────────────────────────────────────────────────────────────────────────
+
+def detect_dividend_rally_risk(df_daily: pd.DataFrame) -> dict:
+    """
+    Return dict:
+        div_rally_risk   : bool  — True jika ada warning
+        div_risk_reason  : str   — deskripsi singkat penyebab
+        div_gap_payer    : bool  — punya pola gap down historis
+        div_velocity     : bool  — spike terlalu cepat tanpa base
+    """
+    result = {
+        "div_rally_risk":  False,
+        "div_risk_reason": "",
+        "div_gap_payer":   False,
+        "div_velocity":    False,
+    }
+
+    if df_daily is None or len(df_daily) < 30:
+        return result
+
+    try:
+        close = df_daily["Close"].astype(float)
+        open_ = df_daily["Open"].astype(float)
+
+        # ── A: Deteksi gap down historis ─────────────────────────────────────
+        # Gap down = open hari ini < close kemarin * 0.95 (≥5% gap)
+        prev_close = close.shift(1)
+        gap_down   = (open_ < prev_close * 0.95) & (open_ > 0) & (prev_close > 0)
+        n_gap_down = int(gap_down.sum())
+
+        # 2+ gap down dalam 1 tahun = pola dividen payer yang konsisten
+        if n_gap_down >= 2:
+            result["div_gap_payer"] = True
+
+        # ── C: Price velocity anomaly ─────────────────────────────────────────
+        # Naik >8% dalam 3 hari terakhir DAN >12% dalam 10 hari = late-stage rally
+        gain_3d  = 0.0
+        gain_10d = 0.0
+        if len(close) >= 11:
+            price_now  = float(close.iloc[-1])
+            price_3d   = float(close.iloc[-4])
+            price_10d  = float(close.iloc[-11])
+            gain_3d    = (price_now - price_3d)  / price_3d  * 100 if price_3d  > 0 else 0.0
+            gain_10d   = (price_now - price_10d) / price_10d * 100 if price_10d > 0 else 0.0
+            if gain_3d > 8.0 and gain_10d > 12.0:
+                result["div_velocity"] = True
+
+        # ── Combine ───────────────────────────────────────────────────────────
+        reasons = []
+        if result["div_gap_payer"]:
+            reasons.append(f"gap down {n_gap_down}x/tahun — pola dividen payer")
+        if result["div_velocity"]:
+            reasons.append(f"spike +{gain_3d:.1f}% dalam 3 hari tanpa base matang")
+
+        if reasons:
+            result["div_rally_risk"]  = True
+            result["div_risk_reason"] = " · ".join(reasons)
+
+    except Exception:
+        pass
+
+    return result
+
+
 class ScannerAgent:
 
     def __init__(self, config: StrategyConfig) -> None:
@@ -250,6 +319,13 @@ class ScannerAgent:
             conn.close()
         except Exception as exc:
             logger.debug(f"[Scanner] {ticker} DB log: {exc}")
+
+        # ── Dividend Rally Risk — A+C ─────────────────────────────────────────
+        try:
+            _div = detect_dividend_rally_risk(df_d)
+            r.update(_div)
+        except Exception as exc:
+            logger.debug(f"[Scanner] {ticker} div risk: {exc}")
 
         return r
 

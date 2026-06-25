@@ -974,6 +974,21 @@ if ema_results:
             _vp_badge    = vp_zone_pill(_vp)
             _dual_tag    = '<span style="background:rgba(0,255,102,0.08);border:1px solid rgba(0,255,102,0.2);border-radius:4px;padding:1px 6px;font-family:Share Tech Mono,monospace;font-size:11px;color:#00FF66">&#10003; DUAL</span>' if _dual else ""
 
+            # Dividend rally risk warning badge
+            _div_risk    = r.get("div_rally_risk", False)
+            _div_reason  = r.get("div_risk_reason", "")
+            _div_badge   = (
+                '<span style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);'
+                'border-radius:4px;padding:1px 7px;font-family:Share Tech Mono,monospace;'
+                'font-size:11px;color:#FBBF24">⚠ DIV RALLY?</span>'
+            ) if _div_risk else ""
+            _div_note    = (
+                f'<div style="font-family:Share Tech Mono,monospace;font-size:10px;color:#92400E;'
+                f'background:rgba(251,191,36,0.06);border-left:2px solid #FBBF24;'
+                f'padding:0.25rem 0.6rem;margin-top:0.3rem">'
+                f'⚠ Potensi dividen rally — bukan breakout organik · {_div_reason}</div>'
+            ) if _div_risk else ""
+
             # Build complete card HTML as single string
             _card_html = (
                 f'<div style="background:{_card_bg};border:{_border_width} solid rgba(255,255,255,0.06);'
@@ -986,9 +1001,11 @@ if ema_results:
                 f'{_score_badge}'
                 f'{_vp_badge}'
                 f'{_dual_tag}'
+                f'{_div_badge}'
                 f'{risk_badge}'
                 f'<span style="margin-left:auto;font-family:Share Tech Mono,monospace;font-size:12px;color:#64748B">Vol {vol:.1f}&#215; &#183; Risk {risk:.0f}%</span>'
                 f'</div>'
+                f'{_div_note}'
                 f'</div>'
             )
 
