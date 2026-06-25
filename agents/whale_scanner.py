@@ -87,7 +87,7 @@ import numpy as np
 import pandas as pd
 
 from core.data_feed import DataFeed, get_ihsg_regime, IDX_WATCHLIST
-from core.data_feed import MSCI_CANDIDATES, IDX30_LQ45_CANDIDATES, get_catalyst_universe, get_dynamic_universe
+from core.data_feed import MSCI_CANDIDATES, IDX30_LQ45_CANDIDATES, get_catalyst_universe, get_dynamic_universe, detect_dividend_rally_risk
 try:
     from agents.ownership_agent import OwnershipAgent
     _ownership_agent = OwnershipAgent()
@@ -2647,6 +2647,13 @@ class WhaleScanner:
             result["momentum_readiness"]       = _mrs
             result["momentum_readiness_label"] = _mrs_label
             result["momentum_readiness_parts"] = _mrs_parts
+
+            # ── Dividend Rally Risk ───────────────────────────────────────────
+            try:
+                _div = detect_dividend_rally_risk(df)
+                result.update(_div)
+            except Exception:
+                pass
 
             return result
 

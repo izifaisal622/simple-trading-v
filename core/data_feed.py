@@ -880,9 +880,21 @@ def get_ihsg_regime(period: str = "1y") -> dict:
       murni, tidak terpengaruh level harga 4W lalu
     """
     try:
-        df = yf.download("^JKSE", period=period, interval="1wk",
-                         progress=False, auto_adjust=True)
+        import time as _time
+        df = None
+        for _attempt in range(3):
+            try:
+                df = yf.download("^JKSE", period=period, interval="1wk",
+                                 progress=False, auto_adjust=True, timeout=15)
+                if df is not None and len(df) >= 20:
+                    break
+                logger.warning(f"[DataFeed] IHSG fetch attempt {_attempt+1}: empty/short result, retrying...")
+            except Exception as _e:
+                logger.warning(f"[DataFeed] IHSG fetch attempt {_attempt+1} error: {_e}")
+            if _attempt < 2:
+                _time.sleep(2)
         if df is None or len(df) < 20:
+            logger.error("[DataFeed] IHSG fetch gagal setelah 3x retry — returning UNKNOWN")
             return {"cycle": "UNKNOWN", "ihsg": 0, "mom_4w": 0, "mom_2w": 0,
                     "breadth": 0, "pct_from_low": 0}
 
@@ -1225,3 +1237,96 @@ def get_catalyst_universe() -> list:
             out.append(t + ".JK")
 
     return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dividend Rally Risk Detection — shared utility (A + C v2)
+# Dipanggil dari scanner_agent dan whale_scanner tanpa circular import
+# ─────────────────────────────────────────────────────────────────────────────
+
+def detect_dividend_rally_risk(df_daily: "pd.DataFrame") -> dict:
+    """
+    Deteksi potensi dividen rally dari OHLCV harian tanpa butuh calendar API.
+
+    A) Gap down interval-consistent: gap ≥5% yang terjadi dengan interval
+       berulang (±45 hari antar gap) — signature dividen payer genuine.
+    C) Price velocity amplifier: spike >8%/3hari hanya dievaluasi jika A True.
+
+    Return dict:
+        div_rally_risk   : bool  — True jika warning aktif
+        div_risk_reason  : str   — deskripsi spesifik untuk display
+        div_gap_payer    : bool  — gap down interval-consistent terdeteksi
+        div_velocity     : bool  — spike cepat saat gap payer aktif
+        div_est_gap_pct  : float — estimasi % gap down berikutnya
+    """
+    result = {
+        "div_rally_risk":  False,
+        "div_risk_reason": "",
+        "div_gap_payer":   False,
+        "div_velocity":    False,
+        "div_est_gap_pct": 0.0,
+    }
+
+    if df_daily is None or len(df_daily) < 30:
+        return result
+
+    try:
+        close = df_daily["Close"].astype(float)
+        open_ = df_daily["Open"].astype(float)
+
+        # ── A: Gap down interval-consistent ──────────────────────────────────
+        prev_close  = close.shift(1)
+        gap_mask    = (open_ < prev_close * 0.95) & (open_ > 0) & (prev_close > 0)
+        gap_indices = [i for i, v in enumerate(gap_mask) if v]
+        n_gap_down  = len(gap_indices)
+
+        is_consistent = False
+        gap_sizes: list = []
+
+        if n_gap_down >= 2:
+            intervals = [
+                gap_indices[k+1] - gap_indices[k]
+                for k in range(len(gap_indices) - 1)
+            ]
+            max_interval_diff = max(intervals) - min(intervals) if intervals else 999
+            if max_interval_diff <= 45:
+                is_consistent = True
+
+            for idx in gap_indices:
+                if idx > 0:
+                    g_open = float(open_.iloc[idx])
+                    g_prev = float(prev_close.iloc[idx])
+                    if g_prev > 0:
+                        gap_sizes.append((g_prev - g_open) / g_prev * 100)
+
+        avg_gap_pct = sum(gap_sizes) / len(gap_sizes) if gap_sizes else 0.0
+
+        if is_consistent and n_gap_down >= 2:
+            result["div_gap_payer"]   = True
+            result["div_est_gap_pct"] = round(avg_gap_pct, 1)
+
+        # ── C: Price velocity — amplifier A saja ─────────────────────────────
+        gain_3d = 0.0
+        if result["div_gap_payer"] and len(close) >= 11:
+            price_now = float(close.iloc[-1])
+            price_3d  = float(close.iloc[-4])
+            price_10d = float(close.iloc[-11])
+            gain_3d   = (price_now - price_3d)  / price_3d  * 100 if price_3d  > 0 else 0.0
+            gain_10d  = (price_now - price_10d) / price_10d * 100 if price_10d > 0 else 0.0
+            if gain_3d > 8.0 and gain_10d > 12.0:
+                result["div_velocity"] = True
+
+        # ── Combine ───────────────────────────────────────────────────────────
+        if result["div_gap_payer"]:
+            reasons = [f"gap down {n_gap_down}x interval konsisten — dividen payer"]
+            if avg_gap_pct > 0:
+                reasons.append(f"estimasi gap ~-{avg_gap_pct:.1f}% saat ex-date")
+            if result["div_velocity"]:
+                reasons.append(f"sedang spike +{gain_3d:.1f}% — kemungkinan cum-date rally")
+            result["div_rally_risk"]  = True
+            result["div_risk_reason"] = " · ".join(reasons)
+
+    except Exception:
+        pass
+
+    return result
