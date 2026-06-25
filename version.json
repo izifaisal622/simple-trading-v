@@ -1,7 +1,8 @@
 {
-  "version": "9.6.3",
+  "version": "9.6.4",
   "date": "2026-06-25",
   "changelog": [
+    "9.6.4 — FIX Page 2: odd item (JSMR sendirian) tetap 1/2 lebar — st.columns(2) selalu, zip hanya isi kolom yang ada pair-nya",
     "9.6.3 — FIX Page 2: card equal height — ganti loop dua kolom panjang dengan pair-per-baris (st.columns per pasangan); eliminasi LOG button lari ke bawah di ENTRY HARI INI, PANTAU BESOK, BEST LONG",
     "9.6.2 — FIX div rally risk v3: pindah ke core/data_feed sebagai shared utility — whale_scanner inject langsung ke _analyze_ticker; hapus fallback yfinance on-the-fly di page 2; eliminasi circular import dan network call saat render card",
     "9.6.1 — FIX div rally risk v2: A pakai interval-consistency check (bukan count saja); C jadi amplifier A bukan trigger mandiri; surface ke Page 2 whale card sebagai narrative peringatan pertama",

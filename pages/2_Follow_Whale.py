@@ -1798,12 +1798,9 @@ if whale_results:
         TRIGGER CANDLE AKTIF ATAU MRS ≥ 4 — SAHAM YANG LAYAK DIAKSI HARI INI</p>""",
         unsafe_allow_html=True)
         if entry_today_list:
-            # Render pair per baris — tiap baris punya st.columns sendiri
-            # sehingga card kiri dan kanan saling stretch ke tinggi yang sama
-            # dan LOG button selalu tepat di bawah card-nya masing-masing
             for i in range(0, len(entry_today_list), 2):
                 pair = entry_today_list[i:i+2]
-                cols = st.columns(len(pair))
+                cols = st.columns(2)  # selalu 2 kolom — odd item isi kiri saja
                 for col, w in zip(cols, pair):
                     _t0 = w["ticker"].replace(".JK","")
                     with col:
@@ -1834,7 +1831,7 @@ if whale_results:
             unsafe_allow_html=True)
             for i in range(0, len(watch_tomorrow_list[:6]), 2):
                 pair = watch_tomorrow_list[i:i+2]
-                cols = st.columns(len(pair))
+                cols = st.columns(2)
                 for col, w in zip(cols, pair):
                     with col:
                         st.markdown(whale_card(w, "var(--c-warning)"), unsafe_allow_html=True)
@@ -1874,7 +1871,7 @@ if whale_results:
             # agar card sama tinggi dan button tidak lari ke bawah
             for i in range(0, len(best), 2):
                 pair = best[i:i+2]
-                cols = st.columns(len(pair))
+                cols = st.columns(2)
                 for col, w in zip(cols, pair):
                     t      = w["ticker"].replace(".JK","")
                     wl_key = f"wl_{t}_{i}"
