@@ -2160,15 +2160,18 @@ class WhaleScanner:
                 "market_color":   self.market_breadth["color"],
                 "ihsg":           self.regime.get("ihsg", 0),
                 "mom_4w":         self.regime.get("mom_4w", 0),
+                "mom_2w":         self.regime.get("mom_2w", 0),
                 "mom_13w":        self.regime.get("mom_13w", 0),
                 "breadth":        self.regime.get("breadth", 0),
+                "pct_from_low":   self.regime.get("pct_from_low", 0),
             }
         except Exception as e:
             logger.warning(f"[Whale] adapt failed: {e}")
             return {"cycle":"UNKNOWN","tradeable":True,"vol_multiplier":self.vol_multiplier,
                     "min_value_bn":self.min_value_bn,"trade_signal":True,"min_conviction":5,
                     "market_status":"UNKNOWN","market_advice":"—","sizing_advice":"Normal",
-                    "focus":"BOTH","action":"TRADE_SELECTIVE","description":"—"}
+                    "focus":"BOTH","action":"TRADE_SELECTIVE","description":"—",
+                    "ihsg":0,"mom_4w":0,"mom_2w":0,"mom_13w":0,"breadth":0,"pct_from_low":0}
 
     def _analyze_ticker(self, ticker: str) -> Optional[dict]:
         try:
@@ -2746,6 +2749,9 @@ class WhaleScanner:
                 if done % 50 == 0:
                     print(f"[Whale] {done}/{len(tickers)} | {len(results)} hits")
 
+        # Simpan semua hasil sebelum sort+cap — dipakai untuk market_bias
+        results_full = list(results)
+
         # Sort: long signals first, then by conviction
         sig_order = {
             "ACCUMULATION":0,"BLOCK_BUY":1,"RECOVERY_EARLY":2,
@@ -2790,8 +2796,10 @@ class WhaleScanner:
         defending  = [r for r in results if r.get("whale_defending") and r.get("is_long_signal")]
         at_floor   = [r for r in results if r.get("entry_zone")=="AT_FLOOR" and r.get("is_long_signal")]
 
-        buy_val    = sum(r["value_bn"] for r in results if r.get("is_long_signal"))
-        sell_val   = sum(r["value_bn"] for r in results if not r.get("is_long_signal"))
+        # market_bias dihitung dari semua ticker yang berhasil dianalisis (results_full),
+        # bukan dari top_n post-filter — agar bias merepresentasikan market, bukan sample kecil
+        buy_val    = sum(r["value_bn"] for r in results_full if r.get("is_long_signal"))
+        sell_val   = sum(r["value_bn"] for r in results_full if not r.get("is_long_signal"))
         total_val  = buy_val + sell_val
         bp         = buy_val/total_val if total_val>0 else 0.5
         bias       = ("STRONG BUY" if bp>=0.65 else "MILD BUY" if bp>=0.55 else
