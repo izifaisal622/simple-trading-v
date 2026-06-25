@@ -1,7 +1,8 @@
 {
-  "version": "9.6.4",
+  "version": "9.6.5",
   "date": "2026-06-25",
   "changelog": [
+    "9.6.5 — FIX Page 2: entry_today_list hard gate — exclude pct_above_floor>35, EMA BEARISH, vol<0.5x; BHAT 113% above floor tidak lagi lolos ENTRY HARI INI",
     "9.6.4 — FIX Page 2: odd item (JSMR sendirian) tetap 1/2 lebar — st.columns(2) selalu, zip hanya isi kolom yang ada pair-nya",
     "9.6.3 — FIX Page 2: card equal height — ganti loop dua kolom panjang dengan pair-per-baris (st.columns per pasangan); eliminasi LOG button lari ke bawah di ENTRY HARI INI, PANTAU BESOK, BEST LONG",
     "9.6.2 — FIX div rally risk v3: pindah ke core/data_feed sebagai shared utility — whale_scanner inject langsung ke _analyze_ticker; hapus fallback yfinance on-the-fly di page 2; eliminasi circular import dan network call saat render card",

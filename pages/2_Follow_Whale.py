@@ -1756,13 +1756,20 @@ if whale_results:
 
     # Fix #3 + Fix A: pre-compute ENTRY HARI INI list
     # trigger_confirmed = trigger + konteks kuat sebelumnya (lebih reliable dari trigger saja)
+    # Hard gate tambahan: exclude kondisi yang akan jadi SKIP/WATCHLIST pasif di verdict
+    #   - pct_above_floor > 35  → terlalu jauh dari floor (BHAT 113% tidak layak entry)
+    #   - ema_trend BEARISH      → downtrend, bukan timing entry
+    #   - ff_adj_vol_ratio < 0.5 → volume terlalu sepi
     entry_today_list = sorted(
         [w for w in whale_results
          if w.get("is_long_signal")
          and (w.get("trigger_confirmed") or w.get("trigger_candle") or w.get("momentum_readiness", 0) >= 4)
-         and w.get("conviction", 0) >= min_conv_ui],
+         and w.get("conviction", 0) >= min_conv_ui
+         and w.get("pct_above_floor", 999) <= 35
+         and w.get("ema_trend", "") != "BEARISH"
+         and w.get("ff_adj_vol_ratio", w.get("vol_ratio", 0)) >= 0.5],
         key=lambda w: (
-            -(w.get("trigger_confirmed", False)),        # confirmed duluan
+            -(w.get("trigger_confirmed", False)),
             -(w.get("trigger_candle", False)),
             -w.get("momentum_readiness", 0),
             -w.get("conviction", 0),
