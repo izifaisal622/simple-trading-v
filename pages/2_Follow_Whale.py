@@ -1333,6 +1333,7 @@ def _trading_summary_row(w: dict) -> str:
     sc          = w.get("supply_control", "")
     is_dist     = signal in ("DISTRIBUTION", "BLOCK_SELL")
     ff_vol      = w.get("ff_adj_vol_ratio", w.get("vol_ratio", 0))
+    slow_exit   = w.get("slow_exit", False)
 
     if close <= 0 or floor_p <= 0:
         return ""

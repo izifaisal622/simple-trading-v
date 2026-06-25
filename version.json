@@ -1,7 +1,8 @@
 {
-  "version": "9.6.6",
+  "version": "9.6.7",
   "date": "2026-06-25",
   "changelog": [
+    "9.6.7 — FIX Page 2: NameError slow_exit not defined di _trading_summary_row — tambah extract slow_exit dari w sebelum verdict logic",
     "9.6.6 — FIX Page 2 synthesize_verdict: tambah trigger_candle (+2pt) dan MRS>=4 (+1pt) ke positive_signals; max_score 12→14; PKPK VOL_SPIKE_UP+trigger+conv9 tidak lagi jatuh ke SKIP",
     "9.6.5 — FIX Page 2: entry_today_list hard gate — exclude pct_above_floor>35, EMA BEARISH, vol<0.5x; BHAT 113% above floor tidak lagi lolos ENTRY HARI INI",
     "9.6.4 — FIX Page 2: odd item (JSMR sendirian) tetap 1/2 lebar — st.columns(2) selalu, zip hanya isi kolom yang ada pair-nya",
