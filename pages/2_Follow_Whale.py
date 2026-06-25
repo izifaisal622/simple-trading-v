@@ -660,7 +660,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     _fp_recency = w.get("pump_fp_desc", "")
 
     # ── Render ────────────────────────────────────────────────────────────────
-    _ = (zone, sc, ob_str, mom5, w52h, ff_vol, ticker, sector, action, v_col, v_bg, v_border)  # template vars
+    _ = (zone, sc, ob_str, mom5, w52h, ff_vol, ticker, sector, v_col, v_bg, v_border)  # template vars
 
     # Pre-build Momentum Readiness Score badge (sebelum render — hindari nested f-string)
     _mrs_bar_filled = "█" * mrs + "░" * (5 - mrs)
@@ -805,7 +805,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         st.markdown(f"""<div style="background:rgba(0,0,0,0.3);border:1px solid {v_col_hex}30;
         border-radius:var(--r-sm);padding:0.6rem 1rem;margin-top:0.6rem;
         font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:var(--text-primary);line-height:1.7">
-        <span style="color:{v_col};font-weight:700">→ KESIMPULAN: </span>{action}
+        <span style="color:{v_col};font-weight:700">→ KESIMPULAN: </span>{verdict}
         <div style="color:#64748B;font-size:var(--text-xs);margin-top:0.4rem;border-top:1px solid rgba(255,255,255,0.05);padding-top:0.4rem">{_exit_line_html}</div>
         </div>""", unsafe_allow_html=True)
 
