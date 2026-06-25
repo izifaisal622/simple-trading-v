@@ -1798,14 +1798,19 @@ if whale_results:
         TRIGGER CANDLE AKTIF ATAU MRS ≥ 4 — SAHAM YANG LAYAK DIAKSI HARI INI</p>""",
         unsafe_allow_html=True)
         if entry_today_list:
-            _l0, _r0 = st.columns(2)
-            for i, w in enumerate(entry_today_list):
-                with (_l0 if i % 2 == 0 else _r0):
-                    with st.container():
-                        st.markdown(whale_card(w, NEON_GREEN), unsafe_allow_html=True)
+            # Render pair per baris — tiap baris punya st.columns sendiri
+            # sehingga card kiri dan kanan saling stretch ke tinggi yang sama
+            # dan LOG button selalu tepat di bawah card-nya masing-masing
+            for i in range(0, len(entry_today_list), 2):
+                pair = entry_today_list[i:i+2]
+                cols = st.columns(len(pair))
+                for col, w in zip(cols, pair):
                     _t0 = w["ticker"].replace(".JK","")
-                    if st.button(f"📋 LOG {_t0}", key=f"log_today_{_t0}_{i}", use_container_width=True):
-                        st.session_state[f"log_form_{_t0}"] = True
+                    with col:
+                        with st.container():
+                            st.markdown(whale_card(w, NEON_GREEN), unsafe_allow_html=True)
+                        if st.button(f"📋 LOG {_t0}", key=f"log_today_{_t0}_{i}", use_container_width=True):
+                            st.session_state[f"log_form_{_t0}"] = True
 
             st.markdown("<br>", unsafe_allow_html=True)
             sec_head("◆ RINGKASAN ANALISIS")
@@ -1827,10 +1832,12 @@ if whale_results:
             Kalau besok muncul candle hijau dengan volume naik dan close di atas midpoint
             → masuk ke ENTRY HARI INI. Pasang alert sekarang.</p>""",
             unsafe_allow_html=True)
-            _lw, _rw = st.columns(2)
-            for i, w in enumerate(watch_tomorrow_list[:6]):
-                with (_lw if i % 2 == 0 else _rw):
-                    st.markdown(whale_card(w, "var(--c-warning)"), unsafe_allow_html=True)
+            for i in range(0, len(watch_tomorrow_list[:6]), 2):
+                pair = watch_tomorrow_list[i:i+2]
+                cols = st.columns(len(pair))
+                for col, w in zip(cols, pair):
+                    with col:
+                        st.markdown(whale_card(w, "var(--c-warning)"), unsafe_allow_html=True)
 
     with tab1:
         best = [w for w in smart_list
@@ -1863,26 +1870,26 @@ if whale_results:
         best.sort(key=_best_sort_fn)
 
         if best:
-            # 2-column layout
-            # BUG FIX: st.columns + st.markdown HTML + st.button dalam block yang sama
-            # menyebabkan HTML bocor — pisahkan dengan st.container()
-            left_col, right_col = st.columns(2)
-            for i, w in enumerate(best):
-                with (left_col if i % 2 == 0 else right_col):
-                    with st.container():
-                        st.markdown(whale_card(w, NEON_GREEN), unsafe_allow_html=True)
-                    t = w["ticker"].replace(".JK","")
+            # Pair per baris — tiap st.columns baru per pasangan
+            # agar card sama tinggi dan button tidak lari ke bawah
+            for i in range(0, len(best), 2):
+                pair = best[i:i+2]
+                cols = st.columns(len(pair))
+                for col, w in zip(cols, pair):
+                    t      = w["ticker"].replace(".JK","")
                     wl_key = f"wl_{t}_{i}"
-                    # Load watchlist
                     wl_file = LOGS_DIR / "watchlist.json"
                     wl = json.loads(wl_file.read_text()) if wl_file.exists() else []
-                    in_wl = t in wl
+                    in_wl  = t in wl
                     wl_lbl = "★ WATCHLISTED" if in_wl else "☆ ADD TO WATCHLIST"
-                    if st.button(wl_lbl, key=wl_key, width="stretch"):
-                        if in_wl: wl.remove(t)
-                        else: wl.append(t)
-                        wl_file.write_text(json.dumps(wl, indent=2))
-                        st.rerun()
+                    with col:
+                        with st.container():
+                            st.markdown(whale_card(w, NEON_GREEN), unsafe_allow_html=True)
+                        if st.button(wl_lbl, key=wl_key, width="stretch"):
+                            if in_wl: wl.remove(t)
+                            else: wl.append(t)
+                            wl_file.write_text(json.dumps(wl, indent=2))
+                            st.rerun()
 
             sec_head("◆ FLOOR PRICE DETAILS")
             rows = [{"Ticker":  w["ticker"].replace(".JK",""),
