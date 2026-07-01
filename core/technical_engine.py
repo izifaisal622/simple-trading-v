@@ -175,6 +175,13 @@ class SetupResult:
     # Flags
     flags:            list  = field(default_factory=list)
 
+    # Breakout type transparency (v9.7.0 — additive, "signal" tetap tidak berubah
+    # untuk backward-compat trade_log.db, director_agent auto-tuning, alert_agent)
+    # "BOX"      = breakout dari box_detected=True (thesis asli EMA_XBO)
+    # "MOMENTUM" = breakout tanpa box terbentuk — new-high + volume + cross
+    # ""         = signal bukan (STRONG_)BREAKOUT, tidak relevan
+    breakout_type:    str   = ""
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
@@ -601,10 +608,14 @@ class EMABreakoutEngine:
                 except Exception as exc:
                     logger.debug(f"[Engine] bear risk calc {ticker}: {exc}")
 
-            # Bull bonus — full confirmation only
-            if not is_bear and score >= 5 and rs_sig == "STRONG" and vol_ratio >= 2.0:
-                score += 1
-                flags.append("✦ FULL CONFIRMATION +1")
+            # ── Fix v9.7.0 [Audit finding #6]: bull bonus DIHAPUS ──────────────
+            # Sebelumnya: score>=5 + rs_sig=="STRONG" + vol_ratio>=2.0 → +1.
+            # Masalah: rs_sig=="STRONG" sudah dihitung di komponen (7), dan
+            # vol_ratio>=2.0 nyaris identik dengan syarat komponen (6)
+            # (vol_ratio>=self.cfg.vol_mult, default juga 2.0). Bonus ini
+            # menguji ulang bukti yang sama, bukan bukti independen baru —
+            # efeknya cuma mendorong marginal score=5 ke score=6, melewati
+            # ambang STRONG_BREAKOUT tanpa faktor konfirmasi tambahan asli.
 
             # ── HARD CAP: score never exceeds 10 ─────────────────────────────
             score = min(score, 10)
@@ -676,9 +687,16 @@ class EMABreakoutEngine:
                 else:
                     signal = "NONE"
 
+            # ── Breakout type transparency (v9.7.0, additive — signal string TIDAK berubah) ──
+            breakout_type = ""
+            if signal in ("STRONG_BREAKOUT", "BREAKOUT"):
+                breakout_type = "BOX" if box_detected else "MOMENTUM"
+                flags.append(f"Breakout type: {breakout_type}")
+
             # RS downgrade
             if signal == "BREAKOUT" and rs_sig == "WEAK":
                 signal = "WATCHLIST"
+                breakout_type = ""
                 flags.append("RS weak → downgrade WATCHLIST")
 
             # ── Risk levels ───────────────────────────────────────────────────
@@ -756,6 +774,7 @@ class EMABreakoutEngine:
                 ipo_mode          = ipo_mode,
                 score_raw         = score_raw,
                 score_capped      = score_capped,
+                breakout_type     = breakout_type,
             )
 
         except Exception as exc:
@@ -1471,10 +1490,10 @@ class DailyEMAEngine:
                 except Exception:
                     pass
 
-            # Bull bonus
-            if not is_bear and score >= 5 and rs_sig == "STRONG" and vol_ratio >= 2.0:
-                score += 1
-                flags.append("✦ FULL CONFIRMATION +1")
+            # ── Fix v9.7.0 [Audit finding #6]: bull bonus DIHAPUS — sama
+            # alasan seperti EMABreakoutEngine (lihat komentar di sana):
+            # rs_sig STRONG + vol_ratio>=2.0 sudah dihitung di komponen (6)/(7),
+            # bonus ini menguji ulang bukti yang sama, bukan konfirmasi baru.
 
             score = min(score, 10)
 
@@ -1513,9 +1532,16 @@ class DailyEMAEngine:
             else:
                 signal = "NONE"
 
+            # ── Breakout type transparency (v9.7.0, additive — signal string TIDAK berubah) ──
+            breakout_type = ""
+            if signal in ("STRONG_BREAKOUT", "BREAKOUT"):
+                breakout_type = "BOX" if box_detected else "MOMENTUM"
+                flags.append(f"Breakout type: {breakout_type}")
+
             # RS downgrade
             if signal == "BREAKOUT" and rs_sig == "WEAK":
                 signal = "WATCHLIST"
+                breakout_type = ""
                 flags.append("RS weak → downgrade WATCHLIST")
 
             # ── Risk levels ───────────────────────────────────────────────────
@@ -1632,6 +1658,7 @@ class DailyEMAEngine:
                 "ipo_mode":        ipo_mode,
                 "score_raw":       score_raw,
                 "score_capped":    score_capped,
+                "breakout_type":   breakout_type,
 
                 # daily fields — sekarang dihitung sungguhan via check_daily_entry(),
                 # bukan stub. "engine_source" (bukan "daily_pattern") dipakai
