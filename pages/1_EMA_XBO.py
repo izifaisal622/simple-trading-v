@@ -216,14 +216,21 @@ def _render_risk_warning(r, lines_out: list) -> None:
 def _render_ema200_warning(r, lines_out: list) -> None:
     """
     NEW V4: Warning jika EMA200 tidak reliable karena data tidak cukup.
+
+    v9.7.2 [Audit finding #C]: teks sebelumnya hardcode "data weekly < 100
+    bars" — tapi threshold beda antara dua engine (weekly: 100 bars,
+    DailyEMAEngine/primary: 250 bars). Kalau hasil dari DailyEMAEngine,
+    pesan lama salah sebut angka DAN salah sebut timeframe.
     """
     ema200_reliable = _g(r, "ema200_reliable", True)
     if ema200_reliable is False:
+        is_daily = _g(r, "engine_source", "") == "DAILY_PRIMARY"
+        _thr_txt = "data daily < 250 bars (~1 tahun)" if is_daily else "data weekly < 100 bars"
         lines_out.append(
             '<div style="background:rgba(240,180,41,0.06);border:1px solid rgba(240,180,41,0.25);'
             'border-radius:var(--r-sm);padding:0.35rem 0.8rem;margin:0.2rem 0">'
             '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:#F0B429">'
-            '⚠ EMA200 tidak reliable — data weekly < 100 bars. '
+            f'⚠ EMA200 tidak reliable — {_thr_txt}. '
             'Score point "Price > EMA200" mungkin tidak akurat. '
             'Data historis saham ini terbatas di provider.'
             '</span>'
@@ -249,6 +256,12 @@ def _render_ema_detail(r) -> None:
     tp2      = _g(r, "tp2_price",0)
     rr       = _g(r, "rr_ratio",0)
     risk     = _g(r, "risk_pct",0)
+    # v9.7.2 [Audit finding #B]: breakout_type & box range — sebelumnya
+    # tidak pernah ditampilkan sama sekali walau sudah dihitung di backend
+    breakout_type = _g(r, "breakout_type", "")
+    box_hi        = _g(r, "box_high", 0)
+    box_lo        = _g(r, "box_low", 0)
+    box_pct       = _g(r, "box_range_pct", 0)
 
     ema_gap_pct  = ((ema13 - ema89) / ema89 * 100) if ema89 > 0 else 0
     pct_vs_ema13 = ((close - ema13) / ema13 * 100) if ema13 > 0 else 0
@@ -358,6 +371,26 @@ def _render_ema_detail(r) -> None:
         f'Gap <b style="color:{_ema_gap_col}">{ema_gap_pct:+.1f}%</b> · '
         f'vs EMA13 <b style="color:{_ema13_diff_col}">{pct_vs_ema13:+.1f}%</b>'
     )
+
+    # Box line — v9.7.2 [Audit finding #B]: cuma tampil kalau ini sinyal
+    # (STRONG_)BREAKOUT (breakout_type terisi). BOX = konsolidasi asli
+    # terdeteksi sebelum breakout (thesis "XBO"). MOMENTUM = breakout dari
+    # new-high tanpa box terbentuk — angka range di bawah cuma referensi
+    # high/low N-hari terakhir, BUKAN box formal.
+    if breakout_type == "BOX":
+        lines_out.append(
+            f'<span style="background:#00FF6618;border:1px solid #00FF6655;'
+            'border-radius:var(--r-sm);padding:2px 8px;font-family:Orbitron,monospace;'
+            'font-size:var(--text-xs);font-weight:700;color:#00FF66">◻ BOX BREAKOUT</span> '
+            f'Konsolidasi Rp{box_lo:,.0f}–Rp{box_hi:,.0f} ({box_pct:.1f}%) — breakout dari box asli.'
+        )
+    elif breakout_type == "MOMENTUM":
+        lines_out.append(
+            f'<span style="background:#F0B42918;border:1px solid #F0B42955;'
+            'border-radius:var(--r-sm);padding:2px 8px;font-family:Orbitron,monospace;'
+            'font-size:var(--text-xs);font-weight:700;color:#F0B429">▲ MOMENTUM BREAKOUT</span> '
+            f'New-high Rp{box_lo:,.0f}–Rp{box_hi:,.0f} — bukan box konsolidasi formal, harga trending tanpa jeda.'
+        )
 
     # Volume line
     vol_col = "#00FF66" if vol>=3 else "#F0B429" if vol>=1.3 else "#94A3B8"

@@ -1,7 +1,8 @@
 {
-  "version": "9.7.1",
+  "version": "9.7.2",
   "date": "2026-07-01",
   "changelog": [
+    "9.7.2 — FIX Page 1 audit #B & #C: tambah baris Box (BOX BREAKOUT vs MOMENTUM BREAKOUT) di detail card — breakout_type/box_high/box_low sebelumnya dihitung tapi tidak pernah ditampilkan sama sekali; fix teks warning EMA200 yang hardcode data weekly <100 bars padahal DailyEMAEngine (primary) threshold-nya 250 daily bars",
     "9.7.1 — FIX Page 1 EMA XBO audit #A: verdict badge (ENTRY VALID/WATCHLIST/WAIT-SKIP) sebelumnya dihitung dari phase lokal (pct_vs_ema13 + vol_ratio mentah) yang independen dari signal/score backend — bisa bilang ENTRY VALID hijau bersamaan MCF block di kartu sama bilang BEAR REGIME merah. Sekarang verdict 100% turunan signal/score/regime_tag backend + cross-check mcf_bear_blocked, phase jadi teks deskriptif saja bukan penentu verdict",
     "9.7.0 — FIX EMA XBO audit #2 & #6 (additive, tidak ubah signal string): tambah field breakout_type (BOX/MOMENTUM) di kedua engine — signal BREAKOUT tetap sama persis di semua 13 konsumen (trade_log.db, director_agent auto-tuning, alert_agent, dll), cuma nambah transparansi jenis breakout tanpa breaking change; hapus bull bonus FULL CONFIRMATION di kedua engine — RS STRONG dan vol_ratio>=2.0 sudah dihitung di komponen scoring dasar, bonus lama menguji ulang bukti yang sama (double-dip), cuma dorong marginal score 5->6 tanpa faktor konfirmasi independen baru",
     "9.6.9 — FIX EMA XBO audit: DailyEMAEngine daily_ok hardcoded False permanen (kolom Daily? UI selalu mati untuk hampir semua ticker walau signal/score tetap benar); exit_ema_break daily engine kehilangan buffer 2% vs weekly engine (exit warning prematur); flag DATA TERBATAS masih nyebut threshold lama <180 padahal kode sudah <89",
