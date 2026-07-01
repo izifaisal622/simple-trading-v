@@ -377,8 +377,13 @@ def tags_html(w: dict) -> str:
 
 
 
-def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
-    """Render structured analysis card per saham — Hengky framework."""
+def _render_analysis_card(w: dict, tradeable: bool = False, section: str = "default") -> None:
+    """Render structured analysis card per saham — Hengky framework.
+
+    section: identifier unik per tab/pemanggil (mis. "entry_today", "best_long")
+    supaya key widget tidak bentrok saat ticker yang sama muncul di lebih
+    dari satu section (fix StreamlitDuplicateElementKey — v9.6.8).
+    """
     import streamlit as st
 
     ticker   = w.get("ticker","").replace(".JK","")
@@ -511,10 +516,12 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
     _div_est_gap     = w.get("div_est_gap_pct", 0.0)
 
     if _div_risk_flag:
-        _est_txt = f" · estimasi gap ~-{_div_est_gap:.1f}% saat ex-date" if _div_est_gap > 0 else ""
+        # Fix v9.6.8: _div_risk_reason dari data_feed.detect_dividend_rally_risk()
+        # SUDAH include "estimasi gap ~-X% saat ex-date" — jangan build lagi di sini
+        # (sebelumnya duplikat: kalimat sama muncul 2x di narrative)
         narratives.append(
             f"**⚠ POTENSI DIVIDEN RALLY — bukan breakout organik.** "
-            f"{_div_risk_reason}{_est_txt}. "
+            f"{_div_risk_reason}. "
             f"Spike harga ini kemungkinan cum-date chasing oleh retail. "
             f"Harga akan gap down sebesar nilai dividen setelah ex-date — net gain bisa nol atau negatif kalau beli sekarang."
         )
@@ -825,7 +832,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False) -> None:
         </div>""", unsafe_allow_html=True)
 
         # LOG TRADE button — muncul di bawah conclusion
-        _log_key = f"log_whale_{ticker}"
+        _log_key = f"log_whale_{section}_{ticker}"
         if st.button(f"📋 LOG TRADE {ticker}", key=_log_key, use_container_width=True):
             st.session_state[f"log_form_{ticker}"] = True
 
@@ -1824,7 +1831,7 @@ if whale_results:
             st.markdown("<br>", unsafe_allow_html=True)
             sec_head("◆ RINGKASAN ANALISIS")
             for _w in entry_today_list:
-                _render_analysis_card(_w, tradeable)
+                _render_analysis_card(_w, tradeable, section="entry_today")
         else:
             render_empty_state("🚀", "TIDAK ADA ENTRY HARI INI",
                                "Tidak ada saham dengan trigger candle atau MRS ≥ 4 saat ini.\n"
@@ -1933,7 +1940,7 @@ if whale_results:
             Framework Hengky: Signal → EMA → Floor → Conviction → Supply → Action
             </p>""", unsafe_allow_html=True)
             for _w in best:
-                _render_analysis_card(_w, tradeable)
+                _render_analysis_card(_w, tradeable, section="best_long")
 
         else:
             render_empty_state("◉",f"NO SETUP CONVICTION ≥ {min_conv_ui}",

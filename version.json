@@ -1,7 +1,8 @@
 {
-  "version": "9.6.7",
-  "date": "2026-06-25",
+  "version": "9.6.8",
+  "date": "2026-07-01",
   "changelog": [
+    "9.6.8 — FIX Page 2 Follow Whale: [1] StreamlitDuplicateElementKey — _render_analysis_card key cuma pakai ticker, crash saat ticker sama muncul di 2 tab (ENTRY HARI INI + BEST LONG); fix: tambah param section, key jadi log_whale_{section}_{ticker}; [2] narrative dividend rally duplikat teks 'estimasi gap ~-X% saat ex-date' 2x — _div_risk_reason dari data_feed sudah include, page 2 build ulang lagi; fix: hapus _est_txt redundant; [3] core/data_feed.py detect_dividend_rally_risk: interval-consistency check broken untuk n_gap_down==2 — 1 interval selalu self-consistent (max-min=0) apapun jaraknya, false positive di smallcap illiquid (kasus SGER); fix: wajib n_gap_down>=3 + interval harus 150-400 hari (siklus dividen tahunan/semesteran masuk akal), bukan sekadar self-consistent",
     "9.6.7 — FIX Page 2: NameError slow_exit not defined di _trading_summary_row — tambah extract slow_exit dari w sebelum verdict logic",
     "9.6.6 — FIX Page 2 synthesize_verdict: tambah trigger_candle (+2pt) dan MRS>=4 (+1pt) ke positive_signals; max_score 12→14; PKPK VOL_SPIKE_UP+trigger+conv9 tidak lagi jatuh ke SKIP",
     "9.6.5 — FIX Page 2: entry_today_list hard gate — exclude pct_above_floor>35, EMA BEARISH, vol<0.5x; BHAT 113% above floor tidak lagi lolos ENTRY HARI INI",

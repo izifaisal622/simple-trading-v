@@ -1248,8 +1248,12 @@ def detect_dividend_rally_risk(df_daily: "pd.DataFrame") -> dict:
     """
     Deteksi potensi dividen rally dari OHLCV harian tanpa butuh calendar API.
 
-    A) Gap down interval-consistent: gap ≥5% yang terjadi dengan interval
-       berulang (±45 hari antar gap) — signature dividen payer genuine.
+    A) Gap down interval-consistent: gap ≥5% terjadi >=3x dengan interval
+       antar-gap konsisten (±45 hari) DAN interval masuk siklus dividen
+       tahunan/semesteran masuk akal (150-400 hari) — signature dividen
+       payer genuine. (v9.6.8: minimal 3 gap, sebelumnya 2 gap trivially
+       "konsisten" secara matematis apapun jaraknya — false positive prone
+       untuk smallcap illiquid.)
     C) Price velocity amplifier: spike >8%/3hari hanya dievaluasi jika A True.
 
     Return dict:
@@ -1275,6 +1279,14 @@ def detect_dividend_rally_risk(df_daily: "pd.DataFrame") -> dict:
         open_ = df_daily["Open"].astype(float)
 
         # ── A: Gap down interval-consistent ──────────────────────────────────
+        # Fix v9.6.8: syarat lama n_gap_down>=2 secara matematis SELALU lolos
+        # is_consistent — dengan 2 gap cuma ada 1 interval, max()-min() dari
+        # 1 angka = 0, otomatis <=45 apapun jaraknya (2 gap bisa 10 hari atau
+        # 3 tahun terpisah dan tetap dianggap "konsisten"). Root cause false
+        # positive SGER: smallcap illiquid gampang punya 2 gap >=5% acak.
+        # Fix: wajib >=3 gap (>=2 interval, baru valid dibandingkan) DAN
+        # interval harus masuk siklus dividen tahunan/semesteran yang masuk akal
+        # (150-400 hari) — bukan sekadar konsisten dengan dirinya sendiri.
         prev_close  = close.shift(1)
         gap_mask    = (open_ < prev_close * 0.95) & (open_ > 0) & (prev_close > 0)
         gap_indices = [i for i, v in enumerate(gap_mask) if v]
@@ -1283,13 +1295,14 @@ def detect_dividend_rally_risk(df_daily: "pd.DataFrame") -> dict:
         is_consistent = False
         gap_sizes: list = []
 
-        if n_gap_down >= 2:
+        if n_gap_down >= 3:
             intervals = [
                 gap_indices[k+1] - gap_indices[k]
                 for k in range(len(gap_indices) - 1)
             ]
-            max_interval_diff = max(intervals) - min(intervals) if intervals else 999
-            if max_interval_diff <= 45:
+            max_interval_diff = max(intervals) - min(intervals)
+            plausible_cycle   = all(150 <= iv <= 400 for iv in intervals)
+            if max_interval_diff <= 45 and plausible_cycle:
                 is_consistent = True
 
             for idx in gap_indices:
@@ -1301,7 +1314,7 @@ def detect_dividend_rally_risk(df_daily: "pd.DataFrame") -> dict:
 
         avg_gap_pct = sum(gap_sizes) / len(gap_sizes) if gap_sizes else 0.0
 
-        if is_consistent and n_gap_down >= 2:
+        if is_consistent and n_gap_down >= 3:
             result["div_gap_payer"]   = True
             result["div_est_gap_pct"] = round(avg_gap_pct, 1)
 
