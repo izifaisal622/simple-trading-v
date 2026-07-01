@@ -1402,7 +1402,7 @@ class DailyEMAEngine:
             if ipo_mode:
                 flags.append(f"⚡ IPO MODE daily: {n_bars} bars")
             elif data_limited:
-                flags.append(f"⚠ DATA TERBATAS: {n_bars} daily bars (<180)")
+                flags.append(f"⚠ DATA TERBATAS: {n_bars} daily bars (<89)")
 
             # (1) EMA cross daily
             if ipo_mode:
@@ -1532,6 +1532,17 @@ class DailyEMAEngine:
             if risk_pct > 25:
                 flags.append(f"⚠ RISK {risk_pct:.0f}% — sizing sangat kecil")
 
+            # ── Fix v9.6.9 [Audit finding #1]: daily_ok sebelumnya hardcoded
+            # False permanen di sini — field ini TIDAK PERNAH dihitung untuk
+            # path DailyEMAEngine (yang notabene default engine untuk hampir
+            # semua ticker). Akibatnya kolom "Daily?" dan color indicator di
+            # UI selalu mati walau signal/score tetap benar (dual_confirmed
+            # dihitung terpisah, tidak kena bug ini).
+            # Fix: reuse check_daily_entry() yang sudah ada — bukan
+            # reimplementasi logic baru, supaya semantik identik dengan
+            # path weekly-fallback di scanner_agent.py.
+            _daily_entry = check_daily_entry(df_daily, weekly_cross)
+
             # ── Assemble result dict ──────────────────────────────────────────
             return {
                 # Identity
@@ -1585,7 +1596,13 @@ class DailyEMAEngine:
                 "atr14":           last_atr,
                 "trail_stop_1atr": entry_price - last_atr,
                 "trail_stop_2atr": entry_price - 2 * last_atr,
-                "exit_ema_break":  last_ema13,
+                # Fix v9.6.9 [Audit finding #3]: exit_ema_break sebelumnya
+                # last_ema13 tanpa buffer — beda dari EMABreakoutEngine yang
+                # pakai buffer 2% (round(last_ema13*0.98,0)) supaya tidak
+                # whipsaw. Disamakan di sini karena DailyEMAEngine adalah
+                # engine primary — exit warning jangan lebih agresif dari
+                # desain aslinya cuma karena engine berbeda.
+                "exit_ema_break":  round(last_ema13 * 0.98, 0),
                 "holding_days_est":int((tp1_price - entry_price) / last_atr) if last_atr > 0 else 10,
 
                 # Risk
@@ -1616,20 +1633,26 @@ class DailyEMAEngine:
                 "score_raw":       score_raw,
                 "score_capped":    score_capped,
 
-                # daily fields (agar scanner_agent tidak crash di dual-TF section)
-                "daily_ok":        False,
-                "daily_pattern":   "DAILY_PRIMARY",
-                "daily_cross":     cross_state,
-                "fresh_cross":     (bars_since_cross == 1),
-                "ema5_cross":      (last_ema5 > last_ema13
-                                    and _f(ema5_s.iloc[-2]) <= _f(ema13_s.iloc[-2])),
-                "ema5d":           last_ema5,
-                "ema13d":          last_ema13,
-                "ema89d":          last_ema89,
-                "pct_vs_ema13d":   ((last_close - last_ema13) / last_ema13 * 100) if last_ema13 > 0 else 0.0,
-                "pct_vs_ema89d":   ((last_close - last_ema89) / last_ema89 * 100) if last_ema89 > 0 else 0.0,
-                "vol_ratio_d":     vol_ratio,
-                "daily_entry_note":"Daily engine — EMA13/89 daily primary",
+                # daily fields — sekarang dihitung sungguhan via check_daily_entry(),
+                # bukan stub. "engine_source" (bukan "daily_pattern") dipakai
+                # sebagai marker routing di scanner_agent.py, supaya daily_pattern
+                # tetap berisi nilai deskriptif asli (DAILY_GOLDEN_CROSS dkk)
+                # yang memang diharapkan UI (page 1 cek substring "WAIT" di sana).
+                "engine_source":   "DAILY_PRIMARY",
+                "daily_ok":        _daily_entry.get("daily_ok", False),
+                "daily_pattern":   _daily_entry.get("daily_pattern", "DAILY_PRIMARY"),
+                "daily_cross":     _daily_entry.get("daily_cross", cross_state),
+                "fresh_cross":     _daily_entry.get("fresh_cross", bars_since_cross == 1),
+                "ema5_cross":      _daily_entry.get("ema5_cross", False),
+                "ema5d":           _daily_entry.get("ema5d", last_ema5),
+                "ema13d":          _daily_entry.get("ema13d", last_ema13),
+                "ema89d":          _daily_entry.get("ema89d", last_ema89),
+                "pct_vs_ema13d":   _daily_entry.get("pct_vs_ema13d",
+                                       ((last_close - last_ema13) / last_ema13 * 100) if last_ema13 > 0 else 0.0),
+                "pct_vs_ema89d":   _daily_entry.get("pct_vs_ema89d",
+                                       ((last_close - last_ema89) / last_ema89 * 100) if last_ema89 > 0 else 0.0),
+                "vol_ratio_d":     _daily_entry.get("vol_ratio_d", vol_ratio),
+                "daily_entry_note":_daily_entry.get("daily_entry_note", "Daily engine — EMA13/89 daily primary"),
                 "dual_confirmed":  (cross_state == "ABOVE" and weekly_cross == "ABOVE"),
             }
 

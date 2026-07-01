@@ -113,9 +113,11 @@ class ScannerAgent:
             return None
 
         # ── Dual-timeframe ───────────────────────────────────────────────────
-        # Kalau dari DailyEMAEngine, daily fields sudah diisi — skip check_daily_entry
-        # Kalau dari fallback weekly engine, jalankan check_daily_entry seperti biasa
-        if r.get("daily_pattern") != "DAILY_PRIMARY":
+        # Kalau dari DailyEMAEngine, daily fields sudah diisi (v9.6.9: dihitung
+        # sungguhan via check_daily_entry() di dalam engine, bukan stub) — skip
+        # supaya tidak double-compute. Marker routing pakai "engine_source",
+        # BUKAN "daily_pattern" (isinya sekarang nilai deskriptif asli, dipakai UI).
+        if r.get("engine_source") != "DAILY_PRIMARY":
             weekly_cross = r.get("cross_state", "")
             daily_data   = check_daily_entry(df_d, str(weekly_cross))
             r.update({
