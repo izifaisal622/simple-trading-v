@@ -315,16 +315,25 @@ def _render_ema_detail(r) -> None:
         phase,phase_col = "WATCH","#64748B"
         phase_desc = "Monitor."
 
-    # ── Verdict ───────────────────────────────────────────────────────────────
-    # FIX V4: WATCHLIST_ONLY → verdict override ke BEAR WATCH
-    if regime == "WATCHLIST_ONLY":
+    # ── Verdict (v9.7.1 — Audit finding #A fix) ─────────────────────────────
+    # SEBELUMNYA: verdict dihitung dari `phase` lokal (threshold pct_vs_ema13
+    # + vol_ratio mentah) — sistem KEDUA yang independen dari signal/score
+    # backend. Akibat: verdict bisa bilang "ENTRY VALID" hijau sementara
+    # block MCF di kartu yang sama bilang "BEAR REGIME — JANGAN TRADE" merah,
+    # karena dua sistem beda dipakai bersamaan untuk hal yang sama.
+    # SEKARANG: verdict 100% turunan dari signal/score/regime_tag backend
+    # (yang sudah benar menghitung box_detected, RS, regime cap, dll).
+    # `phase`/`phase_desc` tetap dipakai HANYA sebagai teks deskriptif di
+    # baris "Phase" di bawah — tidak lagi menentukan verdict.
+    mcf_bear_blocked = _g(r, "mcf_bear_blocked", False)
+
+    if regime == "WATCHLIST_ONLY" or mcf_bear_blocked:
         v_col,v_bg = "#EF4444","rgba(239,68,68,0.04)"
         verdict    = "⛔ BEAR — WATCH ONLY"
-    elif signal in ("BREAKOUT", "STRONG_BREAKOUT") or phase in {"GOLDEN_CROSS","PULLBACK_TO_EMA_CONFIRMED",
-                                            "BREAKOUT_CONFIRMED","TREND_WITH_MOMENTUM","INSTITUTIONAL_SPIKE"}:
+    elif signal in ("STRONG_BREAKOUT", "BREAKOUT"):
         v_col,v_bg = "#00FF66","rgba(0,255,102,0.06)"
         verdict    = "ENTRY VALID"
-    elif phase in {"PULLBACK_TO_EMA_WATCH","TREND_NORMAL","EXTENDED_WAIT_PULLBACK","DEEP_PULLBACK_EMA_INTACT"}:
+    elif signal in ("WATCHLIST", "COMPRESSING"):
         v_col,v_bg = "#F0B429","rgba(240,180,41,0.04)"
         verdict    = "WATCHLIST"
     else:
