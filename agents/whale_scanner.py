@@ -87,6 +87,7 @@ import numpy as np
 import pandas as pd
 
 from core.data_feed import DataFeed, get_ihsg_regime, IDX_WATCHLIST
+from agents.scan_logger import log_scan_results
 from core.data_feed import MSCI_CANDIDATES, IDX30_LQ45_CANDIDATES, get_catalyst_universe, get_dynamic_universe, detect_dividend_rally_risk
 try:
     from agents.ownership_agent import OwnershipAgent
@@ -2851,6 +2852,7 @@ class WhaleScanner:
             except Exception as _ee:
                 logger.debug(f"[Whale] Enrichment skipped: {_ee}")
 
+        log_scan_results(results, ctx)
         return results, ctx
 
     def scan_watchlist(self, **kw) -> Tuple[List[dict], dict]:
