@@ -87,7 +87,7 @@ import numpy as np
 import pandas as pd
 
 from core.data_feed import DataFeed, get_ihsg_regime, IDX_WATCHLIST
-from agents.scan_logger import log_scan_results
+from agents.scan_logger import log_scan_results, backfill_forward_returns
 from core.data_feed import MSCI_CANDIDATES, IDX30_LQ45_CANDIDATES, get_catalyst_universe, get_dynamic_universe, detect_dividend_rally_risk
 try:
     from agents.ownership_agent import OwnershipAgent
@@ -2672,6 +2672,7 @@ class WhaleScanner:
              max_workers: int                 = 8) -> Tuple[List[dict], dict]:  # FIX #5: 20→8, CPU-bound + GIL
 
         tickers = tickers or get_catalyst_universe()  # V7: includes daily movers
+        backfill_forward_returns()  # tahap 2: isi fwd_ret baris lama, max 1x/hari, fail-safe
         # Build fast MSCI/LQ45 lookup sets for flagging — stored as instance attrs
         self._msci_set  = set(t.upper().replace(".JK","") for t in MSCI_CANDIDATES)
         self._lq45_set  = set(t.upper().replace(".JK","") for t in IDX30_LQ45_CANDIDATES)

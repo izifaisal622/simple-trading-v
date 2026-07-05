@@ -145,3 +145,126 @@ def pending_backfill_count() -> int:
         return int(n)
     except Exception:
         return 0
+
+
+# ============================================================
+# TAHAP 2 — Backfill forward returns
+# Entry basis: OPEN hari bursa pertama SETELAH scan_date (open H+1).
+# Alasan: scan dilakukan setelah pasar tutup; close hari scan tidak
+# bisa dieksekusi. Mengukur dari close menggelembungkan hit-rate.
+# fwd_ret_Nd  = Close(entry_idx + N) / Open(entry_idx) - 1
+# mae_20d     = min(Low[entry..entry+20]) / Open(entry) - 1
+# mfe_20d     = max(High[entry..entry+20]) / Open(entry) - 1
+# Partial fill: 5d/10d diisi begitu datanya cukup; backfilled_at
+# hanya di-set setelah horizon 20d lengkap.
+# Throttle: max 1x per hari (tabel meta), supaya hook di scan()
+# tidak memukul yfinance berulang.
+# ============================================================
+
+IHSG_TICKER = "^JKSE"
+
+
+def _throttle_ok(conn: sqlite3.Connection) -> bool:
+    conn.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)")
+    row = conn.execute("SELECT v FROM meta WHERE k='last_backfill'").fetchone()
+    today = datetime.now().strftime("%Y-%m-%d")
+    if row and row[0] == today:
+        return False
+    conn.execute("INSERT OR REPLACE INTO meta (k,v) VALUES ('last_backfill',?)", (today,))
+    conn.commit()
+    return True
+
+
+def _horizon_metrics(df, scan_date: str):
+    """Return dict metrik forward utk satu ticker, atau None kalau belum ada bar H+1."""
+    import pandas as pd
+    if df is None or df.empty:
+        return None
+    idx = df.index
+    after = idx[idx > pd.Timestamp(scan_date)]
+    if len(after) == 0:
+        return None
+    e = idx.get_loc(after[0])                      # entry bar (H+1)
+    entry_open = float(df["Open"].iloc[e])
+    if entry_open <= 0:
+        return None
+    out = {}
+    for n, key in ((5, "fwd_ret_5d"), (10, "fwd_ret_10d"), (20, "fwd_ret_20d")):
+        if e + n < len(df):
+            out[key] = float(df["Close"].iloc[e + n]) / entry_open - 1.0
+    if e + 20 < len(df):
+        win = df.iloc[e:e + 21]
+        out["mae_20d"] = float(win["Low"].min()) / entry_open - 1.0
+        out["mfe_20d"] = float(win["High"].max()) / entry_open - 1.0
+    return out or None
+
+
+def backfill_forward_returns(max_rows: int = 500) -> int:
+    """
+    Isi kolom fwd_ret/mae/mfe untuk baris pending. Return jumlah baris ter-update.
+    Tidak pernah raise — kegagalan backfill tidak boleh mematikan scan.
+    """
+    try:
+        import pandas as pd
+        import yfinance as yf
+
+        conn = _get_conn()
+        if not _throttle_ok(conn):
+            conn.close()
+            return 0
+
+        rows = conn.execute("""
+            SELECT id, ticker, scan_date FROM whale_scans
+            WHERE backfilled_at IS NULL
+              AND julianday('now') - julianday(scan_date) >= 3
+            ORDER BY scan_date LIMIT ?
+        """, (max_rows,)).fetchall()
+        if not rows:
+            conn.close()
+            return 0
+
+        oldest = min(r[2] for r in rows)
+        start = (pd.Timestamp(oldest) - pd.Timedelta(days=5)).strftime("%Y-%m-%d")
+        tickers = sorted({r[1] for r in rows})
+
+        data = yf.download(tickers + [IHSG_TICKER], start=start, interval="1d",
+                           group_by="ticker", auto_adjust=False,
+                           progress=False, threads=True)
+
+        def _slice(tkr):
+            try:
+                d = data[tkr] if len(tickers) + 1 > 1 else data
+                return d.dropna(subset=["Open", "Close"])
+            except Exception:
+                return None
+
+        ihsg = _slice(IHSG_TICKER)
+        updated = 0
+        for row_id, tkr, sdate in rows:
+            m = _horizon_metrics(_slice(tkr), sdate)
+            if not m:
+                continue
+            im = _horizon_metrics(ihsg, sdate) or {}
+            sets, vals = [], []
+            for col in ("fwd_ret_5d", "fwd_ret_10d", "fwd_ret_20d", "mae_20d", "mfe_20d"):
+                if col in m:
+                    sets.append(f"{col}=?"); vals.append(round(m[col], 6))
+            for src, col in (("fwd_ret_5d", "ihsg_ret_5d"), ("fwd_ret_10d", "ihsg_ret_10d"),
+                             ("fwd_ret_20d", "ihsg_ret_20d")):
+                if src in im:
+                    sets.append(f"{col}=?"); vals.append(round(im[src], 6))
+            if "fwd_ret_20d" in m:  # horizon penuh → tandai selesai
+                sets.append("backfilled_at=?")
+                vals.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            if sets:
+                vals.append(row_id)
+                conn.execute(f"UPDATE whale_scans SET {', '.join(sets)} WHERE id=?", vals)
+                updated += 1
+
+        conn.commit()
+        conn.close()
+        logger.info(f"[ScanLogger] backfill: {updated}/{len(rows)} baris ter-update")
+        return updated
+    except Exception as exc:
+        logger.error(f"[ScanLogger] backfill gagal: {exc}")
+        return 0

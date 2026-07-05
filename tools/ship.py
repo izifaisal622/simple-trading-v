@@ -50,6 +50,9 @@ def main() -> None:
         if isinstance(first, dict):
             first = "; ".join(first.get("changes", [])[:1])
         msg = str(first)[:120] or f"release {version}"
+        # Baris changelog biasanya sudah diawali versi — jangan dobel
+        if msg.startswith(version):
+            msg = msg[len(version):].lstrip(" —-:").strip() or f"release {version}"
 
     # Guard: jangan commit kalau tidak ada perubahan
     status = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT,
