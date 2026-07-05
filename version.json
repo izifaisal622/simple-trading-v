@@ -1,7 +1,8 @@
 {
-  "version": "9.8.0",
+  "version": "9.8.1",
   "date": "2026-07-05",
   "changelog": [
+    "9.8.1 — FIX orchestrator whale scan tidak memakai full universe: default 9.8.0 hanya hidup di dropdown page 2 (jalur UI), sedangkan orchestrator --dashboard memanggil scanner.scan() langsung tanpa parameter → tetap 186 ticker; kini scan(top_n, full_universe=True) eksplisit. FlowScanner (War Room, line 407) sengaja tidak diubah — menunggu audit page 3",
     "9.8.0 — Full Universe jadi default UNIVERSE di page 2 (berlaku juga via orchestrator --dashboard); label S0 dihapus (terbaca 50 di font UI); mode Full IDX/Watchlist tetap di dropdown. Versi 9.7.9→9.8.0 mengikuti konvensi single-digit rollover milik repo (bump_version.py increment): patch mentok 9 → minor naik",
     "9.7.9 — FIX Windows encoding: 4 halaman (EMA_XBO, Follow_Whale, Stock_Pick, Alert_Watch) baca version.json via read_text() tanpa encoding — di Windows (cp1252) gagal diam-diam karena try/except fallback V9, badge versi akan salah permanen saat major naik ke V10; semua diseragamkan encoding=utf-8 seperti gate/War_Room/Trade_Journal",
     "9.7.8 — FEAT full universe tahap 2/2 (final): opsi UNIVERSE baru di page 2 \"Full Universe S0 (~477)\" — scan memakai hasil stage-0 screen digabung daily movers (movers dipertahankan untuk menangkap IPO pasca-seed); get_catalyst_universe(full_universe) dengan fallback otomatis ke mode standar kalau stage-0 gagal; hasil scan diberi tag pk_board backend-driven (seed universe sebagai satu sumber) + badge \"papan pemantauan\" di card. Mode lama tetap default, scan_watchlist tidak tersentuh",

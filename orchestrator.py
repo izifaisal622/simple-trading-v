@@ -84,7 +84,9 @@ def run_whale_scan(cfg, regime):
     analyst = MarketAnalystAgent(cfg)
     alerter = AlertAgent(cfg)
 
-    results, ctx = scanner.scan(top_n=cfg.whale_top_n)
+    # v9.8.1: orchestrator ikut full universe (konsisten dgn default page 2) —
+    # jalur CLI ini tidak lewat dropdown UI, jadi harus eksplisit
+    results, ctx = scanner.scan(top_n=cfg.whale_top_n, full_universe=True)
 
     # Save to results file
     results_file = LOGS_DIR / "daily_results.json"
