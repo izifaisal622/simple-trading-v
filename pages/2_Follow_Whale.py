@@ -306,7 +306,7 @@ margin-bottom:0.4rem">
 sec_head("◆ SCAN CONTROLS")
 c1,c2,c3,c4,c5 = st.columns([1.6,1.2,1,1.3,1])
 with c1: run_scan      = st.button("⟳ RUN ADAPTIVE SCAN", type="primary", width="stretch")
-with c2: mode          = st.selectbox("UNIVERSE", ["Full IDX (~350)","Watchlist (~100)"])
+with c2: mode          = st.selectbox("UNIVERSE", ["Full IDX (~350)","Watchlist (~100)","Full Universe S0 (~477)"])
 with c3: top_n         = st.number_input("TOP N", 10, 100, 30, 10)
 with c4: manual_vol    = st.number_input("OVERRIDE VOL× (0=auto)", 0.0, 10.0, 0.0, 0.5)
 with c5: min_conv_ui   = st.number_input("MIN CONVICTION", 1, 10, 4, 1)
@@ -321,8 +321,9 @@ if run_scan:
             # FIX #6: scan dengan top_n=100 (pool penuh) agar tab SEMUA tidak kehilangan data.
             # top_n dari user hanya dipakai untuk get_best_long display, bukan untuk cap storage.
             # Sebelumnya scan(top_n=user_top_n) → results hanya 30 → tab SEMUA cuma 30.
+            _fu = "Full Universe" in mode  # v9.7.8: stage-0 universe (~477, +waktu scan ~2x)
             results_full, new_ctx = (scanner.scan_watchlist(top_n=100)
-                                     if "Watchlist" in mode else scanner.scan(top_n=100))
+                                     if "Watchlist" in mode else scanner.scan(top_n=100, full_universe=_fu))
             # Display list pakai top_n user untuk best long — tetap respek preferensi user
             best     = scanner.get_best_long(results_full, min_conviction=int(min_conv_ui))[:int(top_n)]
             peng     = scanner.get_pengeringan(results_full)
@@ -369,6 +370,7 @@ def tags_html(w: dict) -> str:
     if mom=="ACCELERATING":            t.append('<span class="tag tag-g">⚡ acc</span>')
     elif mom=="REVERSING":             t.append('<span class="tag tag-y">↗ rev</span>')
     # V4 tags
+    if w.get("pk_board"):              t.append('<span class="tag tag-y">⚠ papan pemantauan</span>')
     if w.get("is_centralized"):        t.append('<span class="tag tag-g">🔒 supply terpusat</span>')
     if w.get("in_ob_zone"):            t.append('<span class="tag tag-g">📦 di OB zone</span>')
     elif w.get("near_ob_zone"):        t.append('<span class="tag tag-y">📦 dekat OB</span>')

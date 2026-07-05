@@ -1,7 +1,8 @@
 {
-  "version": "9.7.7",
+  "version": "9.7.8",
   "date": "2026-07-05",
   "changelog": [
+    "9.7.8 — FEAT full universe tahap 2/2 (final): opsi UNIVERSE baru di page 2 \"Full Universe S0 (~477)\" — scan memakai hasil stage-0 screen digabung daily movers (movers dipertahankan untuk menangkap IPO pasca-seed); get_catalyst_universe(full_universe) dengan fallback otomatis ke mode standar kalau stage-0 gagal; hasil scan diberi tag pk_board backend-driven (seed universe sebagai satu sumber) + badge \"papan pemantauan\" di card. Mode lama tetap default, scan_watchlist tidak tersentuh",
     "9.7.7 — FEAT full universe tahap 1/2: data/idx_universe.json (952 emiten IDX + papan pencatatan, sumber Dataset-Saham-IDX per 2024-07 + merge repo, update manual kuartalan) + core/data_feed: load_idx_universe() dan screen_full_universe() — stage-0 screen chunked (250/batch, 3mo daily): gugurkan ticker mati/suspensi & illiquid (median value < 0.15Bn); filter gocap HANYA papan reguler, Pemantauan Khusus lolos dengan tag pk=True; cache harian logs/stage0_cache.json. Belum terhubung ke scanner (integrasi = tahap 2)",
     "9.7.6 — FIX deprecation st.components.v1.html (deprecated Streamlit 1.56.0, removal terjadwal): 4 call site (gate.py download button, Alert_Watch auto-refresh/countdown/notification) dimigrasi ke helper baru assets_ui.render_html_js — pakai st.html(unsafe_allow_javascript=True) dengan fallback otomatis ke components.v1.html untuk versi Streamlit lama; JS window.parent.* aman karena non-iframe parent === window",
     "9.7.5 — FIX KeyError avg_pump_pct: dict _empty di detect_pump_fingerprint kekurangan 4 key (avg_pump_pct, cur_supply, cur_pengeringan, cur_vol_stepup) yang dibaca _analyze_ticker — ticker dengan data <60 hari atau tanpa pump history crash dan gugur diam-diam dari hasil scan (terlihat di log: CAMP, ISAT, ADMF, ERAA)",

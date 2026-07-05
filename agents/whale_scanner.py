@@ -88,7 +88,7 @@ import pandas as pd
 
 from core.data_feed import DataFeed, get_ihsg_regime, IDX_WATCHLIST
 from agents.scan_logger import log_scan_results, backfill_forward_returns
-from core.data_feed import MSCI_CANDIDATES, IDX30_LQ45_CANDIDATES, get_catalyst_universe, get_dynamic_universe, detect_dividend_rally_risk
+from core.data_feed import MSCI_CANDIDATES, IDX30_LQ45_CANDIDATES, get_catalyst_universe, get_dynamic_universe, detect_dividend_rally_risk, get_pk_set
 try:
     from agents.ownership_agent import OwnershipAgent
     _ownership_agent = OwnershipAgent()
@@ -2675,9 +2675,10 @@ class WhaleScanner:
     def scan(self,
              tickers:     Optional[List[str]] = None,
              top_n:       int                 = 50,
-             max_workers: int                 = 8) -> Tuple[List[dict], dict]:  # FIX #5: 20→8, CPU-bound + GIL
+             max_workers: int                 = 8,
+             full_universe: bool              = False) -> Tuple[List[dict], dict]:  # FIX #5: 20→8, CPU-bound + GIL
 
-        tickers = tickers or get_catalyst_universe()  # V7: includes daily movers
+        tickers = tickers or get_catalyst_universe(full_universe=full_universe)  # V7: movers; v9.7.8: opsi stage-0
         backfill_forward_returns()  # tahap 2: isi fwd_ret baris lama, max 1x/hari, fail-safe
         # Build fast MSCI/LQ45 lookup sets for flagging — stored as instance attrs
         self._msci_set  = set(t.upper().replace(".JK","") for t in MSCI_CANDIDATES)
@@ -2858,6 +2859,14 @@ class WhaleScanner:
                 results = _ownership_agent.enrich_top_results(results)  # V5: top_n=50, min_conviction=4
             except Exception as _ee:
                 logger.debug(f"[Whale] Enrichment skipped: {_ee}")
+
+        # v9.7.8: tag papan Pemantauan Khusus — backend-driven, satu sumber (seed universe)
+        try:
+            _pk = get_pk_set()
+            for _r in results:
+                _r["pk_board"] = _r.get("ticker", "").replace(".JK", "") in _pk
+        except Exception:
+            pass
 
         log_scan_results(results, ctx)
         return results, ctx

@@ -1219,13 +1219,38 @@ def get_msci_candidates() -> list:
     return out
 
 
-def get_catalyst_universe() -> list:
+def get_pk_set() -> set:
+    """Kode papan Pemantauan Khusus dari seed universe (v9.7.8). Fail-safe: set kosong."""
+    try:
+        return {c for c, b in load_idx_universe().items() if b == "Pemantauan Khusus"}
+    except Exception:
+        return set()
+
+
+def get_catalyst_universe(full_universe: bool = False) -> list:
     """
     Full catalyst universe: dynamic movers + IDX_FULL + MSCI + LQ45, deduplicated.
     Upgraded in V6 to include daily top movers for remora sensitivity.
+    v9.7.8: full_universe=True → base diganti hasil stage-0 screen (~477 ticker
+    likuid dari 952 emiten IDX, cache harian) DIGABUNG movers — movers tetap
+    dipertahankan karena menangkap IPO baru yang belum ada di seed universe.
     """
-    # Get dynamic base (movers + IDX_FULL merged)
-    dynamic_base = get_dynamic_universe(include_movers=True)
+    if full_universe:
+        try:
+            s0 = screen_full_universe()
+            base = [p["t"] for p in s0.get("passed", [])]
+        except Exception as _exc:
+            logger.error(f"[Universe] stage-0 gagal, fallback mode standar: {_exc}")
+            base = []
+        if base:
+            movers = get_dynamic_universe(include_movers=True)
+            seen = set(base)
+            dynamic_base = base + [t for t in movers if t not in seen]
+        else:
+            dynamic_base = get_dynamic_universe(include_movers=True)
+    else:
+        # Get dynamic base (movers + IDX_FULL merged)
+        dynamic_base = get_dynamic_universe(include_movers=True)
 
     seen: set  = set(dynamic_base)
     out:  list = [t + ".JK" for t in dynamic_base]
