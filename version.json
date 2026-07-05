@@ -1,7 +1,8 @@
 {
-  "version": "9.7.9",
+  "version": "9.8.0",
   "date": "2026-07-05",
   "changelog": [
+    "9.8.0 — Full Universe jadi default UNIVERSE di page 2 (berlaku juga via orchestrator --dashboard); label S0 dihapus (terbaca 50 di font UI); mode Full IDX/Watchlist tetap di dropdown. Versi 9.7.9→9.8.0 mengikuti konvensi single-digit rollover milik repo (bump_version.py increment): patch mentok 9 → minor naik",
     "9.7.9 — FIX Windows encoding: 4 halaman (EMA_XBO, Follow_Whale, Stock_Pick, Alert_Watch) baca version.json via read_text() tanpa encoding — di Windows (cp1252) gagal diam-diam karena try/except fallback V9, badge versi akan salah permanen saat major naik ke V10; semua diseragamkan encoding=utf-8 seperti gate/War_Room/Trade_Journal",
     "9.7.8 — FEAT full universe tahap 2/2 (final): opsi UNIVERSE baru di page 2 \"Full Universe S0 (~477)\" — scan memakai hasil stage-0 screen digabung daily movers (movers dipertahankan untuk menangkap IPO pasca-seed); get_catalyst_universe(full_universe) dengan fallback otomatis ke mode standar kalau stage-0 gagal; hasil scan diberi tag pk_board backend-driven (seed universe sebagai satu sumber) + badge \"papan pemantauan\" di card. Mode lama tetap default, scan_watchlist tidak tersentuh",
     "9.7.7 — FEAT full universe tahap 1/2: data/idx_universe.json (952 emiten IDX + papan pencatatan, sumber Dataset-Saham-IDX per 2024-07 + merge repo, update manual kuartalan) + core/data_feed: load_idx_universe() dan screen_full_universe() — stage-0 screen chunked (250/batch, 3mo daily): gugurkan ticker mati/suspensi & illiquid (median value < 0.15Bn); filter gocap HANYA papan reguler, Pemantauan Khusus lolos dengan tag pk=True; cache harian logs/stage0_cache.json. Belum terhubung ke scanner (integrasi = tahap 2)",

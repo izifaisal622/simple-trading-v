@@ -306,7 +306,7 @@ margin-bottom:0.4rem">
 sec_head("◆ SCAN CONTROLS")
 c1,c2,c3,c4,c5 = st.columns([1.6,1.2,1,1.3,1])
 with c1: run_scan      = st.button("⟳ RUN ADAPTIVE SCAN", type="primary", width="stretch")
-with c2: mode          = st.selectbox("UNIVERSE", ["Full IDX (~350)","Watchlist (~100)","Full Universe S0 (~477)"])
+with c2: mode          = st.selectbox("UNIVERSE", ["Full Universe (~477)","Full IDX (~350)","Watchlist (~100)"], index=0)  # v9.8.0: full universe default
 with c3: top_n         = st.number_input("TOP N", 10, 100, 30, 10)
 with c4: manual_vol    = st.number_input("OVERRIDE VOL× (0=auto)", 0.0, 10.0, 0.0, 0.5)
 with c5: min_conv_ui   = st.number_input("MIN CONVICTION", 1, 10, 4, 1)
