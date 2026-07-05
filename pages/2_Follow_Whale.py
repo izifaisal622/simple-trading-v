@@ -215,7 +215,7 @@ with st.sidebar:
 # ── Page header ───────────────────────────────────────────────────────────────
 import json as _j; from pathlib import Path as _Pv
 try:
-    _ver_accent = "V" + _j.loads((_Pv(__file__).parent.parent/"version.json").read_text())["version"].split(".")[0]
+    _ver_accent = "V" + _j.loads((_Pv(__file__).parent.parent/"version.json").read_text(encoding="utf-8"))["version"].split(".")[0]
 except Exception:
     _ver_accent = "V9"
 
