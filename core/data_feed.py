@@ -1343,3 +1343,122 @@ def detect_dividend_rally_risk(df_daily: "pd.DataFrame") -> dict:
         pass
 
     return result
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# FULL UNIVERSE + STAGE-0 SCREEN (v9.7.7)
+# Seed: data/idx_universe.json (952 emiten + papan pencatatan, sumber BEI via
+# Dataset-Saham-IDX per 2024-07-19, merge kode repo; update manual kuartalan).
+# Stage-0 = corong murah harian sebelum deep scan:
+#   - gugurkan ticker mati/suspensi (bar terakhir terlalu tua / tanpa data)
+#   - ambang likuiditas: median nilai transaksi 30 bar >= min_median_value_bn
+#   - ambang harga > gocap HANYA untuk papan reguler — papan Pemantauan
+#     Khusus (FCA) legal < Rp50, lolos dengan tag pk=True (keputusan user:
+#     include dengan tag, perlakuan skor ditentukan di scanner, bukan di sini)
+# Hasil di-cache harian (logs/stage0_cache.json) karena mahal (~2 menit).
+# ═════════════════════════════════════════════════════════════════════════════
+
+_UNIVERSE_FILE = Path(__file__).parent.parent / "data" / "idx_universe.json"
+_STAGE0_CACHE  = Path(__file__).parent.parent / "logs" / "stage0_cache.json"
+_STAGE0_CHUNK  = 250
+
+
+def load_idx_universe() -> dict:
+    """Return {code: listing_board} dari seed file. Fail-safe: {} kalau file rusak/absen."""
+    try:
+        with open(_UNIVERSE_FILE, encoding="utf-8") as f:
+            return json.load(f).get("tickers", {})
+    except Exception as exc:
+        logger.error(f"[Universe] gagal baca {_UNIVERSE_FILE.name}: {exc}")
+        return {}
+
+
+def screen_full_universe(min_median_value_bn: float = 0.15,
+                         min_price: float = 55.0,
+                         max_stale_days: int = 7,
+                         force: bool = False) -> dict:
+    """
+    Stage-0 screen seluruh universe IDX. Return:
+      {"date", "stats": {...}, "passed": [{"t", "board", "pk", "med_val_bn", "close"}]}
+    Cache harian — panggilan kedua di hari yang sama membaca cache (force=True untuk bypass).
+    """
+    today = datetime.now().strftime("%Y-%m-%d")
+    if not force:
+        try:
+            with open(_STAGE0_CACHE, encoding="utf-8") as f:
+                cached = json.load(f)
+            if cached.get("date") == today:
+                logger.info(f"[Stage0] cache hit ({len(cached.get('passed', []))} lolos)")
+                return cached
+        except Exception:
+            pass
+
+    universe = load_idx_universe()
+    if not universe:
+        return {"date": today, "stats": {"error": "universe kosong"}, "passed": []}
+
+    codes = sorted(universe)
+    passed, dead, illiquid, gocap = [], 0, 0, 0
+    now_ts = pd.Timestamp.now()
+
+    for i in range(0, len(codes), _STAGE0_CHUNK):
+        chunk = codes[i:i + _STAGE0_CHUNK]
+        symbols = [f"{c}.JK" for c in chunk]
+        logger.info(f"[Stage0] chunk {i//_STAGE0_CHUNK + 1}: {len(chunk)} ticker...")
+        try:
+            raw = yf.download(symbols, period="3mo", interval="1d",
+                              group_by="ticker", auto_adjust=True,
+                              progress=False, threads=True)
+        except Exception as exc:
+            logger.error(f"[Stage0] chunk gagal: {exc}")
+            continue
+
+        multi = len(symbols) > 1
+        lvl0 = set(raw.columns.get_level_values(0)) if multi else set()
+        for c in chunk:
+            sym = f"{c}.JK"
+            try:
+                if multi:
+                    if sym not in lvl0:
+                        dead += 1
+                        continue
+                    df = raw[sym].dropna(how="all")
+                else:
+                    df = raw.dropna(how="all")
+                df = df.dropna(subset=["Close", "Volume"])
+                if df.empty or (now_ts - df.index[-1]).days > max_stale_days:
+                    dead += 1
+                    continue
+                tail = df.tail(30)
+                med_val = float((tail["Close"] * tail["Volume"]).median())
+                if med_val < min_median_value_bn * 1e9:
+                    illiquid += 1
+                    continue
+                board = universe.get(c, "unknown")
+                is_pk = board == "Pemantauan Khusus"
+                close = float(df["Close"].iloc[-1])
+                if not is_pk and close < min_price:
+                    gocap += 1
+                    continue
+                passed.append({"t": c, "board": board, "pk": is_pk,
+                               "med_val_bn": round(med_val / 1e9, 3),
+                               "close": round(close, 1)})
+            except Exception as exc:
+                logger.debug(f"[Stage0] {c}: {exc}")
+                dead += 1
+
+    result = {
+        "date": today,
+        "stats": {"universe": len(codes), "lolos": len(passed),
+                  "mati_suspensi": dead, "illiquid": illiquid, "gocap": gocap,
+                  "pk_lolos": sum(1 for p in passed if p["pk"])},
+        "passed": sorted(passed, key=lambda p: -p["med_val_bn"]),
+    }
+    try:
+        _STAGE0_CACHE.parent.mkdir(exist_ok=True)
+        with open(_STAGE0_CACHE, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False)
+    except Exception as exc:
+        logger.warning(f"[Stage0] cache write gagal: {exc}")
+    logger.info(f"[Stage0] {result['stats']}")
+    return result
