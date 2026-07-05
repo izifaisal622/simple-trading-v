@@ -17,12 +17,12 @@ from datetime import datetime, timezone, timedelta, time as dtime
 from pathlib import Path
 
 import streamlit as st
-import streamlit.components.v1 as _components
 
 ROOT     = Path(__file__).parent.parent
 LOGS_DIR = ROOT / "logs"
 import sys; sys.path.insert(0, str(ROOT))
 
+from assets_ui import render_html_js
 from assets_ui import (
     get_page_css, render_sidebar, render_page_header, render_regime_bar,
     REGIME_COLORS, SIG_COLORS, TEXT_MUTED, TEXT_MAIN, TEXT_DIM, NEON_GREEN, BG_CARD,
@@ -130,7 +130,7 @@ now_wib = datetime.now(WIB)
 # ─────────────────────────────────────────────────────────────────────────────
 # Pure JS auto-refresh — no external package needed
 if is_active and interval_ms:
-    _components.html(
+    render_html_js(
         f"<script>setTimeout(function(){{window.parent.location.reload();}},{interval_ms});</script>",
         height=0
     )
@@ -345,11 +345,11 @@ with sc3:
     floor_pct = st.slider("Floor Distance %",   1, 25, 10, key="floor_pct_s")
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Countdown JS — WAJIB pakai _components.html, bukan st.markdown
+# Countdown JS — WAJIB pakai render_html_js (JS-capable), bukan st.markdown
 # Streamlit strips <script> dari unsafe_allow_html → script tidak pernah dieksekusi
 if is_active and interval_ms:
     secs = interval_ms // 1000
-    _components.html(
+    render_html_js(
         f"""<style>
           @keyframes _pulse{{0%,100%{{opacity:1}}50%{{opacity:.25}}}}
           #_cdrow{{display:flex;align-items:center;gap:8px;
@@ -401,8 +401,8 @@ if error:
 # ─────────────────────────────────────────────────────────────────────────────
 if alerts:
     ticker_str = ", ".join(a["ticker"] for a in alerts[:5])
-    # WAJIB _components.html — st.markdown strips <script> tags
-    _components.html(
+    # WAJIB render_html_js (JS-capable) — st.markdown strips <script> tags
+    render_html_js(
         f"""<script>
           (function(){{
             var msg="{len(alerts)} ALERT: {ticker_str}";

@@ -1117,3 +1117,20 @@ def render_skeleton(rows: int = 3):
         html += '<div class="skeleton sk-line sk-short" style="margin-bottom:var(--sp-4)"></div>'
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
+
+
+def render_html_js(code: str, height: int = 0) -> None:
+    """
+    FIX 9.7.6 — pengganti st.components.v1.html (deprecated Streamlit 1.56.0,
+    akan dihapus). st.html tidak di-iframe dan butuh unsafe_allow_javascript=True
+    untuk mengeksekusi <script>. Trik window.parent.* di JS lama tetap aman:
+    di konteks non-iframe, window.parent === window.
+    Fallback ke components.v1.html kalau versi Streamlit belum punya
+    parameter tersebut — supaya upgrade/downgrade Streamlit tidak mematikan UI.
+    """
+    import streamlit as st
+    try:
+        st.html(code, unsafe_allow_javascript=True)
+    except (TypeError, AttributeError):
+        import streamlit.components.v1 as _c
+        _c.html(code, height=height)

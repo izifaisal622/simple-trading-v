@@ -1,7 +1,8 @@
 {
-  "version": "9.7.5",
+  "version": "9.7.6",
   "date": "2026-07-05",
   "changelog": [
+    "9.7.6 — FIX deprecation st.components.v1.html (deprecated Streamlit 1.56.0, removal terjadwal): 4 call site (gate.py download button, Alert_Watch auto-refresh/countdown/notification) dimigrasi ke helper baru assets_ui.render_html_js — pakai st.html(unsafe_allow_javascript=True) dengan fallback otomatis ke components.v1.html untuk versi Streamlit lama; JS window.parent.* aman karena non-iframe parent === window",
     "9.7.5 — FIX KeyError avg_pump_pct: dict _empty di detect_pump_fingerprint kekurangan 4 key (avg_pump_pct, cur_supply, cur_pengeringan, cur_vol_stepup) yang dibaca _analyze_ticker — ticker dengan data <60 hari atau tanpa pump history crash dan gugur diam-diam dari hasil scan (terlihat di log: CAMP, ISAT, ADMF, ERAA)",
     "9.7.4 — FEAT feedback loop tahap 2/3: backfill_forward_returns di scan_logger — entry basis open H+1 (bukan close hari scan, mencegah hit-rate menggelembung); fwd_ret 5/10/20d + benchmark IHSG + MAE/MFE 20d; partial fill per horizon, throttle 1x/hari, hook otomatis di awal scan(), fail-safe. FIX ship.py: pesan commit tidak lagi double versi",
     "9.7.3 — FEAT feedback loop tahap 1/3: agents/scan_logger.py — setiap hasil whale scan tersimpan permanen ke logs/scan_history.db (SQLite, UNIQUE ticker+scan_date — 1 observasi/ticker/hari); snapshot conviction/quality/driver skor + raw_json; kolom fwd_ret/mae/mfe NULL menunggu backfill tahap 2; logging fail-safe tidak pernah mematikan scan. Plus tools/ship.py — commit+push+release satu perintah",

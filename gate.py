@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timezone, timedelta, time as dtime
 from pathlib import Path
 import streamlit as st
-import streamlit.components.v1 as _components
+from assets_ui import render_html_js
 
 st.set_page_config(page_title="Simple Trading V9", page_icon="◈",
                    layout="wide", initial_sidebar_state="collapsed")
@@ -387,7 +387,6 @@ document.addEventListener("DOMContentLoaded",function(){{
 # ── RESTORE POINTS — render only (_restore_points fetched above line 204) ─────
 # Tampilkan terlepas ada/tidak — jika kosong, beri info cara generate
 import base64 as _gate_b64
-import streamlit.components.v1 as _gate_comp
 
 st.markdown('<div style="margin-top:2.5rem"></div>', unsafe_allow_html=True)
 with st.expander(
@@ -422,7 +421,7 @@ with st.expander(
                     _is_cur = _rp.get("is_active", False)
                     _label  = f"⬇ {_ver}" + (" ← AKTIF" if _is_cur else "")
                     _sub    = f"{_dt}  {_sz}MB" if _dt else f"{_sz}MB"
-                    _gate_comp.html(f"""
+                    render_html_js(f"""
                     <style>
                       .rdb{_i}{{font-family:'Share Tech Mono',monospace;font-size:.62rem;
                         background:{'rgba(0,255,102,.04)' if _is_cur else 'rgba(0,255,102,.08)'};
