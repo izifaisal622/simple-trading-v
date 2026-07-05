@@ -970,6 +970,12 @@ def detect_pump_fingerprint(
         "currently_matches": False,
         "similarity_score":  0.0,
         "description":       "",
+        # FIX 9.7.5: 4 key ini dibaca _analyze_ticker (line ~2458) tapi absen
+        # dari _empty → KeyError menggugurkan ticker dari hasil scan
+        "avg_pump_pct":      0.0,
+        "cur_supply":        0.0,
+        "cur_pengeringan":   False,
+        "cur_vol_stepup":    False,
     }
 
     if len(close_daily) < 60:
