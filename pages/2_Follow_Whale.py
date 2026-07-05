@@ -309,7 +309,7 @@ with c1: run_scan      = st.button("⟳ RUN ADAPTIVE SCAN", type="primary", widt
 with c2: mode          = st.selectbox("UNIVERSE", ["Full Universe (~477)","Full IDX (~350)","Watchlist (~100)"], index=0)  # v9.8.0: full universe default
 with c3: top_n         = st.number_input("TOP N", 10, 100, 30, 10)
 with c4: manual_vol    = st.number_input("OVERRIDE VOL× (0=auto)", 0.0, 10.0, 0.0, 0.5)
-with c5: min_conv_ui   = st.number_input("MIN CONVICTION", 1, 10, 4, 1)
+with c5: min_conv_ui   = st.number_input("MIN CONVICTION", 1, 10, 7, 1)  # v9.8.3: default 7 (aturan user)
 
 if run_scan:
     with st.spinner("◈ ADAPTING TO MARKET · FLOOR PRICES · PENGERINGAN · SECTOR CAP..."):
@@ -1314,144 +1314,25 @@ def _v4_row(w: dict) -> str:
 
 def _trading_summary_row(w: dict) -> str:
     """
-    Synthesized trading verdict row — Hengky Method.
-    Entry / Wait / Skip + level kunci + reasoning chain.
+    Renderer verdict trading — v9.8.3: logika keputusan pindah ke backend
+    (whale_scanner.compute_trade_verdict, di-attach sebagai w["trade_verdict"]).
+    Fungsi ini murni presentasi: mapping verdict → warna/ikon + HTML.
     """
-    close       = w.get("close", 0)
-    floor_p     = w.get("floor_price", 0)
-    pct_f       = w.get("pct_above_floor", 0)
-    conv        = w.get("conviction", 0)
-    ctrl        = w.get("control_score", 0)
-    ema_tr      = w.get("ema_trend", "")
-    signal      = w.get("signal", "")
-    qual        = w.get("whale_quality", "")
-    peng        = w.get("pengeringan_detected", False)
-    defending   = w.get("whale_defending", False)
-    ob_det      = w.get("ob_detected", False)
-    in_ob       = w.get("in_ob_zone", False)
-    near_ob     = w.get("near_ob_zone", False)
-    ob_l        = w.get("ob_low", 0)
-    ob_h        = w.get("ob_high", 0)
-    vp_val      = w.get("vp_val", 0)
-    vp_poc      = w.get("vp_poc", 0)
-    vp_near_val = w.get("vp_near_val", False)
-    range_20d   = w.get("range_20d_pct", 5.0)
-    ema13       = w.get("ema13", 0)
-    mom5        = w.get("mom_5d", 0)
-    ff          = w.get("free_float", 100)
-    sc          = w.get("supply_control", "")
-    is_dist     = signal in ("DISTRIBUTION", "BLOCK_SELL")
-    ff_vol      = w.get("ff_adj_vol_ratio", w.get("vol_ratio", 0))
-    slow_exit   = w.get("slow_exit", False)
-
-    if close <= 0 or floor_p <= 0:
+    tv = w.get("trade_verdict") or {}
+    verdict     = tv.get("verdict", "")
+    action_text = tv.get("action_text", "")
+    reasons     = tv.get("reasons", [])
+    if not verdict:
         return ""
 
-    # ── Risk levels ──────────────────────────────────────────────────────────
-    # SL = floor price (below floor = thesis broken)
-    # Buffer: jika harga sudah sangat dekat floor, SL slightly below
-    sl_base     = floor_p * 0.97          # 3% buffer below floor
-    risk_pct    = (close - sl_base) / close * 100 if close > 0 else 0
-
-    # Entry zone: ideal entry based on context
-    if pct_f <= 5:
-        entry_lo = close * 0.998          # sudah di floor, entry sekarang
-        entry_hi = close * 1.012
-    elif pct_f <= 15:
-        entry_lo = floor_p * 1.01
-        entry_hi = floor_p * 1.06
-    else:
-        entry_lo = floor_p * 1.02
-        entry_hi = floor_p * 1.08
-
-    # TP berbasis range 20d dan conviction
-    tp_mult = 1.5 + (conv / 10) * 1.5    # conv 4→1.5x range, conv 8→2.1x range
-    range_rp = close * (range_20d / 100)
-    tp1      = close + range_rp * 1.2
-    tp2      = close + range_rp * tp_mult
-    rr       = (tp1 - close) / (close - sl_base) if (close - sl_base) > 0 else 0
-
-    # ── Verdict logic ────────────────────────────────────────────────────────
-    # P02-W5: weighted positive_signals — bobot sesuai Hengky priority
-    # Defending + ctrl tinggi = bukti terkuat. EMA/vol = konfirmasi saja.
-    tc_det = w.get("trigger_candle", False)
-    mrs    = w.get("momentum_readiness", 0)
-    positive_signals = sum([
-        defending * 2,                              # 2pt: whale defend = bukti terkuat
-        (ctrl >= 6) * 2,                            # 2pt: control score tinggi
-        peng * 1,                                   # 1pt: pengeringan barang
-        in_ob * 1,                                  # 1pt: di OB zone
-        (vp_near_val or w.get("vp_in_value",False)),# 1pt: di VP value area
-        near_ob * 1,                                # 1pt: dekat OB
-        (qual in ("SMART","LIKELY_SMART")) * 1,     # 1pt: whale quality
-        (ema_tr == "BULLISH") * 1,                  # 1pt: EMA trend
-        (ff_vol >= 1.5) * 1,                        # 1pt: volume konfirmasi
-        (conv >= 6) * 1,                            # 1pt: conviction
-        tc_det * 2,                                 # 2pt: trigger candle — momen push dimulai
-        (mrs >= 4) * 1,                             # 1pt: MRS >= 4 = timing siap
-    ])
-    # Max score = 14 — normalisasi ke skala 10
-    positive_signals = round(positive_signals * 10 / 14)
-
-    if is_dist:
-        verdict      = "DISTRIBUSI"
-        verdict_col  = "#EF4444"
-        verdict_bg   = "rgba(239,68,68,0.06)"
-        verdict_bdr  = "rgba(239,68,68,0.25)"
-        verdict_icon = "⚠"
-        action_text  = "JANGAN MASUK — distribusi aktif terdeteksi. Tunggu konfirmasi reversal."
-        reasons      = ["Signal distribusi/block sell aktif"]
-        if ema_tr == "BEARISH":
-            reasons.append("EMA bearish")
-        if ff_vol < 0.5:
-            reasons.append(f"Vol hanya {ff_vol:.1f}× (sepi)")
-    elif conv >= 6 and positive_signals >= 5 and pct_f <= 20 and ema_tr in ("BULLISH","MIXED") and close <= entry_hi * 1.02 and not slow_exit:
-        verdict      = "ENTRY VALID"
-        verdict_col  = "#00FF66"
-        verdict_bg   = "rgba(0,255,102,0.06)"
-        verdict_bdr  = "rgba(0,255,102,0.3)"
-        verdict_icon = "⚡"
-        action_text  = f"Entry Rp{entry_lo:,.0f}–{entry_hi:,.0f} · SL Rp{sl_base:,.0f} ({risk_pct:.0f}% risk) · TP1 Rp{tp1:,.0f} · TP2 Rp{tp2:,.0f} · R:R {rr:.1f}:1"
-        reasons      = []
-        if pct_f <= 5:   reasons.append("harga di floor")
-        elif pct_f <= 15:reasons.append(f"dekat floor {pct_f:.0f}%")
-        if peng:         reasons.append("pengeringan aktif")
-        if defending:    reasons.append("whale defend")
-        if in_ob:        reasons.append("di OB zone")
-        if ctrl >= 6:    reasons.append(f"control {ctrl}/10")
-        if sc in ("SANGAT KETAT","KETAT"): reasons.append(f"supply {sc.lower()}")
-    elif conv >= 4 and positive_signals >= 3 and pct_f <= 35:
-        verdict      = "WATCHLIST"
-        verdict_col  = "#F0B429"
-        verdict_bg   = "rgba(240,180,41,0.05)"
-        verdict_bdr  = "rgba(240,180,41,0.25)"
-        verdict_icon = "⏳"
-        wait_reasons = []
-        if close > entry_hi * 1.02:
-            wait_reasons.append(f"harga Rp{close:,.0f} sudah di atas entry zone Rp{entry_hi:,.0f} — tunggu pullback")
-        if pct_f > 20:        wait_reasons.append(f"harga masih {pct_f:.0f}% above floor")
-        if ema_tr == "MIXED": wait_reasons.append("EMA mixed — tunggu konfirmasi")
-        if ema_tr == "BEARISH": wait_reasons.append("EMA bearish — tunggu reversal")
-        if not peng:          wait_reasons.append("belum ada pengeringan")
-        if ff_vol < 1.0:      wait_reasons.append(f"vol lemah {ff_vol:.1f}×")
-        wait_str = " · ".join(wait_reasons) if wait_reasons else "setup belum matang"
-        action_text = f"TUNGGU — {wait_str}. Alert di Rp{entry_lo:,.0f}–{entry_hi:,.0f}"
-        reasons     = [f"conv {conv}/10"]
-        if peng:    reasons.append("peng ✓")
-        if ctrl>=4: reasons.append(f"ctrl {ctrl}/10")
-    else:
-        verdict      = "SKIP"
-        verdict_col  = "#64748B"
-        verdict_bg   = "rgba(100,116,139,0.05)"
-        verdict_bdr  = "rgba(100,116,139,0.2)"
-        verdict_icon = "✕"
-        skip_reasons = []
-        if conv < 4:       skip_reasons.append(f"conv rendah {conv}/10")
-        if pct_f > 35:     skip_reasons.append(f"terlalu jauh dari floor {pct_f:.0f}%")
-        if ema_tr=="BEARISH": skip_reasons.append("EMA bearish")
-        if ff_vol < 0.5:   skip_reasons.append(f"vol {ff_vol:.1f}× (terlalu sepi)")
-        action_text = " · ".join(skip_reasons) if skip_reasons else "tidak memenuhi kriteria entry"
-        reasons     = []
+    _STYLE = {
+        "DISTRIBUSI":  ("#EF4444", "rgba(239,68,68,0.06)",   "rgba(239,68,68,0.25)",   "⚠"),
+        "ENTRY VALID": ("#00FF66", "rgba(0,255,102,0.06)",   "rgba(0,255,102,0.3)",    "⚡"),
+        "WATCHLIST":   ("#F0B429", "rgba(240,180,41,0.05)",  "rgba(240,180,41,0.25)",  "⏳"),
+        "SKIP":        ("#64748B", "rgba(100,116,139,0.05)", "rgba(100,116,139,0.2)",  "✕"),
+    }
+    verdict_col, verdict_bg, verdict_bdr, verdict_icon = _STYLE.get(
+        verdict, ("#64748B", "rgba(100,116,139,0.05)", "rgba(100,116,139,0.2)", "•"))
 
     reasons_html = ""
     if reasons:
@@ -1460,6 +1341,10 @@ def _trading_summary_row(w: dict) -> str:
             f'padding:1px 6px;font-size:var(--text-2xs);color:#94A3B8">{r}</span>'
             for r in reasons
         ])
+    # v9.8.3: pre-build (prinsip: tanpa nested f-string)
+    reasons_block = ""
+    if reasons_html:
+        reasons_block = f'<div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin-top:0.3rem">{reasons_html}</div>'
 
     return f"""<div style="background:{verdict_bg};border:1px solid {verdict_bdr};
 border-radius:var(--r-sm);padding:0.5rem 0.85rem;margin-top:0.45rem;
@@ -1470,9 +1355,10 @@ display:flex;align-items:flex-start;gap:0.7rem;flex-wrap:wrap">
   <div style="flex:1;min-width:0">
     <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
     color:#E2E8F0;line-height:1.6">{action_text}</div>
-    {f'<div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin-top:0.3rem">{reasons_html}</div>' if reasons_html else ""}
+    {reasons_block}
   </div>
 </div>"""
+
 
 def whale_card(w: dict, border_color: str = NEON_GREEN) -> str:
     ticker  = w.get("ticker","").replace(".JK","")
@@ -1774,14 +1660,12 @@ if whale_results:
     #   - pct_above_floor > 35  → terlalu jauh dari floor (BHAT 113% tidak layak entry)
     #   - ema_trend BEARISH      → downtrend, bukan timing entry
     #   - ff_adj_vol_ratio < 0.5 → volume terlalu sepi
+    # v9.8.3: satu hakim — gate tab MEMBACA verdict backend, bukan meniru logikanya.
+    # Kartu di tab ini dijamin ber-verdict ENTRY VALID (tidak ada lagi SKIP nyasar).
     entry_today_list = sorted(
         [w for w in whale_results
-         if w.get("is_long_signal")
-         and (w.get("trigger_confirmed") or w.get("trigger_candle") or w.get("momentum_readiness", 0) >= 4)
-         and w.get("conviction", 0) >= min_conv_ui
-         and w.get("pct_above_floor", 999) <= 35
-         and w.get("ema_trend", "") != "BEARISH"
-         and w.get("ff_adj_vol_ratio", w.get("vol_ratio", 0)) >= 0.5],
+         if (w.get("trade_verdict") or {}).get("verdict") == "ENTRY VALID"
+         and w.get("conviction", 0) >= min_conv_ui],
         key=lambda w: (
             -(w.get("trigger_confirmed", False)),
             -(w.get("trigger_candle", False)),

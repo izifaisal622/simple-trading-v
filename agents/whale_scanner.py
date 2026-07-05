@@ -2865,6 +2865,7 @@ class WhaleScanner:
             _pk = get_pk_set()
             for _r in results:
                 _r["pk_board"] = _r.get("ticker", "").replace(".JK", "") in _pk
+                _r["trade_verdict"] = compute_trade_verdict(_r)  # v9.8.3: verdict backend, ikut ter-log
         except Exception:
             pass
 
@@ -2903,3 +2904,123 @@ class WhaleScanner:
     def get_distribution_watch(self, results: List[dict]) -> List[dict]:
         """Distribusi — awareness only, bukan short signal."""
         return [r for r in results if not r.get("is_long_signal")]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TRADE VERDICT — v9.8.3
+# Dipindah dari pages/2_Follow_Whale._trading_summary_row (sebelumnya ~140
+# baris logika keputusan hidup di page — melanggar prinsip verdict backend-
+# driven, dan jadi akar kartu SKIP muncul di tab ENTRY HARI INI karena gate
+# tab meniru sebagian logika ini secara tidak lengkap).
+# Fungsi ini murni KEPUTUSAN (verdict + angka level + alasan) — nol HTML/warna.
+# Dipanggil di akhir scan(), sehingga ikut terekam scan_logger (raw_json)
+# dan feedback loop bisa mengukur hit-rate per verdict.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def compute_trade_verdict(w: dict) -> dict:
+    """Return dict: verdict, action_text, reasons, entry_lo/hi, sl, tp1, tp2, rr, risk_pct."""
+    close     = w.get("close", 0)
+    floor_p   = w.get("floor_price", 0)
+    if close <= 0 or floor_p <= 0:
+        return {}
+    pct_f     = w.get("pct_above_floor", 0)
+    conv      = w.get("conviction", 0)
+    ctrl      = w.get("control_score", 0)
+    ema_tr    = w.get("ema_trend", "")
+    signal    = w.get("signal", "")
+    qual      = w.get("whale_quality", "")
+    peng      = w.get("pengeringan_detected", False)
+    defending = w.get("whale_defending", False)
+    in_ob     = w.get("in_ob_zone", False)
+    near_ob   = w.get("near_ob_zone", False)
+    vp_near_val = w.get("vp_near_val", False)
+    range_20d = w.get("range_20d_pct", 5.0)
+    sc        = w.get("supply_control", "")
+    is_dist   = signal in ("DISTRIBUTION", "BLOCK_SELL")
+    ff_vol    = w.get("ff_adj_vol_ratio", w.get("vol_ratio", 0))
+    slow_exit = w.get("slow_exit", False)
+
+    sl_base  = floor_p * 0.97
+    risk_pct = (close - sl_base) / close * 100 if close > 0 else 0
+    if pct_f <= 5:
+        entry_lo, entry_hi = close * 0.998, close * 1.012
+    elif pct_f <= 15:
+        entry_lo, entry_hi = floor_p * 1.01, floor_p * 1.06
+    else:
+        entry_lo, entry_hi = floor_p * 1.02, floor_p * 1.08
+    tp_mult  = 1.5 + (conv / 10) * 1.5
+    range_rp = close * (range_20d / 100)
+    tp1      = close + range_rp * 1.2
+    tp2      = close + range_rp * tp_mult
+    rr       = (tp1 - close) / (close - sl_base) if (close - sl_base) > 0 else 0
+
+    tc_det = w.get("trigger_candle", False)
+    mrs    = w.get("momentum_readiness", 0)
+    positive_signals = sum([
+        defending * 2,
+        (ctrl >= 6) * 2,
+        peng * 1,
+        in_ob * 1,
+        (vp_near_val or w.get("vp_in_value", False)),
+        near_ob * 1,
+        (qual in ("SMART", "LIKELY_SMART")) * 1,
+        (ema_tr == "BULLISH") * 1,
+        (ff_vol >= 1.5) * 1,
+        (conv >= 6) * 1,
+        tc_det * 2,
+        (mrs >= 4) * 1,
+    ])
+    positive_signals = round(positive_signals * 10 / 14)
+
+    if is_dist:
+        verdict = "DISTRIBUSI"
+        action_text = "JANGAN MASUK — distribusi aktif terdeteksi. Tunggu konfirmasi reversal."
+        reasons = ["Signal distribusi/block sell aktif"]
+        if ema_tr == "BEARISH":
+            reasons.append("EMA bearish")
+        if ff_vol < 0.5:
+            reasons.append(f"Vol hanya {ff_vol:.1f}× (sepi)")
+    elif conv >= 6 and positive_signals >= 5 and pct_f <= 20 and ema_tr in ("BULLISH", "MIXED") and close <= entry_hi * 1.02 and not slow_exit:
+        verdict = "ENTRY VALID"
+        action_text = (f"Entry Rp{entry_lo:,.0f}–{entry_hi:,.0f} · SL Rp{sl_base:,.0f} "
+                       f"({risk_pct:.0f}% risk) · TP1 Rp{tp1:,.0f} · TP2 Rp{tp2:,.0f} · R:R {rr:.1f}:1")
+        reasons = []
+        if pct_f <= 5:    reasons.append("harga di floor")
+        elif pct_f <= 15: reasons.append(f"dekat floor {pct_f:.0f}%")
+        if peng:          reasons.append("pengeringan aktif")
+        if defending:     reasons.append("whale defend")
+        if in_ob:         reasons.append("di OB zone")
+        if ctrl >= 6:     reasons.append(f"control {ctrl}/10")
+        if sc in ("SANGAT KETAT", "KETAT"): reasons.append(f"supply {sc.lower()}")
+    elif conv >= 4 and positive_signals >= 3 and pct_f <= 35:
+        verdict = "WATCHLIST"
+        wait_reasons = []
+        if close > entry_hi * 1.02:
+            wait_reasons.append(f"harga Rp{close:,.0f} sudah di atas entry zone Rp{entry_hi:,.0f} — tunggu pullback")
+        if pct_f > 20:          wait_reasons.append(f"harga masih {pct_f:.0f}% above floor")
+        if ema_tr == "MIXED":   wait_reasons.append("EMA mixed — tunggu konfirmasi")
+        if ema_tr == "BEARISH": wait_reasons.append("EMA bearish — tunggu reversal")
+        if not peng:            wait_reasons.append("belum ada pengeringan")
+        if ff_vol < 1.0:        wait_reasons.append(f"vol lemah {ff_vol:.1f}×")
+        wait_str = " · ".join(wait_reasons) if wait_reasons else "setup belum matang"
+        action_text = f"TUNGGU — {wait_str}. Alert di Rp{entry_lo:,.0f}–{entry_hi:,.0f}"
+        reasons = [f"conv {conv}/10"]
+        if peng:      reasons.append("peng ✓")
+        if ctrl >= 4: reasons.append(f"ctrl {ctrl}/10")
+    else:
+        verdict = "SKIP"
+        skip_reasons = []
+        if conv < 4:            skip_reasons.append(f"conv rendah {conv}/10")
+        if pct_f > 35:          skip_reasons.append(f"terlalu jauh dari floor {pct_f:.0f}%")
+        if ema_tr == "BEARISH": skip_reasons.append("EMA bearish")
+        if ff_vol < 0.5:        skip_reasons.append(f"vol {ff_vol:.1f}× (terlalu sepi)")
+        action_text = " · ".join(skip_reasons) if skip_reasons else "tidak memenuhi kriteria entry"
+        reasons = []
+
+    return {
+        "verdict": verdict, "action_text": action_text, "reasons": reasons,
+        "entry_lo": round(entry_lo, 1), "entry_hi": round(entry_hi, 1),
+        "sl": round(sl_base, 1), "tp1": round(tp1, 1), "tp2": round(tp2, 1),
+        "rr": round(rr, 2), "risk_pct": round(risk_pct, 1),
+        "positive_signals": positive_signals,
+    }
