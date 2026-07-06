@@ -199,72 +199,176 @@ def _horizon_metrics(df, scan_date: str):
     return out or None
 
 
+def _ensure_ema_table(conn: sqlite3.Connection) -> None:
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS ema_scans (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker        TEXT NOT NULL,
+        scan_date     TEXT NOT NULL,
+        scan_ts       TEXT NOT NULL,
+        close_price   REAL,
+        score         INTEGER,
+        signal        TEXT,
+        cross_state   TEXT,
+        vol_ratio     REAL,
+        rs_4w         REAL,
+        risk_pct      REAL,
+        rr_ratio      REAL,
+        entry_price   REAL,
+        sl_price      REAL,
+        tp1_price     REAL,
+        box_high      REAL,
+        box_low       REAL,
+        regime        TEXT,
+        mcf_blocked   INTEGER DEFAULT 0,
+        raw_json      TEXT,
+        fwd_ret_5d    REAL, fwd_ret_10d REAL, fwd_ret_20d REAL,
+        ihsg_ret_5d   REAL, ihsg_ret_10d REAL, ihsg_ret_20d REAL,
+        mae_20d       REAL, mfe_20d REAL,
+        backfilled_at TEXT,
+        created_at    TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(ticker, scan_date)
+    );
+    """)
+
+
+def log_ema_results(results: list, regime) -> int:
+    """
+    v9.8.5 — feedback loop page 1: snapshot hasil EMA XBO scan ke ema_scans.
+    Dipanggil di scanner_agent.save_results (backend, satu titik untuk semua
+    pemicu: page 1 maupun orchestrator). Kontrak sama dengan whale:
+    UNIQUE(ticker, scan_date), fail-safe, fwd_* menunggu backfill.
+    """
+    if not results:
+        return 0
+    now = datetime.now()
+    scan_date = now.strftime("%Y-%m-%d")
+    scan_ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    regime_s = str(regime.get("regime", regime) if isinstance(regime, dict) else regime)
+
+    rows = []
+    for r in results:
+        try:
+            rows.append((
+                str(r.get("ticker", "")).strip(), scan_date, scan_ts,
+                float(r.get("close", 0) or 0),
+                int(r.get("score", 0) or 0),
+                str(r.get("signal", "")),
+                str(r.get("cross_state", "")),
+                float(r.get("vol_ratio", 0) or 0),
+                float(r.get("rs_vs_ihsg_4w", 0) or 0),
+                float(r.get("risk_pct", 0) or 0),
+                float(r.get("rr_ratio", 0) or 0),
+                float(r.get("entry_price", 0) or 0),
+                float(r.get("sl_price", 0) or 0),
+                float(r.get("tp1_price", 0) or 0),
+                float(r.get("box_high", 0) or 0),
+                float(r.get("box_low", 0) or 0),
+                regime_s,
+                1 if r.get("mcf_bear_blocked") else 0,
+                json.dumps(r, default=str, ensure_ascii=False),
+            ))
+        except Exception as exc:
+            logger.warning(f"[ScanLogger] ema skip {r.get('ticker','?')}: {exc}")
+    if not rows:
+        return 0
+    try:
+        conn = _get_conn()
+        _ensure_ema_table(conn)
+        conn.executemany("""
+            INSERT OR REPLACE INTO ema_scans
+            (ticker, scan_date, scan_ts, close_price, score, signal, cross_state,
+             vol_ratio, rs_4w, risk_pct, rr_ratio, entry_price, sl_price, tp1_price,
+             box_high, box_low, regime, mcf_blocked, raw_json)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, rows)
+        conn.commit()
+        conn.close()
+        logger.info(f"[ScanLogger] {len(rows)} ema rows tersimpan ({scan_date})")
+        return len(rows)
+    except Exception as exc:
+        logger.error(f"[ScanLogger] ema gagal simpan: {exc}")
+        return 0
+
+
+def _backfill_table(conn, table: str, max_rows: int, pd, yf) -> int:
+    """Worker generik backfill satu tabel (whale_scans / ema_scans). Entry basis: open H+1."""
+    rows = conn.execute(f"""
+        SELECT id, ticker, scan_date FROM {table}
+        WHERE backfilled_at IS NULL
+          AND julianday('now') - julianday(scan_date) >= 3
+        ORDER BY scan_date LIMIT ?
+    """, (max_rows,)).fetchall()
+    if not rows:
+        return 0
+
+    oldest = min(r[2] for r in rows)
+    start = (pd.Timestamp(oldest) - pd.Timedelta(days=5)).strftime("%Y-%m-%d")
+    # ema_scans menyimpan ticker tanpa .JK; whale dengan .JK — seragamkan ke .JK utk download
+    def _sym(t):
+        return t if t.endswith(".JK") or t.startswith("^") else f"{t}.JK"
+    tickers = sorted({_sym(r[1]) for r in rows})
+
+    data = yf.download(tickers + [IHSG_TICKER], start=start, interval="1d",
+                       group_by="ticker", auto_adjust=False,
+                       progress=False, threads=True)
+
+    def _slice(sym):
+        try:
+            d = data[sym] if len(tickers) + 1 > 1 else data
+            return d.dropna(subset=["Open", "Close"])
+        except Exception:
+            return None
+
+    ihsg = _slice(IHSG_TICKER)
+    updated = 0
+    for row_id, tkr, sdate in rows:
+        m = _horizon_metrics(_slice(_sym(tkr)), sdate)
+        if not m:
+            continue
+        im = _horizon_metrics(ihsg, sdate) or {}
+        sets, vals = [], []
+        for col in ("fwd_ret_5d", "fwd_ret_10d", "fwd_ret_20d", "mae_20d", "mfe_20d"):
+            if col in m:
+                sets.append(f"{col}=?"); vals.append(round(m[col], 6))
+        for s_, c_ in (("fwd_ret_5d", "ihsg_ret_5d"), ("fwd_ret_10d", "ihsg_ret_10d"),
+                       ("fwd_ret_20d", "ihsg_ret_20d")):
+            if s_ in im:
+                sets.append(f"{c_}=?"); vals.append(round(im[s_], 6))
+        if "fwd_ret_20d" in m:
+            sets.append("backfilled_at=?")
+            vals.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        if sets:
+            vals.append(row_id)
+            conn.execute(f"UPDATE {table} SET {', '.join(sets)} WHERE id=?", vals)
+            updated += 1
+    logger.info(f"[ScanLogger] backfill {table}: {updated}/{len(rows)} baris ter-update")
+    return updated
+
+
 def backfill_forward_returns(max_rows: int = 500) -> int:
     """
-    Isi kolom fwd_ret/mae/mfe untuk baris pending. Return jumlah baris ter-update.
-    Tidak pernah raise — kegagalan backfill tidak boleh mematikan scan.
+    v9.8.5 — satu mesin backfill, dua tabel (whale_scans + ema_scans).
+    Entry basis open H+1, throttle 1x/hari (bersama), fail-safe total.
     """
     try:
         import pandas as pd
         import yfinance as yf
 
         conn = _get_conn()
+        _ensure_ema_table(conn)
         if not _throttle_ok(conn):
             conn.close()
             return 0
-
-        rows = conn.execute("""
-            SELECT id, ticker, scan_date FROM whale_scans
-            WHERE backfilled_at IS NULL
-              AND julianday('now') - julianday(scan_date) >= 3
-            ORDER BY scan_date LIMIT ?
-        """, (max_rows,)).fetchall()
-        if not rows:
-            conn.close()
-            return 0
-
-        oldest = min(r[2] for r in rows)
-        start = (pd.Timestamp(oldest) - pd.Timedelta(days=5)).strftime("%Y-%m-%d")
-        tickers = sorted({r[1] for r in rows})
-
-        data = yf.download(tickers + [IHSG_TICKER], start=start, interval="1d",
-                           group_by="ticker", auto_adjust=False,
-                           progress=False, threads=True)
-
-        def _slice(tkr):
+        total = 0
+        for table in ("whale_scans", "ema_scans"):
             try:
-                d = data[tkr] if len(tickers) + 1 > 1 else data
-                return d.dropna(subset=["Open", "Close"])
-            except Exception:
-                return None
-
-        ihsg = _slice(IHSG_TICKER)
-        updated = 0
-        for row_id, tkr, sdate in rows:
-            m = _horizon_metrics(_slice(tkr), sdate)
-            if not m:
-                continue
-            im = _horizon_metrics(ihsg, sdate) or {}
-            sets, vals = [], []
-            for col in ("fwd_ret_5d", "fwd_ret_10d", "fwd_ret_20d", "mae_20d", "mfe_20d"):
-                if col in m:
-                    sets.append(f"{col}=?"); vals.append(round(m[col], 6))
-            for src, col in (("fwd_ret_5d", "ihsg_ret_5d"), ("fwd_ret_10d", "ihsg_ret_10d"),
-                             ("fwd_ret_20d", "ihsg_ret_20d")):
-                if src in im:
-                    sets.append(f"{col}=?"); vals.append(round(im[src], 6))
-            if "fwd_ret_20d" in m:  # horizon penuh → tandai selesai
-                sets.append("backfilled_at=?")
-                vals.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            if sets:
-                vals.append(row_id)
-                conn.execute(f"UPDATE whale_scans SET {', '.join(sets)} WHERE id=?", vals)
-                updated += 1
-
+                total += _backfill_table(conn, table, max_rows, pd, yf)
+            except Exception as exc:
+                logger.error(f"[ScanLogger] backfill {table} gagal: {exc}")
         conn.commit()
         conn.close()
-        logger.info(f"[ScanLogger] backfill: {updated}/{len(rows)} baris ter-update")
-        return updated
+        return total
     except Exception as exc:
         logger.error(f"[ScanLogger] backfill gagal: {exc}")
         return 0

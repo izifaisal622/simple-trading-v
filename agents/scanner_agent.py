@@ -404,6 +404,13 @@ class ScannerAgent:
         return results
 
     def save_results(self, results: list, regime: dict) -> None:
+        # v9.8.5: feedback loop page 1 — snapshot backend, satu titik semua pemicu
+        try:
+            from agents.scan_logger import log_ema_results
+            log_ema_results(results, regime)
+        except Exception as _le:
+            logger.error(f"[Scanner] ema log gagal: {_le}")
+
         results_file = LOGS_DIR / "daily_results.json"
         try:
             existing: dict = {}
