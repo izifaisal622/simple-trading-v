@@ -1243,7 +1243,9 @@ def get_catalyst_universe(full_universe: bool = False) -> list:
             logger.error(f"[Universe] stage-0 gagal, fallback mode standar: {_exc}")
             base = []
         if base:
-            movers = get_dynamic_universe(include_movers=True)
+            # v9.8.6: normalisasi defensif — merge mensyaratkan raw codes;
+            # kalau format get_dynamic_universe berubah, jangan lahirkan .JK.JK
+            movers = [m.replace(".JK", "") for m in get_dynamic_universe(include_movers=True)]
             seen = set(base)
             dynamic_base = base + [t for t in movers if t not in seen]
         else:

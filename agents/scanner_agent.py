@@ -20,7 +20,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config.strategy_config import StrategyConfig
-from core.data_feed         import DataFeed, get_ihsg_regime, get_idx_universe, get_dynamic_universe, detect_dividend_rally_risk
+from core.data_feed         import DataFeed, get_ihsg_regime, get_idx_universe, get_dynamic_universe, get_catalyst_universe, detect_dividend_rally_risk
 from core.technical_engine  import (
     EMABreakoutEngine,
     DailyEMAEngine,
@@ -312,7 +312,17 @@ class ScannerAgent:
         )
         self._mkt_bull = ihsg_bullish
 
-        universe = get_dynamic_universe() if mode == "full" else get_idx_universe(mode)
+        # v9.8.6: mode "full" = universe stage-0 477 yang SAMA dengan whale
+        # (get_catalyst_universe(full_universe=True), satu fungsi satu sumber —
+        # page 1 & page 2 berangkat dari lapangan identik, feedback loop jadi
+        # perbandingan metode yang fair). Fallback internal ke dynamic kalau
+        # stage-0 gagal. Mode "dynamic" = perilaku lama (universe ~179).
+        if mode == "full":
+            universe = get_catalyst_universe(full_universe=True)
+        elif mode == "dynamic":
+            universe = get_dynamic_universe()
+        else:
+            universe = get_idx_universe(mode)
         logger.info(f"[Scanner] Regime: {cycle} | Universe: {len(universe)} | Bull: {ihsg_bullish}")
 
         # ── Load checkpoint (resume jika ada) ────────────────────────────────

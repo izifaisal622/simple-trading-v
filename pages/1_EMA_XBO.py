@@ -811,7 +811,7 @@ with cb:
 with ci:
     st.markdown("""<p style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);
     letter-spacing:0.1em;color:#64748B;margin-top:0.65rem;line-height:1.7">
-    Full two-tier EMA scan · IDX universe · ~3-5 min · Auto-save<br>
+    Full two-tier EMA scan · IDX universe · ~477 ticker · 8-13 min · Auto-save<br>
     <span style="color:#374151">V4: EWM optimized · MCF bear-safe · EMA200 3y data · Risk warnings</span>
     </p>""", unsafe_allow_html=True)
 
