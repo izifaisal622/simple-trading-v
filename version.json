@@ -1,7 +1,8 @@
 {
-  "version": "9.8.3",
-  "date": "2026-07-05",
+  "version": "9.8.4",
+  "date": "2026-07-06",
   "changelog": [
+    "9.8.4 — (a) INSTRUMEN conviction_raw: skor mentah (~27) disimpan sebelum cap 10, ikut terekam scan_logger — audit menemukan saturasi skala (raw 16 tampil 10, kasus PTMP); retune bobot ditunda menunggu vonis data backfill. (b) ENTRY CONF badge di card page 2: positive_signals (0-10 bobot Hengky) dari backend ditampilkan di samping verdict — meteran kepercayaan-entry terpisah dari conviction (meteran bukti); conviction TIDAK di-retune demi komparabilitas scan_history.db",
     "9.8.3 — FIX verdict satu hakim (prinsip backend-driven): logika keputusan ENTRY VALID/WATCHLIST/SKIP (~140 baris) dipindah dari page 2 _trading_summary_row ke whale_scanner.compute_trade_verdict, di-attach ke result sebagai trade_verdict dan IKUT TEREKAM scan_logger — feedback loop kini bisa mengukur hit-rate per verdict; gate tab ENTRY HARI INI membaca verdict backend (kartu SKIP tidak bisa lagi nyasar ke tab entry); page tinggal renderer murni (mapping warna/ikon); nested f-string di renderer dibersihkan; default MIN CONVICTION 4→7 (aturan trading user dikodifikasi)",
     "9.8.1 — FIX orchestrator whale scan tidak memakai full universe: default 9.8.0 hanya hidup di dropdown page 2 (jalur UI), sedangkan orchestrator --dashboard memanggil scanner.scan() langsung tanpa parameter → tetap 186 ticker; kini scan(top_n, full_universe=True) eksplisit. FlowScanner (War Room, line 407) sengaja tidak diubah — menunggu audit page 3",
     "9.8.0 — Full Universe jadi default UNIVERSE di page 2 (berlaku juga via orchestrator --dashboard); label S0 dihapus (terbaca 50 di font UI); mode Full IDX/Watchlist tetap di dropdown. Versi 9.7.9→9.8.0 mengikuti konvensi single-digit rollover milik repo (bump_version.py increment): patch mentok 9 → minor naik",

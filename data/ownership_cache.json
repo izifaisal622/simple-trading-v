@@ -1,0 +1,11 @@
+{
+  "yf_LAPD": {
+    "ticker": "LAPD",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-07-06T13:15:04.913278"
+  }
+}

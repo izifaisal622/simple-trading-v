@@ -1325,6 +1325,20 @@ def _trading_summary_row(w: dict) -> str:
     if not verdict:
         return ""
 
+    # v9.8.4: ENTRY CONF badge — positive_signals (0-10, bobot Hengky) dari
+    # backend, angka yang MEMANG dipakai memutus ENTRY VALID. Conviction tetap
+    # murni meteran bukti; ini meteran kepercayaan-entry. Pre-built (no nested f-string).
+    _ps = tv.get("positive_signals", None)
+    conf_badge = ""
+    if _ps is not None and verdict != "DISTRIBUSI":
+        if _ps >= 7:   _pc = "#00FF66"
+        elif _ps >= 4: _pc = "#F0B429"
+        else:          _pc = "#64748B"
+        conf_badge = (f'<span style="font-family:Share Tech Mono,monospace;'
+                      f'font-size:var(--text-2xs);font-weight:700;color:{_pc};'
+                      f'border:1px solid {_pc};border-radius:3px;padding:1px 7px;'
+                      f'white-space:nowrap;align-self:center">ENTRY CONF {_ps}/10</span>')
+
     _STYLE = {
         "DISTRIBUSI":  ("#EF4444", "rgba(239,68,68,0.06)",   "rgba(239,68,68,0.25)",   "⚠"),
         "ENTRY VALID": ("#00FF66", "rgba(0,255,102,0.06)",   "rgba(0,255,102,0.3)",    "⚡"),
@@ -1352,6 +1366,7 @@ display:flex;align-items:flex-start;gap:0.7rem;flex-wrap:wrap">
   <span style="font-family:Orbitron,monospace;font-size:var(--text-xs);font-weight:800;
   color:{verdict_col};letter-spacing:0.08em;white-space:nowrap;min-width:90px">
     {verdict_icon} {verdict}</span>
+  {conf_badge}
   <div style="flex:1;min-width:0">
     <div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);
     color:#E2E8F0;line-height:1.6">{action_text}</div>

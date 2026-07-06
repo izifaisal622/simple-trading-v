@@ -1920,6 +1920,11 @@ def compute_conviction(r: dict, vol_ratio: float) -> int:
         score += 1
 
     # ── 5. CAPS — sekali di akhir, mencakup semua boost di atas ─────────────
+    # v9.8.4: simpan skor mentah SEBELUM cap — skala mentah max ~27, cap 10
+    # menyebabkan saturasi (raw 10 vs raw 20 tampil sama). Raw ikut ter-log
+    # scan_logger → feedback loop bisa uji apakah "10 tebal" > "10 tipis".
+    r["conviction_raw"] = score
+
     # Slow exit cap — konsisten dengan classify_whale_quality
     _slow_exit    = r.get("slow_exit", False)
     _slow_exit_st = r.get("slow_exit_strength", 0)
