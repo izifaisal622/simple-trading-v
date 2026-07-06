@@ -31,7 +31,7 @@ def _regime():
     except Exception:
         return "UNKNOWN", 0, 0, 0, "—"
 
-def _gc(g):   return {"A":GREEN,"A+":GREEN,"B":YELLOW,"C":"var(--c-warning)","D":RED,"F":RED}.get(g, TEXT_DIM)
+def _gc(g):   return {"A":GREEN,"A+":GREEN,"B":YELLOW,"C":"#F97316","D":RED,"F":RED}.get(g, TEXT_DIM)
 def _gbg(g):  return {"A":"rgba(0,255,102,0.07)","A+":"rgba(0,255,102,0.09)","B":"rgba(240,180,41,0.07)","C":"rgba(249,115,22,0.07)","D":"rgba(239,68,68,0.07)","F":"rgba(239,68,68,0.05)"}.get(g, "rgba(255,255,255,0.02)")
 def _sc(s):   return {"BREAKOUT":GREEN,"WATCHLIST":YELLOW,"CORRECTING":BLUE,"DEEP_CORRECT":RED}.get(s, TEXT_DIM)
 def _si(s):   return {"BREAKOUT":"◈","WATCHLIST":"◎","CORRECTING":"○","DEEP_CORRECT":"◌"}.get(s, "—")
