@@ -145,7 +145,7 @@ class ConvictionResult:
     reasoning:  list[str] = field(default_factory=list)
 
 
-def _compute_conviction(ctx: SignalContext) -> ConvictionResult:
+def _compute_sizing_tier(ctx: SignalContext) -> ConvictionResult:
     """
     Institutional conviction engine.
 
@@ -296,7 +296,7 @@ class WhaleSummary:
 
 def _handle_strong_breakout(ctx: SignalContext, conv: ConvictionResult) -> list[str]:
     lines = [
-        f"**{ctx.ticker}** ─ 🔥 STRONG BREAKOUT | {conv.label} ({ctx.score:.0f}/8 → adj {conv.score_adj:.1f})",
+        f"**{ctx.ticker}** ─ 🔥 STRONG BREAKOUT | {conv.label} ({ctx.score:.0f}/10 → adj {conv.score_adj:.1f})",
         f"Entry Rp{ctx.close:,.0f} | SL Rp{ctx.sl_price:,.0f} ({ctx.sl_pct:.1f}%) | "
         f"TP1 Rp{ctx.tp1_price:,.0f} | TP2 Rp{ctx.tp2_price:,.0f} | R/R {ctx.rr_ratio:.1f}×",
         f"Position size: {conv.size_pct}% normal. Entry sekarang valid — momentum sudah terkonfirmasi.",
@@ -306,7 +306,7 @@ def _handle_strong_breakout(ctx: SignalContext, conv: ConvictionResult) -> list[
 
 def _handle_breakout(ctx: SignalContext, conv: ConvictionResult) -> list[str]:
     lines = [
-        f"**{ctx.ticker}** ─ BREAKOUT | {conv.label} ({ctx.score:.0f}/8 → adj {conv.score_adj:.1f})",
+        f"**{ctx.ticker}** ─ BREAKOUT | {conv.label} ({ctx.score:.0f}/10 → adj {conv.score_adj:.1f})",
         f"Entry Rp{ctx.close:,.0f} | SL Rp{ctx.sl_price:,.0f} ({ctx.sl_pct:.1f}%) | "
         f"TP1 Rp{ctx.tp1_price:,.0f} | R/R {ctx.rr_ratio:.1f}×",
         f"Position size: {conv.size_pct}% normal. Entry hari ini atau besok open.",
@@ -317,7 +317,7 @@ def _handle_breakout(ctx: SignalContext, conv: ConvictionResult) -> list[str]:
 def _handle_watchlist(ctx: SignalContext, conv: ConvictionResult) -> list[str]:
     trigger = f"Rp{ctx.box_high:,.0f}" if ctx.box_high else "resistance terdekat"
     lines = [
-        f"**{ctx.ticker}** ─ WATCHLIST | {conv.label} ({ctx.score:.0f}/8)",
+        f"**{ctx.ticker}** ─ WATCHLIST | {conv.label} ({ctx.score:.0f}/10)",
         f"Belum breakout. Pasang alert di {trigger}. "
         f"Potensi entry Rp{ctx.box_high:,.0f} | TP1 Rp{ctx.tp1_price:,.0f} | R/R est {ctx.rr_ratio:.1f}×",
         "Monitor volume — butuh ≥2× average saat breakout.",
@@ -327,7 +327,7 @@ def _handle_watchlist(ctx: SignalContext, conv: ConvictionResult) -> list[str]:
 
 def _handle_reversal(ctx: SignalContext, conv: ConvictionResult) -> list[str]:
     lines = [
-        f"**{ctx.ticker}** ─ REVERSAL SETUP | {conv.label} ({ctx.score:.0f}/8)",
+        f"**{ctx.ticker}** ─ REVERSAL SETUP | {conv.label} ({ctx.score:.0f}/10)",
         f"Entry area Rp{ctx.close:,.0f} | SL ketat Rp{ctx.sl_price:,.0f} ({ctx.sl_pct:.1f}%) | "
         f"TP1 Rp{ctx.tp1_price:,.0f} | R/R {ctx.rr_ratio:.1f}×",
         f"Position size: {conv.size_pct}% normal (reversal = higher failure rate, size down).",
@@ -347,7 +347,7 @@ def _handle_distribution(ctx: SignalContext, conv: ConvictionResult) -> list[str
 
 def _handle_hold(ctx: SignalContext, conv: ConvictionResult) -> list[str]:
     lines = [
-        f"**{ctx.ticker}** ─ HOLD / MONITOR | Score {ctx.score:.0f}/8 (belum actionable)",
+        f"**{ctx.ticker}** ─ HOLD / MONITOR | Score {ctx.score:.0f}/10 (belum actionable)",
         "Setup belum matang. Tidak ada trigger valid hari ini.",
         f"Review kembali jika volume meningkat atau harga mendekati Rp{ctx.box_high:,.0f}.",
     ]
@@ -487,7 +487,7 @@ class MarketAnalystAgent:
         Dispatches to signal-specific handler for context-appropriate output.
         """
         ctx  = SignalContext.from_result(result)
-        conv = _compute_conviction(ctx)
+        conv = _compute_sizing_tier(ctx)
 
         handler = _SIGNAL_HANDLERS.get(ctx.signal, _handle_hold)
         lines   = handler(ctx, conv)
@@ -522,7 +522,7 @@ class MarketAnalystAgent:
             ticker = _s(r, "ticker", "?")
             try:
                 ctx  = SignalContext.from_result(r)
-                conv = _compute_conviction(ctx)
+                conv = _compute_sizing_tier(ctx)
                 if conv.label == "AVOID":
                     continue
                 out.append({

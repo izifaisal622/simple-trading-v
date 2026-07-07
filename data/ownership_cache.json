@@ -34,5 +34,14 @@
     "top_holders": [],
     "source": "yfinance",
     "_fetched": "2026-07-07T11:03:55.847381"
+  },
+  "yf_TOOL": {
+    "ticker": "TOOL",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-07-07T16:23:02.717092"
   }
 }

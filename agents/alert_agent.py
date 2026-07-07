@@ -79,7 +79,7 @@ class AlertAgent:
             dual_tag  = " ✓DUAL" if dual_ok else ""
             vp_tag    = f" [{vp_zone}]" if vp_zone and vp_zone != "UNKNOWN" else ""
             print(f"  {ticker:<12} Score {score}/{score_cap}  |  "
-                  f"Entry Rp{close:,.0f}  |  SL Rp{sl_price:,.0f} ({risk_pct}%)  |  "
+                  f"Entry Rp{close:,.0f}  |  SL Rp{sl_price:,.0f} ({risk_pct:.1f}%)  |  "
                   f"TP1 Rp{tp1_price:,.0f}  |  R:R {rr_ratio}:1{dual_tag}{vp_tag}")
             try:
                 print(f"             Box {float(box_range):.1f}% | {bars} bars | "
@@ -205,7 +205,7 @@ class AlertAgent:
             f"🚨 <b>{fire_tag}BREAKOUT ALERT</b>\n\n"
             f"📊 <b>{ticker}</b> — Score {score}/10{dual_tag}\n"
             f"💰 Entry: Rp{close:,.0f}\n"
-            f"🛡 SL: Rp{sl_price:,.0f} ({risk_pct}%)\n"
+            f"🛡 SL: Rp{sl_price:,.0f} ({risk_pct:.1f}%)\n"
             f"🎯 TP1: Rp{tp1_price:,.0f} | TP2: Rp{tp2_price:,.0f}\n"
             f"📦 Box: {box_str} | {bars} bars\n"
             f"📈 Vol: {vol_str} MA20{vp_line}\n"

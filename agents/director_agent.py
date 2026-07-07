@@ -141,15 +141,34 @@ def apply_autopatch(config) -> tuple:
     if not patch or patch.get("_applied"):
         return config, []
 
+    # v9.9.2 — item 4 audit: pagar auto-patch (whitelist + clamp rentang).
+    # setattr bebas = config bisa digeser ke nilai gila oleh bug penulis mana pun.
+    _BOUNDS = {
+        "whale_vol_multiplier": (0.8, 3.0),
+        "whale_min_value_bn":   (0.05, 2.0),
+        "min_score":            (2, 8),
+        "vol_mult":             (1.0, 4.0),
+    }
     log = []
     for key, value in patch.items():
         if key.startswith("_"):
             continue
+        if key not in _BOUNDS:
+            logger.warning(f"[AutoPatch] TOLAK key di luar whitelist: {key}={value}")
+            continue
         if hasattr(config, key):
+            lo, hi = _BOUNDS[key]
+            try:
+                clamped = max(lo, min(hi, type(lo)(value)))
+            except Exception:
+                logger.warning(f"[AutoPatch] TOLAK nilai tak valid: {key}={value}")
+                continue
+            if clamped != value:
+                logger.warning(f"[AutoPatch] CLAMP {key}: {value} → {clamped} (rentang {lo}-{hi})")
             old = getattr(config, key)
-            setattr(config, key, value)
-            log.append(f"Auto-patched {key}: {old} → {value}")
-            logger.info(f"[AutoPatch] {key}: {old} → {value}")
+            setattr(config, key, clamped)
+            log.append(f"Auto-patched {key}: {old} → {clamped}")
+            logger.info(f"[AutoPatch] {key}: {old} → {clamped}")
 
     # Mark as applied
     patch["_applied"] = True
@@ -1180,6 +1199,44 @@ def _run_market_study(deep=False) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # Main Director Run
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _ensure_manual_trades() -> None:
+    """v9.9.2 — item 3 audit Director: manual_trades tidak pernah ada (dicari
+    di trade_log.db; paper_trades hidup di paper_journal.db, kolom beda).
+    Tabel diciptakan kosong dengan skema yang query butuhkan: error spam
+    hilang, threshold-derive fallback jujur, rumah siap saat trade riil dicatat."""
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS manual_trades (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker       TEXT NOT NULL,
+                entry_date   TEXT,
+                exit_date    TEXT,
+                entry_price  REAL,
+                sl_price     REAL,
+                exit_price   REAL,
+                outcome      TEXT,
+                pnl_r        REAL,
+                bars_held    INTEGER,
+                signal_score INTEGER,
+                regime_tag   TEXT,
+                source       TEXT DEFAULT 'manual',
+                created_at   TEXT DEFAULT (datetime('now','localtime'))
+            )
+        """)
+        conn.commit(); conn.close()
+    except Exception as _e:
+        logger.debug(f"[Director] ensure manual_trades: {_e}")
+
+
+# v9.9.2: idempotent + fail-safe saat modul dimuat — menutup DB error
+# 'no such table: manual_trades' di semua jalur query
+try:
+    _ensure_manual_trades()
+except Exception:
+    pass
+
 
 def run_director(config, full=False) -> str:
     start = datetime.now()
