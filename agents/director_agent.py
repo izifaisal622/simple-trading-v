@@ -44,6 +44,45 @@ from core.data_feed import get_ihsg_regime
 # Baca historical WR per regime dari trade data → derive optimal thresholds
 # ─────────────────────────────────────────────────────────────────────────────
 
+# v9.9.0: konstanta level-modul yang ikut terbabat operasi 9.8.9 direstorasi
+LOGS_DIR        = Path(__file__).parent.parent / "logs"
+REPORT_FILE     = LOGS_DIR / "director_report.md"
+BENCH_FILE      = LOGS_DIR / "agent_benchmarks.json"
+MANDATE_FILE    = LOGS_DIR / "improvement_mandates.md"
+HISTORY_FILE    = LOGS_DIR / "bench_history.json"
+PLAYBOOK_FILE   = LOGS_DIR / "edge_playbook.md"
+STUDY_FILE      = LOGS_DIR / "market_study.json"
+WEB_STUDY_FILE  = LOGS_DIR / "web_study.json"
+AUTOPATCH_FILE  = LOGS_DIR / "auto_patch.json"
+RESULTS_FILE    = LOGS_DIR / "daily_results.json"
+JOURNAL_FILE    = LOGS_DIR / "journal.md"
+DB_PATH         = LOGS_DIR / "trade_log.db"
+logger = logging.getLogger(__name__)
+STANDARDS = {
+    "technical_engine":  {"max_s": 0.3,  "max_mem_mb": 50,  "desc": "EMA calc per ticker"},
+    "scanner_full":      {"max_s": 240,  "max_mem_mb": 400, "desc": "Full IDX ~350 tickers"},
+    "scanner_watchlist": {"max_s": 90,   "max_mem_mb": 200, "desc": "Watchlist ~100 tickers"},
+    "whale_scanner":     {"max_s": 120,  "max_mem_mb": 200, "desc": "Whale full IDX"},
+    "whale_watchlist":   {"max_s": 60,   "max_mem_mb": 150, "desc": "Whale watchlist"},
+    "learning_agent":    {"max_s": 8,    "max_mem_mb": 30,  "desc": "Trade lessons"},
+    "data_feed":         {"max_s": 10,   "max_mem_mb": 30,  "desc": "IDX universe + IHSG"},
+    "smc_engine":        {"max_s": 6,    "max_mem_mb": 80,  "desc": "SMC per ticker"},
+    "market_study":      {"max_s": 60,   "max_mem_mb": 100, "desc": "Sector rotation scan"},
+}
+EMA_THRESHOLDS = {
+    "win_rate_excellent": 0.60,
+    "win_rate_acceptable":0.40,
+    "win_rate_poor":      0.30,
+    "min_score_tight":    5,
+    "min_score_normal":   3,
+    "min_score_loose":    1,
+}
+WHALE_THRESHOLDS = {
+    "zero_alerts_threshold": 5,   # if 0 alerts for N consecutive days → lower vol_mult
+    "excess_alerts_threshold": 80, # if >80 alerts → raise vol_mult (too noisy)
+    "min_conviction_target": 4,    # average conviction should be ≥ 4
+}
+
 # v9.8.9: dua definisi kembar mati dihapus (dulunya _derive_optimal_thresholds
 # line 47 dan _bench_data_feed line 646 — Python memakai definisi terakhir,
 # yang pertama bangkai divergen yang menjebak patch)

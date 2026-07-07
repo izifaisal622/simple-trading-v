@@ -447,7 +447,13 @@ def main():
         run_learning(cfg)
 
     if mode in ("all", "director"):
-        run_director(cfg, full=False)
+        try:
+            run_director(cfg, full=False)
+        except Exception as _de:
+            # v9.9.0: Director advisory, bukan kritis — crash-nya tidak boleh
+            # menggagalkan pipeline scan + dashboard (pelajaran crash STUDY_FILE)
+            print(f"[Director] CRASH (pipeline lanjut): {_de}")
+
 
     if mode == "weekly":
         run_ema_scan(cfg, regime)
