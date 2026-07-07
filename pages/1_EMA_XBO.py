@@ -799,7 +799,7 @@ if ema_results:
                  "Score": r.get("score",0)}
                 for r in _actionable_no_cross
             ]
-            st.dataframe(_audit_rows, use_container_width=True, hide_index=True)
+            st.dataframe(_audit_rows, width='stretch', hide_index=True)
         else:
             st.success("✅ Semua sinyal actionable sudah cross ABOVE — hard gate aman diterapkan.")
 
@@ -1167,7 +1167,7 @@ if ema_results:
             })
         st.dataframe(
             _wl_rows,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             column_config={
                 "Close":  st.column_config.NumberColumn("Close",  format="Rp%,.0f"),
@@ -1228,7 +1228,7 @@ if ema_results:
                 })
             st.dataframe(
                 _pl_rows,
-                use_container_width=True,
+                width='stretch',
                 hide_index=True,
                 column_config={
                     "Close":  st.column_config.NumberColumn("Close",  format="Rp%,.0f"),

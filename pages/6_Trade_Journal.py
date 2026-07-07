@@ -169,7 +169,7 @@ with t_log:
 
     col_btn, col_info = st.columns([1, 3])
     with col_btn:
-        if st.button("💾 CATAT TRADE", key="tj_save", use_container_width=True):
+        if st.button("💾 CATAT TRADE", key="tj_save", width='stretch'):
             if _ticker_final and entry_price > 0 and sl_price > 0:
                 tid = log_trade(
                     ticker=_ticker_final, entry_price=entry_price, sl_price=sl_price,
@@ -240,7 +240,7 @@ with t_open:
                     outcome_sel = st.selectbox("Outcome", ["WIN","LOSS","BREAKEVEN"], key=f"tj_outcome_{tid}")
                 with cx3:
                     st.markdown("<br>", unsafe_allow_html=True)
-                    if st.button("✓ CLOSE", key=f"tj_close_{tid}", use_container_width=True):
+                    if st.button("✓ CLOSE", key=f"tj_close_{tid}", width='stretch'):
                         result = close_trade(tid, exit_p, outcome_sel)
                         if result.get("success"):
                             pnl = result.get("pnl_r", 0) or 0

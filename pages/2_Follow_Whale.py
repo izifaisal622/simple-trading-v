@@ -195,7 +195,7 @@ with st.sidebar:
                                           key="sb_token_input",
                                           label_visibility="collapsed")
                 save_tok = st.form_submit_button("💾 SAVE TOKEN  (atau tekan Enter ↵)",
-                                                 use_container_width=True)
+                                                 width='stretch')
                 if save_tok:
                     if new_token and new_token.startswith("ey"):
                         _own_agent.save_stockbit_token(new_token)
@@ -835,7 +835,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False, section: str = "defa
 
         # LOG TRADE button — muncul di bawah conclusion
         _log_key = f"log_whale_{section}_{ticker}"
-        if st.button(f"📋 LOG TRADE {ticker}", key=_log_key, use_container_width=True):
+        if st.button(f"📋 LOG TRADE {ticker}", key=_log_key, width='stretch'):
             st.session_state[f"log_form_{ticker}"] = True
 
         if st.session_state.get(f"log_form_{ticker}"):
@@ -869,7 +869,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False, section: str = "defa
                 with _c5:
                     _log_tp2 = st.number_input(_tp_label2, value=float(_tp2_default), min_value=0.0, format="%.0f")
                 _log_notes = st.text_input("Notes (opsional)", value="")
-                _submitted = st.form_submit_button("✅ Simpan Trade", use_container_width=True)
+                _submitted = st.form_submit_button("✅ Simpan Trade", width='stretch')
                 if _submitted:
                     try:
                         from trade_logger import log_trade as _log_trade_fn
@@ -1609,7 +1609,14 @@ if whale_results:
     buy_val      = sum(w.get("value_bn",0) for w in whale_results if w.get("is_long_signal"))
     sell_val     = sum(w.get("value_bn",0) for w in whale_results if not w.get("is_long_signal"))
     bias         = ctx.get("market_bias","—")
-    bias_color   = {"STRONG BUY":NEON_GREEN,"MILD BUY":"var(--accent)","NEUTRAL":"var(--text-secondary)",
+    # v9.9.3: hierarki eksplisit — regime memerintah, bias hanya deskripsi flow
+    # DALAM hasil scan. Menutup kontradiksi banner STOP TRADE vs "STRONG BUY".
+    regime_rule_pill = ""
+    if not ctx.get("tradeable", True):  # sumber yang SAMA dgn banner STOP TRADE — anti drift
+        regime_rule_pill = ('<span style="border:1px solid #EF4444;color:#EF4444;'
+                            'border-radius:3px;padding:0 6px;font-size:var(--text-2xs);'
+                            'font-weight:700">REGIME BERKUASA — BUKAN SINYAL ENTRY</span>')
+    bias_color   = {"STRONG BUY":NEON_GREEN,"MILD BUY":"#00CC52","NEUTRAL":"#8B98A5",  # v9.9.3: var(--x) di dict = bug pattern, warna tak render
                     "MILD SELL":"var(--c-warning)","STRONG SELL":"var(--c-danger)"}.get(bias,"var(--text-muted)")
 
     # ── Metrics ───────────────────────────────────────────────────────────────
@@ -1651,7 +1658,7 @@ if whale_results:
     <div style="background:var(--bg-card);border:1px solid rgba(0,255,102,0.06);border-radius:var(--r-sm);
     padding:0.55rem 1.2rem;margin:0.6rem 0;font-family:Share Tech Mono,monospace;
     font-size:var(--text-xs);display:flex;gap:2rem;align-items:center;flex-wrap:wrap">
-      <span style="color:var(--text-muted)">MARKET BIAS</span>
+      <span style="color:var(--text-muted)">FLOW BIAS (scan)</span>{regime_rule_pill}
       <span style="font-family:Orbitron,monospace;font-size:var(--text-base);
       font-weight:700;color:{bias_color}">{bias}</span>
       <span style="color:var(--text-muted)">BUY <b style="color:var(--accent)">{fmt_bn(buy_val)}</b></span>
@@ -1726,7 +1733,7 @@ if whale_results:
                     with col:
                         with st.container():
                             st.markdown(whale_card(w, NEON_GREEN), unsafe_allow_html=True)
-                        if st.button(f"📋 LOG {_t0}", key=f"log_today_{_t0}_{i}", use_container_width=True):
+                        if st.button(f"📋 LOG {_t0}", key=f"log_today_{_t0}_{i}", width='stretch'):
                             st.session_state[f"log_form_{_t0}"] = True
 
             st.markdown("<br>", unsafe_allow_html=True)

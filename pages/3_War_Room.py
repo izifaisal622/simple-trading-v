@@ -152,7 +152,7 @@ display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
 
 with _pm2:
     _fetch_regional_btn = st.button("⟳ FETCH REGIONAL", key="btn_fetch_regional",
-                                     use_container_width=True)
+                                     width='stretch')
 
 # Regional market data
 if _fetch_regional_btn or "regional_data" not in st.session_state:
@@ -273,7 +273,7 @@ def _fetch_movers() -> list:
 # ── Render Mover Alert ────────────────────────────────────────────────────────
 _col_refresh, _col_info = st.columns([1, 4])
 with _col_refresh:
-    _do_mover = st.button("◉ CEK MOVER", key="mover_refresh", use_container_width=True)
+    _do_mover = st.button("◉ CEK MOVER", key="mover_refresh", width='stretch')
 with _col_info:
     st.markdown(
         "<span style='font-family:Share Tech Mono,monospace;font-size:0.75rem;"
@@ -465,7 +465,7 @@ border-radius:var(--r-md);padding:1.5rem;text-align:center">
 """, unsafe_allow_html=True)
 else:
     _fetch_all = st.button("⟳ REFRESH SEMUA HARGA", key="btn_refresh_all",
-                            use_container_width=False)
+                            width='content')
 
     # P03-X3: fetch semua posisi dulu dalam satu spinner, baru render cards
     if _fetch_all:
@@ -640,13 +640,13 @@ else:
             _btn_col1, _btn_col2 = st.columns(2)
             with _btn_col1:
                 if st.button(f"✓ CLOSE #{_tid}", key=f"close_{_tid}_{_t}",
-                             use_container_width=True):
+                             width='stretch'):
                     st.session_state[f"closing_{_tid}"] = True
                     st.session_state.pop(f"editing_{_tid}", None)
 
             with _btn_col2:
                 if st.button(f"✎ EDIT #{_tid}", key=f"edit_{_tid}_{_t}",
-                             use_container_width=True):
+                             width='stretch'):
                     st.session_state[f"editing_{_tid}"] = True
                     st.session_state.pop(f"closing_{_tid}", None)
 
@@ -703,7 +703,7 @@ else:
                 _es1, _es2 = st.columns(2)
                 with _es1:
                     if st.button("💾 SIMPAN REVISI", key=f"esave_{_tid}",
-                                 use_container_width=True):
+                                 width='stretch'):
                         try:
                             from trade_logger import update_trade
                             _upd = update_trade(
@@ -724,7 +724,7 @@ else:
                             st.error(f"Error: {_ue}")
                 with _es2:
                     if st.button("✕ BATAL", key=f"ecancel_{_tid}",
-                                 use_container_width=True):
+                                 width='stretch'):
                         st.session_state.pop(f"editing_{_tid}", None)
                         st.rerun()
 
@@ -760,7 +760,7 @@ if not _open_trades:
     unsafe_allow_html=True)
 else:
     _run_exit = st.button("⟳ EVALUASI EXIT SIGNALS", key="btn_exit_eval",
-                           type="primary", use_container_width=False)
+                           type="primary", width='content')
     if _run_exit:
         from core.exit_engine import ExitEngine
         _engine  = ExitEngine()

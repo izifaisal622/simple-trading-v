@@ -114,7 +114,7 @@ with st.form("sa_form", clear_on_submit=False):
                             placeholder="BBCA   TLKM   BREN   GOTO   BMRI   ASII",
                             label_visibility="collapsed", key="sa_input")
     with c2:
-        run = st.form_submit_button("◈ ANALISIS", use_container_width=True, type="primary")
+        run = st.form_submit_button("◈ ANALISIS", width='stretch', type="primary")
 st.markdown("</div>", unsafe_allow_html=True)
 
 if "sa_hist" not in st.session_state: st.session_state.sa_hist = []
@@ -482,7 +482,7 @@ with _pf_col2:
     st.markdown("<br><br>", unsafe_allow_html=True)
     if not _pf_all_pass:
         _override_lbl = "🔓 OVERRIDE ON" if st.session_state["pf_override"] else "⚠ FORCE ENTRY"
-        if st.button(_override_lbl, key="pf_override_btn", use_container_width=True):
+        if st.button(_override_lbl, key="pf_override_btn", width='stretch'):
             st.session_state["pf_override"] = not st.session_state["pf_override"]
             st.rerun()
         if st.session_state["pf_override"]:
@@ -525,7 +525,7 @@ with tab_journal:
         # Pre-flight gate: disabled jika checklist belum pass dan belum di-override
         _btn_label = "◈ LOG PAPER TRADE" if _pf_entry_allowed else f"⛔ LOG DIBLOKIR ({8-_pf_pass_count} kriteria gagal)"
         _btn_type  = "primary" if _pf_entry_allowed else "secondary"
-        log_btn = st.form_submit_button(_btn_label, use_container_width=True, type=_btn_type,
+        log_btn = st.form_submit_button(_btn_label, width='stretch', type=_btn_type,
                                          disabled=not _pf_entry_allowed)
         if log_btn:
             if j_entry > 0 and j_sl > 0:
