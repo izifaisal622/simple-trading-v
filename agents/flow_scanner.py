@@ -77,7 +77,7 @@ def _classify_broker_flow(broker_data: dict) -> dict:
 
 def _proxy_flow_from_ohlcv(df, ticker: str) -> dict:
     """
-    Proxy flow classification using OHLCV only (no broker data).
+    Proxy flow classification using OHLCV only (no broker data).\n    v9.8.8: label proxy DIBEDAKAN dari label broker-mode — klasifikasi satu bar\n    tidak boleh memakai nama identitas aktor (INSTITUTIONAL_BUY dst).\n    ABSORPTION_HINT / MOMENTUM_SPIKE / SELLING_PRESSURE = deskripsi perilaku\n    harga-volume, bukan klaim siapa pelakunya.
     Uses: volume spike + close position + price change.
     """
     try:
@@ -100,16 +100,16 @@ def _proxy_flow_from_ohlcv(df, ticker: str) -> dict:
         close_pos = (close - low) / max(rng, 1)
 
         if vol_ratio >= 2.5 and pct_chg >= 2.0 and close_pos >= 0.7:
-            signal = "RETAIL_MOMENTUM"
+            signal = "MOMENTUM_SPIKE"
             note   = f"Vol {vol_ratio:.1f}x avg, +{pct_chg:.1f}%, close near high"
         elif vol_ratio >= 1.5 and pct_chg >= 1.0 and close_pos >= 0.6:
-            signal = "RETAIL_MOMENTUM"
+            signal = "MOMENTUM_SPIKE"
             note   = f"Vol {vol_ratio:.1f}x avg, +{pct_chg:.1f}%"
         elif vol_ratio >= 2.0 and pct_chg <= -2.0 and close_pos <= 0.3:
-            signal = "DISTRIBUTION"
+            signal = "SELLING_PRESSURE"
             note   = f"Vol {vol_ratio:.1f}x avg, {pct_chg:.1f}%, close near low"
         elif vol_ratio >= 1.5 and abs(pct_chg) < 0.5 and close_pos >= 0.5:
-            signal = "INSTITUTIONAL_BUY"
+            signal = "ABSORPTION_HINT"
             note   = f"High vol {vol_ratio:.1f}x, tight range — absorption?"
         else:
             signal = "NEUTRAL"
@@ -221,14 +221,24 @@ class FlowScanner:
         _rank = {
             "WHALE_ACCUMULATION": 0,
             "INSTITUTIONAL_BUY":  1,
+            "ABSORPTION_HINT":    1,   # proxy-mode (v9.8.8)
             "RETAIL_MOMENTUM":    2,
+            "MOMENTUM_SPIKE":     2,   # proxy-mode (v9.8.8)
             "NEUTRAL":            3,
             "DISTRIBUTION":       4,
+            "SELLING_PRESSURE":   4,   # proxy-mode (v9.8.8)
         }
         results.sort(key=lambda x: (
             _rank.get(x.get("signal", "NEUTRAL"), 3),
             -(x.get("vol_ratio") or 1.0),
         ))
+
+        # v9.8.8: rekam SEMUA hasil flow ke feedback loop sebelum filter
+        try:
+            from agents.scan_logger import log_flow_results
+            log_flow_results(results)
+        except Exception as _fe:
+            logger.error(f"[FlowScanner] flow log gagal: {_fe}")
 
         if min_signal:
             results = [r for r in results if r.get("signal") == min_signal]

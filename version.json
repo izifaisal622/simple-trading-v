@@ -1,7 +1,8 @@
 {
-  "version": "9.8.7",
-  "date": "2026-07-06",
+  "version": "9.8.8",
+  "date": "2026-07-07",
   "changelog": [
+    "9.8.8 — (1) Label proxy FlowScanner dibedakan dari broker-mode: INSTITUTIONAL_BUY→ABSORPTION_HINT, RETAIL_MOMENTUM→MOMENTUM_SPIKE, DISTRIBUTION→SELLING_PRESSURE (klasifikasi satu bar tidak boleh mengklaim identitas aktor; label broker-mode asli tetap); (2) FlowScanner ikut universe stage-0 477 (get_catalyst_universe, doktrin satu universe) + SEMUA hasil flow direkam ke tabel baru flow_scans — sistem sinyal terakhir masuk feedback loop, backfill kini melayani 3 tabel; (3) kunci tanggal per-sistem (ema_date/whale_date) di daily_results.json + banner peringatan campur-tanggal di page 4 + fix scan_date page 4 yang membaca key yang tidak pernah ditulis (selalu tampil —)",
     "9.8.7 — FIX bug pattern var(--x) di Python dict (pages/4_Stock_Pick._gc): warna grade C memakai var(--c-warning) yang tidak ter-resolve di inline style → grade C tampil tanpa warna; diganti hex #F97316. Temuan audit page 3+4",
     "9.8.6 — FEAT universe 477 untuk page 1 (EMA XBO): daily_scan mode full kini memakai get_catalyst_universe(full_universe=True) — FUNGSI YANG SAMA dengan whale, page 1 & 2 berangkat dari lapangan identik (feedback loop = perbandingan metode yang fair); satu edit menutup kedua pintu (page 1 & orchestrator, keduanya bermuara ke daily_scan); mode dynamic (universe lama ~179) tetap tersedia; normalisasi defensif anti .JK.JK di merge movers; caption durasi page 1 diupdate (~477 ticker, 8-13 menit sekuensial)",
     "9.8.5 — FEAT feedback loop page 1 (EMA XBO): tabel ema_scans di scan_history.db — snapshot score/signal/cross_state/vol/RS/risk/RR/entry-SL-TP/box + raw_json per ticker per hari (UNIQUE, INSERT OR REPLACE); hook backend di scanner_agent.save_results (satu titik semua pemicu); backfill di-generalisasi jadi satu mesin dua tabel (_backfill_table) — entry open H+1, throttle harian bersama, normalisasi ticker .JK; E2E teruji mock. Mulai hari ini validitas sinyal EMA terukur, bukan diyakini",

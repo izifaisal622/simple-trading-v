@@ -97,6 +97,7 @@ def run_whale_scan(cfg, regime):
 
     existing.update({
         "date":          datetime.now().isoformat(),
+        "whale_date":    datetime.now().strftime("%Y-%m-%d"),  # v9.8.8: kunci tanggal per-sistem
         "whale_results": results,
         "whale_total":   len(results),
         "whale_context": ctx,
@@ -405,7 +406,10 @@ def main():
 
             print("\n[Flow] Starting War Room scan...")
             scanner  = FlowScanner()
-            universe = [t + ".JK" for t in get_dynamic_universe()]
+            # v9.8.8: doktrin satu universe — flow ikut stage-0 477 (fungsi yang
+            # sama dgn whale/EMA; sudah ber-suffix .JK, jangan tambah lagi)
+            from core.data_feed import get_catalyst_universe as _gcu
+            universe = _gcu(full_universe=True)
             results  = scanner.scan(tickers=universe, max_workers=8)
 
             logs_dir = _Path(__file__).parent / "logs"
@@ -423,7 +427,7 @@ def main():
             results_file.write_text(_json.dumps(existing, indent=2, default=str), encoding="utf-8")
 
             whale_signals = [r for r in results if r.get("signal") == "WHALE_ACCUMULATION"]
-            inst_signals  = [r for r in results if r.get("signal") == "INSTITUTIONAL_BUY"]
+            inst_signals  = [r for r in results if r.get("signal") in ("INSTITUTIONAL_BUY", "ABSORPTION_HINT")]
             print(f"[Flow] Done: {len(results)} tickers | {len(whale_signals)} WHALE | {len(inst_signals)} INSTITUTIONAL")
         except Exception as exc:
             print(f"[Flow] ERROR: {exc}")

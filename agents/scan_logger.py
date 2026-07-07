@@ -291,6 +291,73 @@ def log_ema_results(results: list, regime) -> int:
         return 0
 
 
+def _ensure_flow_table(conn: sqlite3.Connection) -> None:
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS flow_scans (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker        TEXT NOT NULL,
+        scan_date     TEXT NOT NULL,
+        scan_ts       TEXT NOT NULL,
+        close_price   REAL,
+        signal        TEXT,
+        source        TEXT,
+        vol_ratio     REAL,
+        pct_chg       REAL,
+        close_pos     REAL,
+        raw_json      TEXT,
+        fwd_ret_5d    REAL, fwd_ret_10d REAL, fwd_ret_20d REAL,
+        ihsg_ret_5d   REAL, ihsg_ret_10d REAL, ihsg_ret_20d REAL,
+        mae_20d       REAL, mfe_20d REAL,
+        backfilled_at TEXT,
+        created_at    TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(ticker, scan_date)
+    );
+    """)
+
+
+def log_flow_results(results: list) -> int:
+    """v9.8.8 — feedback loop flow (War Room): snapshot semua sinyal flow.
+    Menutup satu-satunya sistem sinyal yang belum terukur."""
+    if not results:
+        return 0
+    now = datetime.now()
+    scan_date = now.strftime("%Y-%m-%d")
+    scan_ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    rows = []
+    for r in results:
+        try:
+            rows.append((
+                str(r.get("ticker", "")).strip(), scan_date, scan_ts,
+                float(r.get("close", r.get("last_price", 0)) or 0),
+                str(r.get("signal", "")),
+                str(r.get("source", "")),
+                float(r.get("vol_ratio", 0) or 0),
+                float(r.get("pct_chg", 0) or 0),
+                float(r.get("close_pos", 0) or 0),
+                json.dumps(r, default=str, ensure_ascii=False),
+            ))
+        except Exception as exc:
+            logger.warning(f"[ScanLogger] flow skip {r.get('ticker','?')}: {exc}")
+    if not rows:
+        return 0
+    try:
+        conn = _get_conn()
+        _ensure_flow_table(conn)
+        conn.executemany("""
+            INSERT OR REPLACE INTO flow_scans
+            (ticker, scan_date, scan_ts, close_price, signal, source,
+             vol_ratio, pct_chg, close_pos, raw_json)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
+        """, rows)
+        conn.commit()
+        conn.close()
+        logger.info(f"[ScanLogger] {len(rows)} flow rows tersimpan ({scan_date})")
+        return len(rows)
+    except Exception as exc:
+        logger.error(f"[ScanLogger] flow gagal simpan: {exc}")
+        return 0
+
+
 def _backfill_table(conn, table: str, max_rows: int, pd, yf) -> int:
     """Worker generik backfill satu tabel (whale_scans / ema_scans). Entry basis: open H+1."""
     rows = conn.execute(f"""
@@ -357,11 +424,12 @@ def backfill_forward_returns(max_rows: int = 500) -> int:
 
         conn = _get_conn()
         _ensure_ema_table(conn)
+        _ensure_flow_table(conn)
         if not _throttle_ok(conn):
             conn.close()
             return 0
         total = 0
-        for table in ("whale_scans", "ema_scans"):
+        for table in ("whale_scans", "ema_scans", "flow_scans"):
             try:
                 total += _backfill_table(conn, table, max_rows, pd, yf)
             except Exception as exc:

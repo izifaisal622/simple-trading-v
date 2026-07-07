@@ -431,6 +431,7 @@ class ScannerAgent:
                     pass
             existing["regime"]      = regime
             existing["date"]        = datetime.now().strftime("%Y-%m-%d")
+            existing["ema_date"]    = existing["date"]  # v9.8.8: kunci tanggal per-sistem
             existing["ema_total"]   = len(results)
             existing["ema_results"] = results
             results_file.write_text(

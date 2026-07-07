@@ -27,7 +27,7 @@ def _regime():
     try:
         d = json.loads((LOGS_DIR/"daily_results.json").read_text(encoding="utf-8"))
         rg = d.get("regime", {})
-        return rg.get("cycle","UNKNOWN"), rg.get("ihsg",0), rg.get("mom_4w",0), rg.get("breadth",0), d.get("scan_date","—")
+        return rg.get("cycle","UNKNOWN"), rg.get("ihsg",0), rg.get("mom_4w",0), rg.get("breadth",0), str(d.get("ema_date") or d.get("date","—"))[:10]
     except Exception:
         return "UNKNOWN", 0, 0, 0, "—"
 
@@ -85,6 +85,19 @@ render_page_header(
     subtitle = "◈ EMA-XBO · FOLLOW WHALE · RATING CARD · SMC ANALYSIS",
 )
 render_regime_bar(cycle, ihsg, mom_4w, breadth, scan_date)
+
+# v9.8.8: guard campur-tanggal — grade disintesis dari snapshot EMA + whale;
+# kalau tanggalnya beda, grade dihitung dari data dua hari berbeda tanpa sadar
+try:
+    _dr = json.loads((LOGS_DIR / "daily_results.json").read_text(encoding="utf-8"))
+    _ed = str(_dr.get("ema_date") or _dr.get("date", ""))[:10]
+    _wd = str(_dr.get("whale_date", ""))[:10]
+    if _ed and _wd and _ed != _wd:
+        st.warning(f"⚠ DATA CAMPUR TANGGAL — EMA: {_ed} vs Whale: {_wd}. "
+                   f"Grade di halaman ini disintesis dari dua snapshot berbeda hari. "
+                   f"Re-scan sistem yang tertinggal sebelum mengambil keputusan.")
+except Exception:
+    pass
 
 # ── input ─────────────────────────────────────────────────────────────────────
 st.markdown(
