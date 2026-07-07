@@ -102,7 +102,7 @@ def fmt_bn(v: float) -> str:
     if v >= 1:    return f"Rp{v:.1f}Bn"
     return f"Rp{v*1000:.0f}Jt"
 
-def fmt_score_ema(score: int, max_score: int = 8) -> str:
+def fmt_score_ema(score: int, max_score: int = 10) -> str:
     return f"{score}/{max_score}"
 
 def fmt_conv(v: int) -> str:

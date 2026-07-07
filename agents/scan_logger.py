@@ -80,6 +80,10 @@ def _get_conn() -> sqlite3.Connection:
             conn.execute(f"ALTER TABLE whale_scans ADD COLUMN {col}")
         except Exception:
             pass  # kolom sudah ada
+    try:
+        conn.execute("ALTER TABLE ema_scans ADD COLUMN score_max INTEGER")
+    except Exception:
+        pass  # kolom sudah ada / tabel belum ada (dibuat _ensure_ema_table)
     return conn
 
 
@@ -231,6 +235,7 @@ def _ensure_ema_table(conn: sqlite3.Connection) -> None:
         regime        TEXT,
         mcf_blocked   INTEGER DEFAULT 0,
         raw_json      TEXT,
+        score_max     INTEGER,
         fwd_ret_5d    REAL, fwd_ret_10d REAL, fwd_ret_20d REAL,
         ihsg_ret_5d   REAL, ihsg_ret_10d REAL, ihsg_ret_20d REAL,
         mae_20d       REAL, mfe_20d REAL,
@@ -276,6 +281,7 @@ def log_ema_results(results: list, regime) -> int:
                 regime_s,
                 1 if r.get("mcf_bear_blocked") else 0,
                 json.dumps(r, default=str, ensure_ascii=False),
+                int(r.get("score_max", 8) or 8),  # v9.9.1: baris lama NULL = skala 8
             ))
         except Exception as exc:
             logger.warning(f"[ScanLogger] ema skip {r.get('ticker','?')}: {exc}")
@@ -288,8 +294,8 @@ def log_ema_results(results: list, regime) -> int:
             INSERT OR REPLACE INTO ema_scans
             (ticker, scan_date, scan_ts, close_price, score, signal, cross_state,
              vol_ratio, rs_4w, risk_pct, rr_ratio, entry_price, sl_price, tp1_price,
-             box_high, box_low, regime, mcf_blocked, raw_json)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             box_high, box_low, regime, mcf_blocked, raw_json, score_max)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
         conn.close()

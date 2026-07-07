@@ -289,7 +289,7 @@ def _run_single_ticker(cfg, regime, ticker: str, no_llm: bool = False):
             eng = TechnicalEngine(cfg)
             r   = eng.analyze(df_wk, ticker, regime=regime.get("cycle","UNKNOWN"))
             if r:
-                print(f"  EMA XBO  | Signal: {r.signal:<12} | Score: {r.score}/8 | "
+                print(f"  EMA XBO  | Signal: {r.signal:<12} | Score: {r.score}/10 | "
                       f"Regime: {r.regime_tag}")
                 print(f"           | EMA13: {r.ema13:,.0f} | EMA89: {r.ema89:,.0f} | "
                       f"Risk: {r.risk_pct:.1f}%")

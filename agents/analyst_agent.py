@@ -163,7 +163,7 @@ def _compute_conviction(ctx: SignalContext) -> ConvictionResult:
       AVOID   → 0%                (do not trade)
     """
     reasons: list[str] = []
-    adj = ctx.score  # start from signal score
+    adj = ctx.score * 0.8  # v9.9.1: skor kini /10 — kalibrasi ke skala analyst lama (/8), TIER tak berubah
 
     # ── Volume adjustment ────────────────────────────────────────────────────
     if ctx.vol_ratio >= 3.0:

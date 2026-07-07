@@ -100,6 +100,11 @@ class ScannerAgent:
             # Fallback: weekly engine (saham tanpa data daily cukup)
             result = self.engine.analyze(df, ticker, ihsg_df=self._ihsg_df, regime=regime)
             r = _to_dict(result)
+            # v9.9.1: engine weekly legacy masih skala /8 — normalisasi ke /10
+            # supaya ema_scans tidak keracunan dua skala
+            if isinstance(r, dict) and "score" in r:
+                r["score"] = min(10, round((r.get("score") or 0) * 1.25))
+                r["score_max"] = 10
         else:
             return None
 
@@ -109,7 +114,7 @@ class ScannerAgent:
         sig = r.get("signal", "")
         if not sig or sig == "NONE":
             return None
-        if r.get("score", 0) < 3:
+        if r.get("score", 0) < 4:  # v9.9.1: skala /10
             return None
 
         # ── Dual-timeframe ───────────────────────────────────────────────────

@@ -1500,30 +1500,49 @@ class DailyEMAEngine:
             # Simpan score_raw sebelum cap — dipakai di UI untuk komunikasi ke trader
             score_raw = score
             score_capped = False
-            if regime_tag == "WATCHLIST_ONLY" and score > 3:
+            # ── (9)(10) v9.9.1: skala skor 8 → 10 ────────────────────────
+            # (9) Struktur pasar HH_HL — sumbu swing, independen dari 4 slot EMA
+            try:
+                _ms91 = analyze_market_structure(
+                    close=close, high=high, low=low, vol=volume,
+                    ema13=float(last_ema13), ema89=float(last_ema89),
+                    ema13_series=close.ewm(span=13, adjust=False).mean(),
+                    ema89_series=close.ewm(span=89, adjust=False).mean(),
+                )
+                if _ms91.get("structure") == "HH_HL":
+                    score += 1
+                    flags.append("Struktur HH_HL")
+            except Exception:
+                pass
+            # (10) Konfirmasi dual timeframe — sumbu lintas-TF, satu-satunya
+            if cross_state == "ABOVE" and weekly_cross == "ABOVE":
+                score += 1
+                flags.append("DUAL TF ✓")
+
+            if regime_tag == "WATCHLIST_ONLY" and score > 4:
                 flags.append("⚠ BEAR: score capped 3")
                 score = min(score, 3)
                 score_capped = True
-            elif regime_tag == "SPECULATIVE" and score > 4:
+            elif regime_tag == "SPECULATIVE" and score > 5:
                 flags.append("⚠ BEAR_CONSOL: score capped 4")
                 score = min(score, 4)
                 score_capped = True
 
             # ── Signal classification ─────────────────────────────────────────
             if ipo_mode:
-                if last_ema5 > last_ema13 and vol_ratio >= self.cfg.vol_mult and score >= 3:
+                if last_ema5 > last_ema13 and vol_ratio >= self.cfg.vol_mult and score >= 4:
                     signal = "BREAKOUT"
-                elif last_ema5 > last_ema13 and score >= 2:
+                elif last_ema5 > last_ema13 and score >= 3:
                     signal = "WATCHLIST"
                 elif last_ema5 > last_ema13:
                     signal = "CORRECTING"
                 else:
                     signal = "NONE"
-            elif strong_breaking_out and score >= 6 and regime_tag != "WATCHLIST_ONLY":
+            elif strong_breaking_out and score >= 7 and regime_tag != "WATCHLIST_ONLY":
                 signal = "STRONG_BREAKOUT"
-            elif breaking_out and score >= 3 and regime_tag != "WATCHLIST_ONLY":
+            elif breaking_out and score >= 4 and regime_tag != "WATCHLIST_ONLY":
                 signal = "BREAKOUT"
-            elif cross_state == "ABOVE" and box_detected and score >= 3:
+            elif cross_state == "ABOVE" and box_detected and score >= 4:
                 signal = "WATCHLIST"
             elif cross_state in ("ABOVE", "CROSSING") and last_close > last_ema89 * 0.95:
                 signal = "CORRECTING"
@@ -1681,6 +1700,7 @@ class DailyEMAEngine:
                 "vol_ratio_d":     _daily_entry.get("vol_ratio_d", vol_ratio),
                 "daily_entry_note":_daily_entry.get("daily_entry_note", "Daily engine — EMA13/89 daily primary"),
                 "dual_confirmed":  (cross_state == "ABOVE" and weekly_cross == "ABOVE"),
+                "score_max":       10,  # v9.9.1
             }
 
         except Exception as exc:

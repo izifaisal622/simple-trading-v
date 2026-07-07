@@ -1091,7 +1091,7 @@ if ema_results:
                 # P01-X2: quick pre-flight gate sebelum simpan
                 # Pakai data yang sudah ada dari result dict (r)
                 _pf_quick_regime = r.get("regime_tag","") not in ("BEAR_TREND","WATCHLIST_ONLY","BEAR_WEAK")
-                _pf_quick_score  = int(r.get("score",0)) >= 5
+                _pf_quick_score  = int(r.get("score",0)) >= 6
                 _pf_quick_risk   = float(r.get("risk_pct",0)) <= 25
                 _pf_quick_pass   = _pf_quick_regime and _pf_quick_score and _pf_quick_risk
                 _pf_quick_fails  = []
@@ -1186,7 +1186,7 @@ if ema_results:
         r for r in ema_results
         if r.get("signal") in ("CORRECTING", "DEEP_CORRECT", "COMPRESSING")
         and r.get("rs_vs_ihsg_4w", 0) >= 20.0
-        and r.get("score_raw", r.get("score", 0)) >= 5
+        and r.get("score_raw", r.get("score", 0)) >= 6
     ]
     if _pipeline:
         with st.expander(f"◌ PIPELINE — {len(_pipeline)} approaching · RS kuat · pantau, bukan entry", expanded=False):
@@ -1289,7 +1289,7 @@ if ema_results:
                       "Min Score", min_value=1, max_value=10,
                       value=st.session_state.get("f_score", 1),
                       key="f_score", label_visibility="collapsed",
-                      help="Min Score (1–7)",
+                      help="Min Score (1–10)",
                   )
               with fc3:
                   max_risk = st.slider(
@@ -1312,7 +1312,7 @@ if ema_results:
                   st.session_state["f_preset"] = "safe"
                   st.rerun()
           with qf2:
-              if st.button("⭐ HIGH SCORE (≥5)", key="qf_hs"):
+              if st.button("⭐ HIGH SCORE (≥6)", key="qf_hs"):
                   st.session_state["f_preset"] = "high_score"
                   st.rerun()
           with qf3:

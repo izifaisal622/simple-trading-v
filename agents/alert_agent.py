@@ -121,11 +121,11 @@ class AlertAgent:
                 vp_zone   = _g(r, "vp_entry_zone", "")
                 vp_tag    = f" [{vp_zone}]" if vp_zone and vp_zone != "UNKNOWN" else ""
                 try:
-                    print(f"  {ticker:<12} Score {score}/8  |  "
+                    print(f"  {ticker:<12} Score {score}/10  |  "
                           f"Entry Rp{close:,.0f}  |  Box {float(box_range):.1f}% | "
                           f"{bars} bars | Vol {float(vol_ratio):.1f}×{vp_tag}")
                 except (TypeError, ValueError):
-                    print(f"  {ticker:<12} Score {score}/8  |  Entry Rp{close:,.0f}")
+                    print(f"  {ticker:<12} Score {score}/10  |  Entry Rp{close:,.0f}")
 
         if correcting:
             print(f"\n🟠 CORRECTING / WATCH ({len(correcting)})")
@@ -138,10 +138,10 @@ class AlertAgent:
                 close  = _g(r, "close", 0)
                 cross  = _g(r, "cross_state", "")
                 try:
-                    print(f"  {ticker:<12} {signal:<14} Score {score}/8  |  "
+                    print(f"  {ticker:<12} {signal:<14} Score {score}/10  |  "
                           f"Rp{close:,.0f}  |  {cross}")
                 except (TypeError, ValueError):
-                    print(f"  {ticker:<12} {signal:<14} Score {score}/8")
+                    print(f"  {ticker:<12} {signal:<14} Score {score}/10")
 
         if not results:
             msg = "  No qualifying setups today."
@@ -203,7 +203,7 @@ class AlertAgent:
 
         msg = (
             f"🚨 <b>{fire_tag}BREAKOUT ALERT</b>\n\n"
-            f"📊 <b>{ticker}</b> — Score {score}/8{dual_tag}\n"
+            f"📊 <b>{ticker}</b> — Score {score}/10{dual_tag}\n"
             f"💰 Entry: Rp{close:,.0f}\n"
             f"🛡 SL: Rp{sl_price:,.0f} ({risk_pct}%)\n"
             f"🎯 TP1: Rp{tp1_price:,.0f} | TP2: Rp{tp2_price:,.0f}\n"
@@ -248,7 +248,7 @@ class AlertAgent:
                 close  = _g(r, "close", 0)
                 sig    = _g(r, "signal", "")
                 fire   = "🔥" if sig == "STRONG_BREAKOUT" else "🟢"
-                msg += f"• {fire} {ticker} Score {score}/8 Rp{close:,.0f}\n"
+                msg += f"• {fire} {ticker} Score {score}/10 Rp{close:,.0f}\n"
         elif cycle == "BEAR_TREND":
             msg += "\n⚠️ Bear market — no breakouts today. Stay safe.\n"
 
