@@ -7,5 +7,32 @@
     "top_holders": [],
     "source": "yfinance",
     "_fetched": "2026-07-06T13:15:04.913278"
+  },
+  "yf_KRYA": {
+    "ticker": "KRYA",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-07-07T11:02:12.896153"
+  },
+  "yf_NPGF": {
+    "ticker": "NPGF",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-07-07T11:02:13.239513"
+  },
+  "yf_KUAS": {
+    "ticker": "KUAS",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-07-07T11:03:55.847381"
   }
 }

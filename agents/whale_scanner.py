@@ -2874,6 +2874,11 @@ class WhaleScanner:
         except Exception:
             pass
 
+        # v9.8.9: rekam threshold aktif per scan — Director auto-patch menggeser
+        # vol_multiplier/min_value harian; tanpa jejak ini, analisis bucket
+        # conviction nanti tercemar target bergerak tanpa bisa dikontrol
+        ctx["vol_multiplier_used"] = self.vol_multiplier
+        ctx["min_value_bn_used"]   = self.min_value_bn
         log_scan_results(results, ctx)
         return results, ctx
 

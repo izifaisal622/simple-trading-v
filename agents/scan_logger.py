@@ -74,6 +74,12 @@ CREATE INDEX IF NOT EXISTS idx_ws_pending
 def _get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(str(DB_PATH))
     conn.executescript(_SCHEMA)
+    # v9.8.9: migrasi kolom threshold utk DB yang sudah ada (fail-safe idempotent)
+    for col in ("vol_multiplier_used REAL", "min_value_bn_used REAL"):
+        try:
+            conn.execute(f"ALTER TABLE whale_scans ADD COLUMN {col}")
+        except Exception:
+            pass  # kolom sudah ada
     return conn
 
 
@@ -108,6 +114,8 @@ def log_scan_results(results: list, ctx: dict) -> int:
                 regime,
                 1 if r.get("broker_live") else 0,
                 json.dumps(r, default=str, ensure_ascii=False),
+                float(ctx.get("vol_multiplier_used", 0) or 0),
+                float(ctx.get("min_value_bn_used", 0) or 0),
             ))
         except Exception as exc:  # satu row rusak jangan gugurkan sisanya
             logger.warning(f"[ScanLogger] skip row {r.get('ticker','?')}: {exc}")
@@ -120,8 +128,9 @@ def log_scan_results(results: list, ctx: dict) -> int:
             INSERT OR REPLACE INTO whale_scans
             (ticker, scan_date, scan_ts, close_price, conviction, quality,
              signal, entry_zone, vol_ratio, pengeringan_strength, control_score,
-             gradual_strength, in_ob_zone, rs_20d, ihsg_regime, broker_live, raw_json)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             gradual_strength, in_ob_zone, rs_20d, ihsg_regime, broker_live, raw_json,
+             vol_multiplier_used, min_value_bn_used)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
         conn.close()

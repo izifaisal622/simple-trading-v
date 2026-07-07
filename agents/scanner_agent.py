@@ -331,6 +331,14 @@ class ScannerAgent:
         results      = ckpt.get("results", [])
         pending      = [t for t in universe if t not in done_tickers]
 
+        # v9.8.9: checkpoint = pemulihan scan TERPUTUS, bukan pemblokir re-scan.
+        # Kalau semua sudah selesai (0 pending), user menjalankan scan lagi
+        # dengan sengaja (mis. re-scan sore untuk menimpa bar parsial pagi) —
+        # mulai fresh. Tanpa ini, hasil bar-parsial terkunci seharian.
+        if done_tickers and not pending:
+            logger.info(f"[Scanner] Checkpoint complete — re-scan diminta, mulai fresh: {len(universe)} tickers")
+            done_tickers, results, pending = set(), [], list(universe)
+
         if done_tickers:
             logger.info(
                 f"[Scanner] Resume: {len(done_tickers)} sudah selesai, "
