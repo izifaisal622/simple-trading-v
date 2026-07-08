@@ -470,7 +470,8 @@ def _render_analysis_card(w: dict, tradeable: bool = False, section: str = "defa
     entry_low  = floor_p
     _ema13_valid = ema13 > floor_p
     entry_high = ema13 if _ema13_valid else floor_p * 1.05
-    sl_price   = floor_p * 0.98
+    # v9.9.6: SL dari backend (verdict), bukan rumus lokal — prinsip backend-driven.
+    sl_price   = (w.get("trade_verdict") or {}).get("sl") or (floor_p * 0.98)
 
     # ── Overall verdict ───────────────────────────────────────────────────────
     good_count = sum([
@@ -553,7 +554,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False, section: str = "defa
             f"Candle hari ini: **body {_tc_body}**, {_close_desc} ({_tc_close_pos:.0%}), "
             f"{_vol_desc}{_range_desc}. "
             f"Di chart kamu akan lihat candle hijau dengan volume lebih besar dari beberapa hari sebelumnya "
-            f"— ini adalah konfirmasi visual whale mulai push. Entry sekarang, SL di bawah candle ini."
+            f"— ini adalah konfirmasi visual whale mulai push. Entry sekarang, SL di bawah floor/candle (yang lebih longgar)."
         )
     elif w.get("trigger_vol_stepup") and not tc_det:
         _tc_close_pos2 = w.get("trigger_close_pos", 0.5)
@@ -789,7 +790,7 @@ def _render_analysis_card(w: dict, tradeable: bool = False, section: str = "defa
         '</div>'
         # Row 3: TP basis
         '<div style="font-family:Share Tech Mono,monospace;font-size:0.65rem;color:#475569;margin-top:0.35rem">'
-        'TP basis: ' + _tp_basis + ' · SL basis: floor Rp' + f"{floor_p:,.0f}" + ' −2%'
+        'TP basis: ' + _tp_basis + ' · SL basis: min(floor −2%, low candle −1%)'
         '</div>'
         '</div>'
     )

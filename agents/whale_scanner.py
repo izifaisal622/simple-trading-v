@@ -2384,6 +2384,7 @@ class WhaleScanner:
             result = {
                 "ticker":           ticker,
                 "close":            round(last_close, 0),
+                "day_low":          round(float(low.iloc[-1]), 0),  # v9.9.6: utk SL opsi C
                 "chg_pct":          round(chg_pct, 2),
                 "vol_ratio":        round(vol_ratio, 1),
                 "value_bn":         round(value_bn, 2),
@@ -2950,7 +2951,16 @@ def compute_trade_verdict(w: dict) -> dict:
     ff_vol    = w.get("ff_adj_vol_ratio", w.get("vol_ratio", 0))
     slow_exit = w.get("slow_exit", False)
 
-    sl_base  = floor_p * 0.97
+    # v9.9.6: SL opsi C — ambil yang PALING LONGGAR antara floor-2% dan low
+    # candle hari ini (di bawah candle). Kejadian KAEF: floor-2% (471) ter-stop
+    # oleh noise padahal low candle (444) belum tembus. Guard: SL tak boleh
+    # bikin risk > 15% (kalau low terlalu jauh, jatuh ke floor-2%).
+    day_low   = w.get("day_low", 0) or 0
+    sl_floor  = floor_p * 0.98               # disamakan dgn page (dulu 0.97 → inkonsistensi 467/471)
+    sl_candle = day_low * 0.99 if day_low > 0 else sl_floor  # buffer 1% di bawah low
+    sl_base   = min(sl_floor, sl_candle)     # opsi C: paling longgar
+    if close > 0 and (close - sl_base) / close * 100 > 15.0:
+        sl_base = sl_floor                   # guard: cegah SL absurd jauh
     risk_pct = (close - sl_base) / close * 100 if close > 0 else 0
     if pct_f <= 5:
         entry_lo, entry_hi = close * 0.998, close * 1.012
