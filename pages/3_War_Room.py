@@ -424,7 +424,7 @@ def _fetch_position_data(ticker: str) -> dict:
 # Manual position input
 with st.expander("➕ TAMBAH POSISI MANUAL", expanded=not _open_trades):
     _ma1, _ma2, _ma3, _ma4, _ma5, _ma6 = st.columns(6)
-    with _ma1: _man_ticker = st.text_input("Ticker", placeholder="BBCA", key="man_ticker").upper()
+    with _ma1: _man_ticker = st.text_input("Ticker", placeholder="BBCA", key="man_ticker").upper().replace(".JK", "")  # v9.9.4: simpan bersih
     with _ma2: _man_entry  = st.number_input("Entry (Rp)", 0.0, step=10.0, key="man_entry")
     with _ma3: _man_sl     = st.number_input("SL (Rp)", 0.0, step=10.0, key="man_sl")
     with _ma4: _man_tp1    = st.number_input("TP1 (Rp)", 0.0, step=10.0, key="man_tp1")
@@ -476,7 +476,7 @@ else:
 
     _pos_cols = st.columns(min(len(_open_trades), 3))
     for _idx, _trade in enumerate(_open_trades):
-        _t      = _trade.get("ticker", "").upper()
+        _t      = _trade.get("ticker", "").upper().replace(".JK", "")  # v9.9.4: normalisasi tampilan
         _entry  = _trade.get("entry_price", 0) or 0
         _sl     = _trade.get("sl_price", 0) or 0
         _notes  = _trade.get("notes", "") or ""
@@ -768,7 +768,7 @@ else:
 
         with st.spinner("Evaluating exit signals..."):
             for _trade in _open_trades:
-                _t     = _trade.get("ticker", "").upper()
+                _t     = _trade.get("ticker", "").upper().replace(".JK", "")  # v9.9.4
                 _entry = float(_trade.get("entry_price", 0) or 0)
                 _sl    = float(_trade.get("sl_price", 0) or 0)
                 _edate = _trade.get("entry_date", "") or ""
