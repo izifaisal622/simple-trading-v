@@ -1213,6 +1213,11 @@ def compute_mcf(
 # DAILY EMA ENGINE  (V1) — Primary daily, weekly for trend context only
 # ─────────────────────────────────────────────────────────────────────────────
 
+# v9.9.5: ambang RR minimum untuk verdict ENTRY (user: perketat ke 2.0).
+# Turunkan bila rezim SANGAT_SEPI mengosongkan entry terlalu agresif.
+RR_MIN_ENTRY = 2.0
+
+
 class DailyEMAEngine:
     """
     EMA Breakout Engine berbasis daily data sebagai primary.
@@ -1502,6 +1507,7 @@ class DailyEMAEngine:
             score_capped = False
             # ── (9)(10) v9.9.1: skala skor 8 → 10 ────────────────────────
             # (9) Struktur pasar HH_HL — sumbu swing, independen dari 4 slot EMA
+            _ms_resist = 0.0
             try:
                 _ms91 = analyze_market_structure(
                     close=close, high=high, low=low, vol=volume,
@@ -1512,6 +1518,7 @@ class DailyEMAEngine:
                 if _ms91.get("structure") == "HH_HL":
                     score += 1
                     flags.append("Struktur HH_HL")
+                _ms_resist = float(_ms91.get("ms_nearest_resist", 0) or 0)  # v9.9.5: reuse utk RR aktual
             except Exception:
                 pass
             # (10) Konfirmasi dual timeframe — sumbu lintas-TF, satu-satunya
@@ -1573,6 +1580,20 @@ class DailyEMAEngine:
             tp3_price   = entry_price + risk * _f(self.cfg.tp3_rr)
             rr_ratio    = round(_f(self.cfg.tp1_rr), 1)
             risk_sizing_ok = risk_pct <= 15.0
+
+            # ── v9.9.5: RR AKTUAL dari resistance nyata (bukan echo config) ──
+            # rr_ratio lama = konstanta tp1_rr digemakan balik → semua kartu 1.5.
+            # RR aktual = (resistance terdekat − entry) / risk. Setup dengan
+            # headroom mepet kini ketahuan RR rendahnya.
+            rr_actual = 0.0
+            if _ms_resist > entry_price and risk > 0:
+                rr_actual = round((_ms_resist - entry_price) / risk, 2)
+            # Filter RR_MIN_ENTRY: BREAKOUT di bawah ambang TIDAK dibuang,
+            # tapi diturunkan ke WATCHLIST — visibilitas tetap, entry ditutup.
+            if signal == "BREAKOUT" and rr_actual > 0 and rr_actual < RR_MIN_ENTRY:
+                signal = "WATCHLIST"
+                breakout_type = ""
+                flags.append(f"RR aktual {rr_actual:.1f} < {RR_MIN_ENTRY} → WATCHLIST")
 
             if risk_pct > 25:
                 flags.append(f"⚠ RISK {risk_pct:.0f}% — sizing sangat kecil")
@@ -1658,6 +1679,7 @@ class DailyEMAEngine:
                 "tp3_price":       tp3_price,
                 "risk_pct":        risk_pct,
                 "rr_ratio":        rr_ratio,
+                "rr_actual":       rr_actual,
                 "risk_sizing_ok":  risk_sizing_ok,
 
                 # SMC (placeholder — scanner_agent runs MS separately)
