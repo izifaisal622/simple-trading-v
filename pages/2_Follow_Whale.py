@@ -21,6 +21,7 @@ from assets_ui import (
     fmt_rp, fmt_pct, fmt_vol, fmt_bn, fmt_conv,
     SIG_COLORS, VP_ZONE_COLORS, REGIME_COLORS, NEON_GREEN,
     BG_CARD, BG_DEEP, TEXT_DIM, TEXT_MUTED, TEXT_MAIN,
+    C_WARNING, C_DANGER, C_INFO, LABEL_COLOR,
     score_badge, vp_zone_pill, signal_badge,
 )
 _ = (sparkline_svg, fmt_rp, fmt_pct, fmt_vol, fmt_bn, fmt_conv, SIG_COLORS, VP_ZONE_COLORS, REGIME_COLORS, BG_CARD, BG_DEEP, TEXT_DIM, TEXT_MUTED, score_badge, vp_zone_pill, signal_badge)  # used in st.markdown HTML templates
@@ -1393,14 +1394,18 @@ def whale_card(w: dict, border_color: str = NEON_GREEN) -> str:
     val_bn  = w.get("value_bn",0)
 
     # ── Colors ────────────────────────────────────────────────────────────────
-    qual_color = {"SMART":"var(--accent)","LIKELY_SMART":"var(--accent)",
-                  "UNCERTAIN":"var(--c-warning)","DUMB":"var(--c-danger)"}.get(qual,"var(--text-secondary)")
+    # v9.9.8: var(--x) di dict dikonkatenasi suffix opacity ('15','50') di
+    # baris badge (lihat _render_card di bawah) → CSS invalid, var() tak bisa
+    # digabung suffix (bug pattern terdaftar). Hex resolved, badge kini render.
+    qual_color = {"SMART":NEON_GREEN,"LIKELY_SMART":NEON_GREEN,
+                  "UNCERTAIN":C_WARNING,"DUMB":C_DANGER}.get(qual,LABEL_COLOR)
     qual_lbl   = {"SMART":"◉ SMART","LIKELY_SMART":"◎ LIKELY SMART",
                   "UNCERTAIN":"? UNCERTAIN","DUMB":"⚠ DUMB"}.get(qual,qual)
-    sig_color  = {"ACCUMULATION":"var(--accent)","BLOCK_BUY":"var(--c-info)",
-                  "RECOVERY_EARLY":"var(--c-warning)","VOL_SPIKE_UP":"var(--c-warning)",
-                  "DISTRIBUTION":"var(--c-danger)","BLOCK_SELL":"var(--c-warning)"}.get(signal,"var(--text-secondary)")
-    chg_col = "var(--accent)" if chg >= 0 else "var(--c-danger)"
+    sig_color  = {"ACCUMULATION":NEON_GREEN,"BLOCK_BUY":C_INFO,
+                  "RECOVERY_EARLY":C_WARNING,"VOL_SPIKE_UP":C_WARNING,
+                  "DISTRIBUTION":C_DANGER,"BLOCK_SELL":C_WARNING}.get(signal,LABEL_COLOR)
+    chg_col = NEON_GREEN if chg >= 0 else C_DANGER
+
     m5_col  = "var(--accent)" if mom5 >= 0 else "var(--c-danger)"
     ema_col = "var(--accent)" if ema_tr=="BULLISH" else "var(--c-danger)" if ema_tr=="BEARISH" else "var(--c-warning)"
 
