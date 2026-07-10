@@ -254,7 +254,9 @@ def _render_ema_detail(r) -> None:
     sl       = _g(r, "sl_price",0)
     tp1      = _g(r, "tp1_price",0)
     tp2      = _g(r, "tp2_price",0)
-    rr       = _g(r, "rr_ratio",0)
+    _rr_actual_val = _g(r, "rr_actual", 0)
+    rr       = _rr_actual_val or _g(r, "rr_ratio", 0)  # v9.9.7: RR terukur dari resistance, fallback ke target-config kalau resistance tak terdeteksi
+    rr_is_actual = _rr_actual_val > 0  # v9.9.7: beda sumber → beda label, hindari narasi-vs-angka bohong (kasus SL KAEF)
     risk     = _g(r, "risk_pct",0)
     # v9.7.2 [Audit finding #B]: breakout_type & box range — sebelumnya
     # tidak pernah ditampilkan sama sekali walau sudah dihitung di backend
@@ -408,13 +410,15 @@ def _render_ema_detail(r) -> None:
     )
 
     # Risk line
+    _rr_label = f'R:R {rr:.1f}:1' if rr_is_actual else f'R:R {rr:.1f}:1 (target)'
     if sl > 0 and tp1 > 0:
         lines_out.append(
             f'<b>Risk:</b> Entry Rp{close:,.0f} · '
             f'SL <b style="color:#EF4444">Rp{sl:,.0f}</b> ({risk:.0f}%) · '
             f'TP1 <b style="color:#00FF66">Rp{tp1:,.0f}</b> · '
-            f'TP2 Rp{tp2:,.0f} · R:R {rr:.1f}:1'
+            f'TP2 Rp{tp2:,.0f} · {_rr_label}'
         )
+
 
     # FIX V4: Risk warning badge
     _render_risk_warning(r, lines_out)

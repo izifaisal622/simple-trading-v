@@ -1711,7 +1711,7 @@ if whale_results:
 
     tab0,tab1,tab2,tab3,tab4,tab5,tab6,tab7 = st.tabs([
         f"🚀 ENTRY HARI INI ({_entry_today_c})",
-        f"◉ BEST LONG ({_best_c})",
+        f"◉ BEST LONG · kualitas whale ({_best_c})",
         f"💧 PENGERINGAN ({_peng_c})",
         f"🎯 AT FLOOR ({_floor_c})",
         f"🌅 RECOVERY ({_rec_c})",
@@ -1765,6 +1765,7 @@ if whale_results:
                         st.markdown(whale_card(w, "var(--c-warning)"), unsafe_allow_html=True)
 
     with tab1:
+        st.caption("⚠ Kualitas whale (siapa pelakunya), bukan sinyal siap eksekusi. Cek badge verdict di tiap card — hanya ENTRY VALID yang siap masuk sekarang.")
         best = [w for w in smart_list
                 if w.get("ema_trend") in _ema_ok
                 and w.get("conviction",0) >= min_conv_ui]
