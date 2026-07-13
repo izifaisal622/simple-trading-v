@@ -178,14 +178,22 @@ IHSG_TICKER = "^JKSE"
 
 
 def _throttle_ok(conn: sqlite3.Connection) -> bool:
+    """v9.9.10: READ-ONLY check. Dulu fungsi ini juga MENULIS flag hari-ini
+    di awal — kalau proses gagal/crash setelahnya (spt kegagalan pra-9.9.9),
+    flag tetap tertulis dan mengunci retry sampai besok walau nol pekerjaan
+    nyata terjadi. Penulisan dipindah ke _throttle_mark(), dipanggil di akhir
+    setelah upaya nyata selesai (bukan sebelum)."""
     conn.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)")
     row = conn.execute("SELECT v FROM meta WHERE k='last_backfill'").fetchone()
     today = datetime.now().strftime("%Y-%m-%d")
-    if row and row[0] == today:
-        return False
+    return not (row and row[0] == today)
+
+
+def _throttle_mark(conn: sqlite3.Connection) -> None:
+    today = datetime.now().strftime("%Y-%m-%d")
     conn.execute("INSERT OR REPLACE INTO meta (k,v) VALUES ('last_backfill',?)", (today,))
     conn.commit()
-    return True
+
 
 
 def _horizon_metrics(df, scan_date: str):
@@ -473,6 +481,7 @@ def backfill_forward_returns(max_rows: int = 500) -> int:
                 total += _backfill_table(conn, table, max_rows, pd, yf)
             except Exception as exc:
                 logger.error(f"[ScanLogger] backfill {table} gagal: {exc}")
+        _throttle_mark(conn)  # v9.9.10: kunci hari ini SETELAH upaya nyata, bukan sebelum
         conn.commit()
         conn.close()
         return total
