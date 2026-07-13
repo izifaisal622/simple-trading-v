@@ -271,8 +271,11 @@ def log_ema_results(results: list, regime) -> int:
     rows = []
     for r in results:
         try:
+            _tkr = str(r.get("ticker", "")).strip().upper().replace(".JK", "")  # v10.0.2: normalisasi — sumber (weekly-fallback) kadang kirim ber-.JK, kadang tidak, menghasilkan baris duplikat HATM vs HATM.JK
+            if not _tkr:
+                continue
             rows.append((
-                str(r.get("ticker", "")).strip(), scan_date, scan_ts,
+                _tkr, scan_date, scan_ts,
                 float(r.get("close", 0) or 0),
                 int(r.get("score", 0) or 0),
                 str(r.get("signal", "")),
