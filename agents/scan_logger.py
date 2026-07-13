@@ -404,13 +404,26 @@ def _backfill_table(conn, table: str, max_rows: int, pd, yf) -> int:
         return t if t.endswith(".JK") or t.startswith("^") else f"{t}.JK"
     tickers = sorted({_sym(r[1]) for r in rows})
 
+    def _flatten(df):
+        """v10.0.1: sebagian versi yfinance mengembalikan kolom MultiIndex
+        (field, ticker) bahkan untuk request 1 ticker tanpa group_by eksplisit
+        — .dropna(subset=["Open","Close"]) lalu KeyError krn nama kolom bukan
+        string datar. Diratakan ke level pertama (nama field), tahan kedua
+        bentuk (datar maupun MultiIndex)."""
+        if df is None or getattr(df, "empty", True):
+            return df
+        if getattr(df.columns, "nlevels", 1) > 1:
+            df = df.copy()
+            df.columns = df.columns.get_level_values(0)
+        return df
+
     _CHUNK = 180
     data_frames = {}  # sym -> df, digabung lintas chunk
     ihsg_df = None
     try:
         _ihsg_raw = yf.download(IHSG_TICKER, start=start, interval="1d",
                                 auto_adjust=False, progress=False, threads=True)
-        ihsg_df = _ihsg_raw.dropna(subset=["Open", "Close"]) if _ihsg_raw is not None else None
+        ihsg_df = _flatten(_ihsg_raw).dropna(subset=["Open", "Close"]) if _ihsg_raw is not None else None
     except Exception as exc:
         logger.warning(f"[ScanLogger] backfill {table} IHSG fetch gagal: {exc}")
 
@@ -427,9 +440,10 @@ def _backfill_table(conn, table: str, max_rows: int, pd, yf) -> int:
         for sym in chunk:
             try:
                 d = raw[sym] if multi else raw
-                data_frames[sym] = d.dropna(subset=["Open", "Close"])
+                data_frames[sym] = _flatten(d).dropna(subset=["Open", "Close"])
             except Exception:
                 continue
+
 
     def _slice(sym):
         return data_frames.get(sym) if sym != IHSG_TICKER else ihsg_df
