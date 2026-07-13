@@ -374,7 +374,12 @@ def log_flow_results(results: list) -> int:
 
 
 def _backfill_table(conn, table: str, max_rows: int, pd, yf) -> int:
-    """Worker generik backfill satu tabel (whale_scans / ema_scans). Entry basis: open H+1."""
+    """Worker generik backfill satu tabel (whale_scans / ema_scans). Entry basis: open H+1.
+    v9.9.9: yf.download di-CHUNK 200 ticker/batch — batch tunggal besar (mis.
+    ema_scans dgn 300+ ticker unik terkumpul lintas hari) terbukti gagal TOTAL
+    di satu request (all-or-nothing), sedangkan whale_scans (~90 ticker, satu
+    request) sukses. Pola sama dgn screen_full_universe yg sudah di-chunk 250.
+    Kegagalan satu chunk tidak lagi menggugurkan chunk lain."""
     rows = conn.execute(f"""
         SELECT id, ticker, scan_date FROM {table}
         WHERE backfilled_at IS NULL
@@ -391,18 +396,37 @@ def _backfill_table(conn, table: str, max_rows: int, pd, yf) -> int:
         return t if t.endswith(".JK") or t.startswith("^") else f"{t}.JK"
     tickers = sorted({_sym(r[1]) for r in rows})
 
-    data = yf.download(tickers + [IHSG_TICKER], start=start, interval="1d",
-                       group_by="ticker", auto_adjust=False,
-                       progress=False, threads=True)
+    _CHUNK = 180
+    data_frames = {}  # sym -> df, digabung lintas chunk
+    ihsg_df = None
+    try:
+        _ihsg_raw = yf.download(IHSG_TICKER, start=start, interval="1d",
+                                auto_adjust=False, progress=False, threads=True)
+        ihsg_df = _ihsg_raw.dropna(subset=["Open", "Close"]) if _ihsg_raw is not None else None
+    except Exception as exc:
+        logger.warning(f"[ScanLogger] backfill {table} IHSG fetch gagal: {exc}")
+
+    for i in range(0, len(tickers), _CHUNK):
+        chunk = tickers[i:i + _CHUNK]
+        try:
+            raw = yf.download(chunk, start=start, interval="1d",
+                              group_by="ticker", auto_adjust=False,
+                              progress=False, threads=True)
+        except Exception as exc:
+            logger.warning(f"[ScanLogger] backfill {table} chunk {i//_CHUNK+1} gagal: {exc}")
+            continue
+        multi = len(chunk) > 1
+        for sym in chunk:
+            try:
+                d = raw[sym] if multi else raw
+                data_frames[sym] = d.dropna(subset=["Open", "Close"])
+            except Exception:
+                continue
 
     def _slice(sym):
-        try:
-            d = data[sym] if len(tickers) + 1 > 1 else data
-            return d.dropna(subset=["Open", "Close"])
-        except Exception:
-            return None
+        return data_frames.get(sym) if sym != IHSG_TICKER else ihsg_df
 
-    ihsg = _slice(IHSG_TICKER)
+    ihsg = ihsg_df
     updated = 0
     for row_id, tkr, sdate in rows:
         m = _horizon_metrics(_slice(_sym(tkr)), sdate)
