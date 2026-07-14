@@ -359,14 +359,25 @@ with t_perf:
                 pnl    = t.get("pnl_r")
                 pnl_s  = f"{pnl:+.2f}R" if pnl is not None else "—"
                 pnl_c  = "var(--c-success)" if (pnl or 0) > 0 else "var(--c-danger)" if (pnl or 0) < 0 else "var(--text-muted)"
+                # v10.0.3: entry/exit price + P&L% — data sudah ada di DB, sebelumnya tak ditampilkan
+                _entry_v  = t.get("entry_price")
+                _exit_v   = t.get("exit_price")
+                _entry_s  = f"Rp{_entry_v:,.0f}" if _entry_v else "—"
+                _exit_s   = f"Rp{_exit_v:,.0f}" if _exit_v else "—"
+                _pct_v    = t.get("pnl_pct")
+                _pct_s    = f"{_pct_v:+.1f}%" if _pct_v is not None else "—"
+                _pct_c    = "var(--c-success)" if (_pct_v or 0) > 0 else "var(--c-danger)" if (_pct_v or 0) < 0 else "var(--text-muted)"
                 rows_html += (
                     f'<tr style="border-bottom:1px solid rgba(255,255,255,.05)">'
                     f'<td style="padding:6px 8px;font-family:Share Tech Mono,monospace;color:#e2e8f0">{t.get("ticker","?")}</td>'
                     f'<td style="padding:6px 8px;font-family:Share Tech Mono,monospace;color:var(--text-muted)">{(t.get("exit_date") or "")[:10]}</td>'
                     f'<td style="padding:6px 8px;font-family:Share Tech Mono,monospace;color:var(--text-muted)">{t.get("strategy","?")}</td>'
                     f'<td style="padding:6px 8px;font-family:Share Tech Mono,monospace;color:var(--text-muted)">{t.get("signal_type","?")}</td>'
+                    f'<td style="padding:6px 8px;font-family:Share Tech Mono,monospace;color:var(--text-muted);text-align:right">{_entry_s}</td>'
+                    f'<td style="padding:6px 8px;font-family:Share Tech Mono,monospace;color:var(--text-muted);text-align:right">{_exit_s}</td>'
                     f'<td style="padding:6px 8px;font-family:Share Tech Mono,monospace;color:{oc_c}">{oc}</td>'
                     f'<td style="padding:6px 8px;font-family:Share Tech Mono,monospace;color:{pnl_c};text-align:right">{pnl_s}</td>'
+                    f'<td style="padding:6px 8px;font-family:Share Tech Mono,monospace;color:{_pct_c};text-align:right">{_pct_s}</td>'
                     f'<td style="padding:6px 8px;font-family:Share Tech Mono,monospace;color:var(--text-muted);text-align:right">{t.get("bars_held","?")}</td>'
                     f'</tr>'
                 )
@@ -377,12 +388,16 @@ with t_perf:
                 f'<th style="padding:6px 8px;color:var(--text-muted);text-align:left;font-family:Share Tech Mono,monospace">EXIT DATE</th>'
                 f'<th style="padding:6px 8px;color:var(--text-muted);text-align:left;font-family:Share Tech Mono,monospace">STRATEGY</th>'
                 f'<th style="padding:6px 8px;color:var(--text-muted);text-align:left;font-family:Share Tech Mono,monospace">SIGNAL</th>'
+                f'<th style="padding:6px 8px;color:var(--text-muted);text-align:right;font-family:Share Tech Mono,monospace">ENTRY</th>'
+                f'<th style="padding:6px 8px;color:var(--text-muted);text-align:right;font-family:Share Tech Mono,monospace">EXIT</th>'
                 f'<th style="padding:6px 8px;color:var(--text-muted);text-align:left;font-family:Share Tech Mono,monospace">OUTCOME</th>'
                 f'<th style="padding:6px 8px;color:var(--text-muted);text-align:right;font-family:Share Tech Mono,monospace">P&L (R)</th>'
+                f'<th style="padding:6px 8px;color:var(--text-muted);text-align:right;font-family:Share Tech Mono,monospace">P&L (%)</th>'
                 f'<th style="padding:6px 8px;color:var(--text-muted);text-align:right;font-family:Share Tech Mono,monospace">BARS</th>'
                 f'</thead><tbody>{rows_html}</tbody></table>',
                 unsafe_allow_html=True,
             )
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 4 — INPUT MANUAL
@@ -1021,7 +1036,8 @@ with t_backtest:
 
     # ── Load closed trades ────────────────────────────────────────────────────
     try:
-        _bt_conn = _bt_sqlite.connect(str(DB_PATH))
+        from agents.journal_agent import DB_PATH as _bt_db_path  # v10.0.3: FIX NameError — DB_PATH tak pernah diimpor, tab ini crash tiap kali diakses
+        _bt_conn = _bt_sqlite.connect(str(_bt_db_path))
         _bt_conn.row_factory = _bt_sqlite.Row
         _bt_rows = _bt_conn.execute("""
             SELECT ticker, outcome, pnl_r, pnl_pct, signal_type, signal_score,
