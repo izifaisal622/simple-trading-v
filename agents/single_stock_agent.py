@@ -19,6 +19,20 @@ from pathlib import Path
 
 import pandas as pd
 
+
+class _DictAsAttr:
+    """v10.0.4 — adapter dict→attribute. DailyEMAEngine.analyze() return dict,
+    SetupResult (weekly) return object attribute-access. Kode konsumsi di bawah
+    ditulis sebagai result.xxx (object-style) — adapter ini menghindari
+    penulisan ulang 20+ baris akses attribute, jadi engine yang dipanggil bisa
+    diganti tanpa menyentuh logika hilir sama sekali."""
+    def __init__(self, d: dict):
+        self._d = d or {}
+
+    def __getattr__(self, name):
+        return self._d.get(name)
+
+
 logger   = logging.getLogger(__name__)
 LOGS_DIR = Path(__file__).parent.parent / "logs"
 
@@ -157,7 +171,7 @@ def analyze_single(ticker: str) -> StockAnalysis:
 def _run_ema_xbo(a: StockAnalysis, ticker: str):
     from core.data_feed       import DataFeed, get_ihsg_regime
     from core.technical_engine import (
-        EMABreakoutEngine, check_daily_entry,
+        EMABreakoutEngine, DailyEMAEngine, check_daily_entry,
         analyze_market_structure, compute_mcf,
     )
     from config.strategy_config import StrategyConfig
@@ -179,16 +193,37 @@ def _run_ema_xbo(a: StockAnalysis, ticker: str):
 
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
+    if df_d is not None and isinstance(df_d.columns, pd.MultiIndex):
+        df_d.columns = df_d.columns.get_level_values(0)
 
     # Regime
     regime_data = get_ihsg_regime()
     regime_tag  = regime_data.get("regime", "UNKNOWN")
 
-    # Weekly analysis
-    engine = EMABreakoutEngine(cfg)
-    result = engine.analyze(df, ticker, ihsg_df=None, regime=regime_tag)
+    # v10.0.4: FIX inkonsistensi lintas-halaman — page 4 sebelumnya SELALU
+    # pakai weekly engine (skala /8, tak pernah dinormalisasi), sementara
+    # page 1 pakai daily engine (skala /10) sebagai primary. Ticker yang sama
+    # bisa menampilkan skor/sinyal berbeda di dua halaman. df_d sudah di-fetch
+    # tapi tak pernah dipakai untuk analisis utama — kini disambungkan, pola
+    # identik scanner_agent (daily primary jika >=30 bar, else weekly fallback
+    # + rescale ×1.25). TIDAK mengubah rumus skor apa pun — engine yang
+    # dipanggil sama persis dgn yang sudah menghasilkan data ema_scans.
+    if df_d is not None and len(df_d) >= 30:
+        _r = DailyEMAEngine(cfg).analyze(
+            df_daily=df_d, ticker=ticker, df_weekly=df,
+            ihsg_df=None, regime=regime_tag,
+        )
+        result = _DictAsAttr(_r) if isinstance(_r, dict) else _r
+    else:
+        engine = EMABreakoutEngine(cfg)
+        result = engine.analyze(df, ticker, ihsg_df=None, regime=regime_tag)
+        if result is not None:
+            # rescale /8 → /10, sama seperti fallback path di scanner_agent
+            _rescaled = min(10, round((getattr(result, "score", 0) or 0) * 1.25))
+            result = _DictAsAttr({**result.__dict__, "score": _rescaled, "score_max": 10})
 
     if result is None:
+
         a.error = f"EMA engine tidak bisa analisis {ticker}"
         return
 

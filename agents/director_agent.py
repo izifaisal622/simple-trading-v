@@ -665,11 +665,15 @@ def _bench_data_feed(cfg) -> dict:
 
 
 def _bench_technical_engine(cfg) -> dict:
-    from core.technical_engine import EMABreakoutEngine
+    # v10.0.4: benchmark dialihkan dari EMABreakoutEngine (weekly, bukan lagi
+    # jalur produksi utama sejak DailyEMAEngine jadi primary) ke DailyEMAEngine
+    # — angka speed/memory kini representatif thd apa yang benar2 dijalankan
+    # scanner_agent tiap scan.
+    from core.technical_engine import DailyEMAEngine
     from core.data_feed import DataFeed
     std    = STANDARDS["technical_engine"]
-    engine = EMABreakoutEngine(cfg)
-    feed   = DataFeed(timeframe="1wk")
+    engine = DailyEMAEngine(cfg)
+    feed   = DataFeed(timeframe="1d")
     dfs    = feed.fetch_batch(["BBCA.JK","TLKM.JK","PTBA.JK"], max_workers=3)
     timings, mems = [], []
     for ticker, df in dfs.items():
@@ -684,6 +688,7 @@ def _bench_technical_engine(cfg) -> dict:
     if peak_m > std["max_mem_mb"]: issues.append(f"mem {peak_m}MB > limit")
     return {"agent":"technical_engine","elapsed":round(avg_t,3),"mem_mb":peak_m,
             "severity":sev,"pass":sev=="PASS","issues":issues}
+
 
 
 def _bench_learning_agent() -> dict:
