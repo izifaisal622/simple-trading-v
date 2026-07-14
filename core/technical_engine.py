@@ -1003,7 +1003,15 @@ def analyze_market_structure(
         current = float(c[-1])
         nearest_support = max((sl[1] for sl in swing_lows if sl[1] < current), default=0.0)
         support_dist    = ((current - nearest_support) / current * 100) if nearest_support > 0 else 100.0
-        nearest_resist  = min((sh[1] for sh in swing_highs if sh[1] > current), default=current * 1.5)
+        _real_resist_candidates = [sh[1] for sh in swing_highs if sh[1] > current]
+        # v10.0.5: FIX celah new-high — dulu default=current*1.5 memalsukan
+        # resistance diam-diam saat tak ada swing high di atas harga (persis
+        # kondisi "harga trending tanpa jeda"/new-high). RR aktual (9.9.5) yang
+        # dihitung dari angka palsu ini otomatis besar → saham paling stretched
+        # selalu lolos filter RR_MIN_ENTRY tanpa syarat, kebalikan dari maksud
+        # filter. Kini ditandai eksplisit via resist_is_synthetic.
+        resist_is_synthetic = len(_real_resist_candidates) == 0
+        nearest_resist  = min(_real_resist_candidates, default=current * 1.5)
         resist_dist     = ((nearest_resist - current) / current * 100)
         sr_score        = 1 if support_dist <= 5 else 0
 
@@ -1045,6 +1053,7 @@ def analyze_market_structure(
             "ms_support_dist_pct": round(support_dist, 1),
             "ms_nearest_resist":   round(nearest_resist, 0),
             "ms_resist_dist_pct":  round(resist_dist, 1),
+            "ms_resist_is_synthetic": resist_is_synthetic,  # v10.0.5
             "ms_summary":          " · ".join(parts),
         }
 
@@ -1508,6 +1517,7 @@ class DailyEMAEngine:
             # ── (9)(10) v9.9.1: skala skor 8 → 10 ────────────────────────
             # (9) Struktur pasar HH_HL — sumbu swing, independen dari 4 slot EMA
             _ms_resist = 0.0
+            _ms_resist_synthetic = False  # v10.0.5
             try:
                 _ms91 = analyze_market_structure(
                     close=close, high=high, low=low, vol=volume,
@@ -1519,6 +1529,7 @@ class DailyEMAEngine:
                     score += 1
                     flags.append("Struktur HH_HL")
                 _ms_resist = float(_ms91.get("ms_nearest_resist", 0) or 0)  # v9.9.5: reuse utk RR aktual
+                _ms_resist_synthetic = bool(_ms91.get("ms_resist_is_synthetic", False))  # v10.0.5
             except Exception:
                 pass
             # (10) Konfirmasi dual timeframe — sumbu lintas-TF, satu-satunya
@@ -1585,15 +1596,26 @@ class DailyEMAEngine:
             # rr_ratio lama = konstanta tp1_rr digemakan balik → semua kartu 1.5.
             # RR aktual = (resistance terdekat − entry) / risk. Setup dengan
             # headroom mepet kini ketahuan RR rendahnya.
+            # v10.0.5 FIX celah new-high: saat tak ada swing high di atas harga
+            # (saham lagi trending tanpa jeda), resistance dulu dipalsukan
+            # current*1.5 → rr_actual otomatis besar → saham PALING stretched
+            # selalu lolos filter tanpa syarat (kebalikan maksud filter).
+            # rr_is_actual=False saat sintetis → filter TIDAK dievaluasi disini,
+            # verdict jatuh ke jalur normal tanpa klaim RR palsu.
             rr_actual = 0.0
-            if _ms_resist > entry_price and risk > 0:
+            rr_is_actual = False
+            if _ms_resist > entry_price and risk > 0 and not _ms_resist_synthetic:
                 rr_actual = round((_ms_resist - entry_price) / risk, 2)
+                rr_is_actual = True
             # Filter RR_MIN_ENTRY: BREAKOUT di bawah ambang TIDAK dibuang,
             # tapi diturunkan ke WATCHLIST — visibilitas tetap, entry ditutup.
-            if signal == "BREAKOUT" and rr_actual > 0 and rr_actual < RR_MIN_ENTRY:
+            # Hanya dievaluasi kalau RR benar-benar terukur (bukan sintetis).
+            if signal == "BREAKOUT" and rr_is_actual and rr_actual < RR_MIN_ENTRY:
                 signal = "WATCHLIST"
                 breakout_type = ""
                 flags.append(f"RR aktual {rr_actual:.1f} < {RR_MIN_ENTRY} → WATCHLIST")
+            elif signal == "BREAKOUT" and not rr_is_actual:
+                flags.append("RR aktual tak terukur (no resistance di atas — new-high) — verifikasi manual sebelum entry")
 
             if risk_pct > 25:
                 flags.append(f"⚠ RISK {risk_pct:.0f}% — sizing sangat kecil")
@@ -1680,6 +1702,7 @@ class DailyEMAEngine:
                 "risk_pct":        risk_pct,
                 "rr_ratio":        rr_ratio,
                 "rr_actual":       rr_actual,
+                "rr_is_actual":    rr_is_actual,  # v10.0.5
                 "risk_sizing_ok":  risk_sizing_ok,
 
                 # SMC (placeholder — scanner_agent runs MS separately)
