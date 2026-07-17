@@ -1583,7 +1583,16 @@ class DailyEMAEngine:
 
             # ── Risk levels ───────────────────────────────────────────────────
             entry_price = last_close
-            sl_price    = (box_low * 0.99 if box_detected else entry_price - 2.0 * last_atr)
+            # v10.0.6: SL opsi C (user, konsisten dgn page 2 sejak 9.9.6) —
+            # SL = paling LONGGAR antara box_low-2% (structural support/"floor"
+            # page 1) dan low candle hari ini -1%. Guard: kalau SL bikin risk
+            # >15%, jatuh balik ke sl_box (lebih konservatif, bukan candle).
+            _sl_box     = (box_low * 0.99 if box_detected else entry_price - 2.0 * last_atr)
+            _today_low  = _f(low.iloc[-1])
+            _sl_candle  = _today_low * 0.99 if _today_low > 0 else _sl_box
+            sl_price    = min(_sl_box, _sl_candle)
+            if entry_price > 0 and (entry_price - sl_price) / entry_price * 100 > 15.0:
+                sl_price = _sl_box  # guard: low candle terlalu jauh → structural
             risk        = max(entry_price - sl_price, last_atr * 0.5)
             risk_pct    = (risk / entry_price * 100) if entry_price > 0 else 0.0
             tp1_price   = entry_price + risk * _f(self.cfg.tp1_rr)
