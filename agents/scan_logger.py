@@ -384,6 +384,89 @@ def log_flow_results(results: list) -> int:
         return 0
 
 
+def _ensure_zone_table(conn: sqlite3.Connection) -> None:
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS zone_scans (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker            TEXT NOT NULL,
+        scan_date         TEXT NOT NULL,
+        scan_ts           TEXT NOT NULL,
+        close_price       REAL,
+        status            TEXT,
+        conviction_pct    INTEGER,
+        zone_top          REAL,
+        zone_bottom       REAL,
+        bars_since_formed INTEGER,
+        retest_hold_days  INTEGER,
+        base_pct          INTEGER, retest_pct INTEGER,
+        vidya_pct         INTEGER, volume_pct INTEGER, structure_pct INTEGER,
+        pk_board          INTEGER DEFAULT 0,
+        raw_json          TEXT,
+        fwd_ret_5d        REAL, fwd_ret_10d REAL, fwd_ret_20d REAL,
+        ihsg_ret_5d       REAL, ihsg_ret_10d REAL, ihsg_ret_20d REAL,
+        mae_20d           REAL, mfe_20d REAL,
+        backfilled_at     TEXT,
+        created_at        TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(ticker, scan_date)
+    );
+    """)
+
+
+def log_zone_results(results: list, ctx: dict) -> int:
+    """Tahap 3 sub-A — feedback loop sistem conviction retest-zone (calon
+    pengganti page 1). Mencatat SEMUA ticker yang berhasil dianalisis
+    (termasuk IDLE, bukan cuma WATCHING) — supaya distribusi status bisa
+    diaudit dari feedback loop, bukan cuma sampel yang tampil di kartu."""
+    if not results:
+        return 0
+    now = datetime.now()
+    scan_date = now.strftime("%Y-%m-%d")
+    scan_ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    rows = []
+    for r in results:
+        try:
+            _tkr = str(r.get("ticker", "")).strip().upper().replace(".JK", "")
+            if not _tkr:
+                continue
+            rows.append((
+                _tkr, scan_date, scan_ts,
+                float(r.get("close", 0) or 0),
+                str(r.get("status", "")),
+                int(r.get("conviction_pct", 0) or 0),
+                float(r.get("zone_top", 0) or 0) if r.get("zone_top") is not None else None,
+                float(r.get("zone_bottom", 0) or 0) if r.get("zone_bottom") is not None else None,
+                int(r.get("bars_since_formed", 0) or 0) if r.get("bars_since_formed") is not None else None,
+                int(r.get("retest_hold_days", 0) or 0),
+                int(r.get("base_pct", 0) or 0), int(r.get("retest_pct", 0) or 0),
+                int(r.get("vidya_pct", 0) or 0), int(r.get("volume_pct", 0) or 0),
+                int(r.get("structure_pct", 0) or 0),
+                1 if r.get("pk_board") else 0,
+                json.dumps(r, default=str, ensure_ascii=False),
+            ))
+        except Exception as exc:
+            logger.warning(f"[ScanLogger] zone skip {r.get('ticker','?')}: {exc}")
+    if not rows:
+        return 0
+    try:
+        conn = _get_conn()
+        _ensure_zone_table(conn)
+        conn.executemany("""
+            INSERT OR REPLACE INTO zone_scans
+            (ticker, scan_date, scan_ts, close_price, status, conviction_pct,
+             zone_top, zone_bottom, bars_since_formed, retest_hold_days,
+             base_pct, retest_pct, vidya_pct, volume_pct, structure_pct,
+             pk_board, raw_json)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, rows)
+        conn.commit()
+        conn.close()
+        logger.info(f"[ScanLogger] {len(rows)} zone rows tersimpan ({scan_date})")
+        return len(rows)
+    except Exception as exc:
+        logger.error(f"[ScanLogger] zone gagal simpan: {exc}")
+        return 0
+
+
 def _backfill_table(conn, table: str, max_rows: int, pd, yf) -> int:
     """Worker generik backfill satu tabel (whale_scans / ema_scans). Entry basis: open H+1.
     v9.9.9: yf.download di-CHUNK 200 ticker/batch — batch tunggal besar (mis.
@@ -489,11 +572,12 @@ def backfill_forward_returns(max_rows: int = 500) -> int:
         conn = _get_conn()
         _ensure_ema_table(conn)
         _ensure_flow_table(conn)
+        _ensure_zone_table(conn)
         if not _throttle_ok(conn):
             conn.close()
             return 0
         total = 0
-        for table in ("whale_scans", "ema_scans", "flow_scans"):
+        for table in ("whale_scans", "ema_scans", "flow_scans", "zone_scans"):
             try:
                 total += _backfill_table(conn, table, max_rows, pd, yf)
             except Exception as exc:

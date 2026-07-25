@@ -34,39 +34,39 @@ LOGS_DIR.mkdir(exist_ok=True)
 
 
 def run_ema_scan(cfg, regime):
+    """v10.0.7 — REPLACE TOTAL: sistem lama (scanner_agent+DailyEMAEngine,
+    skor tangga breakout) diganti sistem baru (zone_scanner+conviction_engine,
+    retest-zone conviction 20-100%). Mandiri — TIDAK pakai analyst_agent/
+    alert_agent (keduanya tetap dipakai whale scan, jangan disentuh)."""
     print("\n" + "═"*60)
-    print("  MODULE 01 — EMA-XBO SCANNER")
+    print("  MODULE 01 — VIDYA+SMC RETEST-ZONE SCANNER")
     print("═"*60)
 
-    from agents.scanner_agent import ScannerAgent
-    from agents.analyst_agent import MarketAnalystAgent
-    from agents.alert_agent   import AlertAgent
+    from agents.zone_scanner import ZoneScanner
 
-    scanner  = ScannerAgent(cfg)
-    analyst  = MarketAnalystAgent(cfg)
-    alerter  = AlertAgent(cfg)
+    scanner = ZoneScanner()
+    results, ctx = scanner.scan()  # log_zone_results dipanggil internal di .scan()
 
-    results = scanner.daily_scan()
-    scanner.save_results(results, regime)
+    print(f"\n  Regime: {ctx['regime']} | Universe: {ctx['total_universe']} "
+          f"| Dianalisis: {ctx['analyzed']} | Watching: {ctx['watching_count']}")
+    if ctx["skipped_short_history"] or ctx["crashed"]:
+        print(f"  ⚠ Skip data pendek: {ctx['skipped_short_history']} | Crash: {ctx['crashed']}")
 
-    # Rules-based recommendations (free)
-    breakouts = [r for r in results if (r.get("signal","") if isinstance(r,dict) else getattr(r,"signal","")) in ("BREAKOUT","STRONG_BREAKOUT")]
-    recs      = analyst.recommend_batch(breakouts) if breakouts else []
+    if results:
+        print(f"\n{'TICKER':<8} {'CONV%':>6} {'STATUS':<10} {'ZONA':<20} {'RETEST':>7} {'BREAKDOWN'}")
+        print("-" * 80)
+        for r in results[:30]:
+            zona = f"{r['zone_bottom']:.0f}-{r['zone_top']:.0f}" if r['zone_top'] else "-"
+            breakdown = (f"base{r['base_pct']}+retest{r['retest_pct']}"
+                        f"+vidya{r['vidya_pct']}+vol{r['volume_pct']}+struct{r['structure_pct']}")
+            print(f"{r['ticker']:<8} {r['conviction_pct']:>5}% {r['status']:<10} "
+                  f"{zona:<20} {r['retest_hold_days']:>6}d  {breakdown}")
+    else:
+        print("\n  Tidak ada zona WATCHING hari ini.")
 
-    # Console report (pass regime so bear market warning shows)
-    alerter.print_report(results, recs, regime=regime)
-
-    # Telegram (only if configured)
-    if cfg.telegram_token and cfg.telegram_chat_id:
-        if breakouts:
-            for r in breakouts[:3]:
-                _t  = r.get("ticker","") if isinstance(r,dict) else getattr(r,"ticker","")
-                rec = next((x["recommendation"] for x in recs if x["ticker"]==_t), "")
-                alerter.send_breakout_alert(r, rec)
-        alerter.send_daily_report(results, regime=regime)
-
-    print(f"\n[EMA] Done: {len(results)} setups | {len(breakouts)} breakouts")
+    print(f"\n[Zone] Done: {len(results)} watching setups")
     return results
+
 
 
 def run_whale_scan(cfg, regime):
