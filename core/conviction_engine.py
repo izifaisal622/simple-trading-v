@@ -34,10 +34,9 @@ setiap keputusan di bar i hanya memakai data 0..i. Diuji truncation-invariant.
 from dataclasses import dataclass, field as dc_field
 from typing import Optional
 
-import numpy as np
 import pandas as pd
 
-from core.ob_engine import run_engine, EngineState, BULLISH
+from core.ob_engine import run_engine, BULLISH
 
 RETEST_CAP_DAYS = 2
 EXPIRY_BARS = 5  # hari bursa
@@ -111,7 +110,6 @@ def run_conviction(df: pd.DataFrame, **engine_kwargs) -> list:
     """Walk-forward penuh: ob_engine tahap 1 -> state machine conviction.
     Return list[ConvictionState], satu per bar. df wajib kolom OHLCV standar."""
     engine_states = run_engine(df, **engine_kwargs)
-    n = len(engine_states)
 
     out = []
     active: Optional[_ActiveZone] = None

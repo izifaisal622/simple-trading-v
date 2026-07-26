@@ -19,8 +19,8 @@ from assets_ui import (
 )
 st.markdown(get_page_css("dashboard"), unsafe_allow_html=True)
 
-GREEN  = NEON_GREEN;  YELLOW = "var(--c-warning)";  RED = "var(--c-danger)"
-BLUE   = "var(--c-info)";   WHITE  = TEXT_MAIN;  LABEL = "var(--text-secondary)"
+GREEN  = NEON_GREEN;  YELLOW = "#F0B429";  RED = "#EF4444"  # v10.1 FIX: var(--x) dikonkatenasi suffix opacity di badge()/warn_block() -> CSS invalid, background/border tak pernah render sejak lahir (bug pattern sama spt page 2 sebelumnya)
+BLUE   = "#60A5FA";   WHITE  = TEXT_MAIN;  LABEL = "var(--text-secondary)"
 
 
 def _regime():
@@ -33,13 +33,10 @@ def _regime():
 
 def _gc(g):   return {"A":GREEN,"A+":GREEN,"B":YELLOW,"C":"#F97316","D":RED,"F":RED}.get(g, TEXT_DIM)
 def _gbg(g):  return {"A":"rgba(0,255,102,0.07)","A+":"rgba(0,255,102,0.09)","B":"rgba(240,180,41,0.07)","C":"rgba(249,115,22,0.07)","D":"rgba(239,68,68,0.07)","F":"rgba(239,68,68,0.05)"}.get(g, "rgba(255,255,255,0.02)")
-def _sc(s):   return {"BREAKOUT":GREEN,"WATCHLIST":YELLOW,"CORRECTING":BLUE,"DEEP_CORRECT":RED}.get(s, TEXT_DIM)
-def _si(s):   return {"BREAKOUT":"◈","WATCHLIST":"◎","CORRECTING":"○","DEEP_CORRECT":"◌"}.get(s, "—")
 def _wc(q):   return {"SMART":GREEN,"LIKELY_SMART":YELLOW,"UNCERTAIN":BLUE}.get(q, TEXT_DIM)
 def _ac(a):
     return GREEN if a in ("AKUMULASI","PENGERINGAN","BLOCK_BUY","RECOVERY_EARLY") else RED if a in ("DISTRIBUSI","SELL_OFF","DISTRIBUTION") else TEXT_DIM
 def _t(v,hi,med): return GREEN if v>=hi else YELLOW if v>=med else RED
-def _clr(v):  return RED if v>25 else YELLOW if v>15 else GREEN
 
 def B(text, color=None):   # bold colored span
     c = color or WHITE
@@ -152,23 +149,25 @@ sec = st.session_state.get("sa_sec", 0)
 
 # ── pre-compute all display values ────────────────────────────────────────────
 g_col   = _gc(r.grade);       g_bg     = _gbg(r.grade)
-sig_col = _sc(r.signal);      sig_icon = _si(r.signal)
-cross_c = GREEN if r.cross_state=="ABOVE" else YELLOW if r.cross_state=="CROSSING" else RED
-ema_c   = _t(r.ema_score,5,3);   wq_c = _wc(r.whale_quality)
-conv_c  = _t(r.conviction,7,4);  risk_c = _clr(r.risk_pct)
-act_c   = _ac(r.activity_type);  rs_c = GREEN if r.rs_vs_ihsg>0 else RED
+wq_c    = _wc(r.whale_quality)
+conv_c  = _t(r.conviction,7,4)
+act_c   = _ac(r.activity_type)
 reg_col = REGIME_COLORS.get(r.regime_tag, TEXT_DIM)
+fp_dist = ((r.close - r.floor_price)/r.floor_price*100) if r.floor_price and r.close else 0  # field WHALE
 
-ema_gap = ((r.ema13 - r.ema89)/r.ema89*100) if r.ema89 else 0
-pct_vs13= ((r.close - r.ema13)/r.ema13*100) if r.ema13 else 0
-pct_vs89= ((r.close - r.ema89)/r.ema89*100) if r.ema89 else 0
-fp_dist = ((r.close - r.floor_price)/r.floor_price*100) if r.floor_price and r.close else 0
-
-vol_lbl = "EKSTREM" if r.vol_ratio>=6 else "SPIKE" if r.vol_ratio>=3 else "ELEVATED" if r.vol_ratio>=1.3 else "NORMAL"
-vol_wc  = GREEN if r.vol_ratio>=3 else YELLOW if r.vol_ratio>=1.3 else TEXT_DIM
-
-mcf_col = RED if r.mcf_bear_blocked else GREEN if r.mcf_entry_ok else TEXT_DIM
-mcf_lbl = ("⛔ BEAR BLOCKED ("+str(r.mcf_score)+"/10)") if r.mcf_bear_blocked else (("◈ "+r.mcf_label+" ("+str(r.mcf_score)+"/10)") if r.mcf_entry_ok else (r.mcf_label+" ("+str(r.mcf_score)+"/10)"))
+# v10.1 REPLACE TOTAL: zona conviction (VIDYA+SMC retest-zone), menggantikan
+# seluruh sumbu EMA lama (signal/cross_state/mcf/dual_confirmed/ema_gap dst
+# yg tak lagi punya padanan semantik — sistem baru bukan crossover-phase,
+# tapi retest-zone confirmation).
+zone_c = (GREEN if r.conviction_pct >= 75 else
+          YELLOW if r.conviction_pct >= 40 else TEXT_DIM)
+zone_status_lbl = {
+    "WATCHING": "WATCHING", "IDLE": "TIDAK ADA ZONA",
+    "INVALIDATED": "INVALIDASI", "EXPIRED": "KADALUARSA",
+    "SUPERSEDED": "DIGANTIKAN PIVOT BARU",
+}.get(r.zone_status, r.zone_status)
+zone_status_c = (GREEN if r.zone_status == "WATCHING" and r.conviction_pct >= 40
+                 else RED if r.zone_status == "INVALIDATED" else TEXT_DIM)
 
 reasons_html = "".join(
     '<span style="display:flex;align-items:center;gap:.4rem;padding:.12rem 0;border-bottom:1px solid rgba(255,255,255,0.04)">'
@@ -205,121 +204,63 @@ st.markdown(
     '</div>'
 
     '<div style="min-width:140px;font-family:Share Tech Mono,monospace;display:flex;flex-direction:column;gap:.18rem">'
-    '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">SIGNAL</span><span style="font-size:var(--text-xs);font-weight:600;color:'+sig_col+'">'+sig_icon+' '+r.signal+'</span></div>'
-    '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">EMA SCORE</span><span style="font-size:var(--text-xs);font-weight:600;color:'+ema_c+'">'+str(r.ema_score)+'/10</span></div>'
+    '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">ZONA</span><span style="font-size:var(--text-xs);font-weight:600;color:'+zone_status_c+'">'+zone_status_lbl+'</span></div>'
+    '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">CONVICTION</span><span style="font-size:var(--text-xs);font-weight:600;color:'+zone_c+'">'+str(r.conviction_pct)+'%</span></div>'
     '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">WHALE</span><span style="font-size:var(--text-xs);font-weight:600;color:'+wq_c+'">'+r.whale_quality+'</span></div>'
-    '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">CONVICTION</span><span style="font-size:var(--text-xs);font-weight:600;color:'+conv_c+'">'+str(r.conviction)+'/10</span></div>'
-    '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">REGIME</span><span style="font-size:var(--text-xs);color:'+reg_col+'">'+reg_col.replace("#","")[:0]+r.regime_tag+'</span></div>'
+    '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">WHALE CONV</span><span style="font-size:var(--text-xs);font-weight:600;color:'+conv_c+'">'+str(r.conviction)+'/10</span></div>'
+    '<div style="display:flex;justify-content:space-between"><span style="font-size:var(--text-2xs);color:'+LABEL+'">REGIME</span><span style="font-size:var(--text-xs);color:'+reg_col+'">'+r.regime_tag+'</span></div>'
     +msci_h+
     '</div></div></div>',
     unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════════════════════
-# COMPACT CARD — EMA-XBO style inline
+# ZONE CONVICTION CARD (v10.1 REPLACE TOTAL — ganti "COMPACT CARD EMA-XBO")
 # ════════════════════════════════════════════════════════════════════════════
-
-# Verdict
-if r.regime_tag == "WATCHLIST_ONLY":
-    v_col, v_bg, verdict = RED, "rgba(239,68,68,0.04)", "⛔ BEAR — WATCH ONLY"
-elif r.signal == "BREAKOUT":
-    v_col, v_bg, verdict = GREEN, "rgba(0,255,102,0.06)", "ENTRY VALID"
-elif r.signal == "WATCHLIST":
-    v_col, v_bg, verdict = YELLOW, "rgba(240,180,41,0.04)", "WATCHLIST"
+if r.zone_status == "WATCHING":
+    v_col, v_bg, verdict = (GREEN, "rgba(0,255,102,0.06)", "ZONA AKTIF") if r.conviction_pct >= 40 else (TEXT_DIM, "rgba(100,116,139,0.04)", "ZONA LEMAH")
+elif r.zone_status == "INVALIDATED":
+    v_col, v_bg, verdict = RED, "rgba(239,68,68,0.05)", "INVALIDASI"
+elif r.zone_status == "EXPIRED":
+    v_col, v_bg, verdict = TEXT_DIM, "rgba(100,116,139,0.04)", "KADALUARSA"
+elif r.zone_status == "SUPERSEDED":
+    v_col, v_bg, verdict = TEXT_DIM, "rgba(100,116,139,0.04)", "PIVOT DIGANTIKAN"
 else:
-    v_col, v_bg, verdict = TEXT_DIM, "rgba(100,116,139,0.04)", "MONITOR / WAIT"
+    v_col, v_bg, verdict = TEXT_DIM, "rgba(100,116,139,0.04)", "TIDAK ADA ZONA"
 
 html = (
     '<div style="background:'+BG_CARD+';border:1px solid rgba(255,255,255,0.07);'
     'border-left:3px solid '+v_col+';border-radius:6px;padding:1rem 1.2rem;margin:.4rem 0">'
-
-    # Header row
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">'
     '<div><span style="font-family:Orbitron,monospace;font-size:var(--text-xl);font-weight:800;color:'+WHITE+'">'+r.ticker+'</span>'
     '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:'+LABEL+';margin-left:.6rem">'
-    'EMA-XBO · Score '+str(r.ema_score)+'/10 · Vol '+f"{r.vol_ratio:.1f}"+'×</span></div>'
+    'VIDYA+SMC Zone · Conviction '+str(r.conviction_pct)+'%</span></div>'
     '<div style="background:'+v_bg+';border:1px solid '+v_col+'55;border-radius:3px;padding:.25rem .7rem;'
     'font-family:Share Tech Mono,monospace;font-size:var(--text-xs);font-weight:700;color:'+v_col+'">'+verdict+'</div>'
     '</div>'
 )
 
-# Phase badge + description
-if r.cross_state == "BELOW":
-    phase_c, phase_lbl = RED, "BELOW EMA"
-    phase_desc = "EMA13 belum melewati EMA89. Gap "+f"{ema_gap:+.1f}%"+"."
-elif r.cross_state == "CROSSING":
-    phase_c, phase_lbl = GREEN, "GOLDEN CROSS"
-    phase_desc = "EMA13 baru melewati EMA89. Early entry, risiko lebih tinggi."
-elif abs(pct_vs13) <= 3 and r.vol_ratio >= 1.3:
-    phase_c, phase_lbl = GREEN, "PULLBACK CONFIRMED"
-    phase_desc = f"Di EMA13 support ({pct_vs13:+.1f}%) + vol {r.vol_ratio:.1f}×. Re-entry terbaik."
-elif abs(pct_vs13) <= 3:
-    phase_c, phase_lbl = YELLOW, "PULLBACK WATCH"
-    phase_desc = f"Di EMA13 ({pct_vs13:+.1f}%) tapi vol belum konfirmasi ({r.vol_ratio:.1f}×)."
-elif 3 < pct_vs13 <= 12 and r.vol_ratio >= 3:
-    phase_c, phase_lbl = GREEN, "BREAKOUT CONFIRMED"
-    phase_desc = f"{pct_vs13:+.1f}% di atas EMA13 + vol {r.vol_ratio:.1f}×. Institutional."
-elif pct_vs13 > 12:
-    phase_c, phase_lbl = YELLOW, "EXTENDED"
-    phase_desc = f"Harga {pct_vs13:+.1f}% di atas EMA13. Tunggu pullback ke Rp{r.ema13:,.0f}."
-elif pct_vs13 < -3 and pct_vs89 > 0:
-    phase_c, phase_lbl = YELLOW, "DEEP PULLBACK"
-    phase_desc = f"Di bawah EMA13 ({pct_vs13:+.1f}%) tapi di atas EMA89 ({pct_vs89:+.1f}%). Trend besar valid."
-elif pct_vs13 < -3:
-    phase_c, phase_lbl = RED, "TREND BREAK"
-    phase_desc = "Di bawah EMA13 dan EMA89. Trend bullish terancam."
-else:
-    phase_c, phase_lbl = TEXT_DIM, "WATCH"
-    phase_desc = "Monitor."
-
-html += line(badge(phase_lbl, phase_c) + " " + phase_desc)
-
-# EMA line
-html += line(
-    B("EMA:") + " EMA13 " + B("Rp"+f"{r.ema13:,.0f}", WHITE) + " · "
-    + "EMA89 " + B("Rp"+f"{r.ema89:,.0f}", "var(--text-secondary)") + " · "
-    + "Gap " + B(f"{ema_gap:+.1f}%", GREEN if ema_gap>0 else RED) + " · "
-    + "vs EMA13 " + B(f"{pct_vs13:+.1f}%", GREEN if pct_vs13>0 else RED)
-    + (" · EMA200 " + B(f"Rp{r.ema200:,.0f}", "var(--text-secondary)") if r.ema200 and r.ema200_reliable else (" · EMA200 " + B("N/A", "#475569") if r.ema200 else ""))
-)
-
-# Vol + score + RS line
-html += line(
-    B("Volume:") + " " + B(f"{r.vol_ratio:.1f}× — {vol_lbl}", vol_wc) + " · "
-    + "Score " + B(str(r.ema_score)+"/10", ema_c) + " · "
-    + "RS " + B(f"{r.rs_vs_ihsg:+.1f}%", rs_c)
-    + (" · Regime " + B(r.regime_tag, reg_col) if r.regime_tag else "")
-)
-
-# Risk line
-if r.sl_price:
+if r.zone_top:
     html += line(
-        B("Risk:") + " Entry Rp"+f"{r.entry_price:,.0f}" + " · "
-        + "SL " + B("Rp"+f"{r.sl_price:,.0f}", RED) + " ("+f"{r.risk_pct:.0f}%"+")" + " · "
-        + "TP1 " + B("Rp"+f"{r.tp1_price:,.0f}", GREEN)
-        + (" · TP2 Rp"+f"{r.tp2_price:,.0f}" if r.tp2_price else "") + " · "
-        + "R:R " + B(f"{r.rr_ratio:.1f}:1", GREEN if r.rr_ratio>=2 else YELLOW if r.rr_ratio>=1.5 else RED)
+        B("Zona:") + " Rp"+f"{r.zone_bottom:,.0f}"+" – Rp"+f"{r.zone_top:,.0f}" + " · "
+        + "Close " + B("Rp"+f"{r.close:,.0f}", WHITE) + " · "
+        + "Retest " + B(str(r.retest_hold_days)+"/2 hari", GREEN if r.retest_hold_days>0 else TEXT_DIM)
     )
+    html += line(
+        B("Breakdown:") + " Base "+B(str(r.zone_base_pct)+"%")+" · "
+        + "Retest "+B(str(r.zone_retest_pct)+"%")+" · "
+        + "VIDYA "+B(str(r.zone_vidya_pct)+"%", GREEN if r.zone_vidya_pct>0 else TEXT_DIM)+" · "
+        + "Volume "+B(str(r.zone_volume_pct)+"%", GREEN if r.zone_volume_pct>0 else TEXT_DIM)+" · "
+        + "Struktur "+B(str(r.zone_structure_pct)+"%", GREEN if r.zone_structure_pct>0 else TEXT_DIM)
+    )
+else:
+    html += line(span("Tidak ada zona retest aktif utk ticker ini saat ini.", TEXT_DIM))
 
-# Risk / EMA200 warnings
-if r.risk_pct > 25:
-    html += warn_block("⚠ RISK "+f"{r.risk_pct:.0f}%"+" — TERLALU LEBAR. Max 1% modal = " +
-                       ("Rp" + f"{100_000_000/(r.risk_pct/100)/r.entry_price*100:,.0f}" if r.entry_price else "?") +
-                       " lembar", RED)
-elif r.risk_pct > 15:
-    html += warn_block("⚠ RISK "+f"{r.risk_pct:.0f}%"+" — Hati-hati sizing. Kurangi ukuran posisi.", YELLOW)
-if not r.ema200_reliable:
-    html += warn_block("ℹ EMA200 tidak tersedia (data < 150 bar weekly) — EMA89 dipakai sebagai long-term anchor.", "#60A5FA")
+if r.regime_tag == "WATCHLIST_ONLY":
+    html += warn_block("⚠ Regime BEAR — semua entry lebih berisiko, kurangi ukuran posisi.", RED)
 
-# MCF line
-html += line(B("MCF") + " " + B(mcf_lbl, mcf_col))
-
-# Daily timing
-html += line(
-    B("Daily:") + " EMA13d Rp"+f"{r.ema13:,.0f}" +
-    " · " + ("✓ OK" if r.daily_ok else "✗ BELUM") + " · " +
-    (r.daily_pattern or "—") +
-    (" · " + B("DUAL CONFIRMED", GREEN) if r.dual_confirmed else "")
-)
+html += warn_block(
+    "ℹ Retest-only path: breakout tanpa pullback selalu bernilai conviction rendah "
+    "dalam skema ini — trade-off disengaja demi menyaring false breakout.", "#60A5FA")
 
 # ── Whale section ─────────────────────────────────────────────────────────────
 html += sec_div("FOLLOW WHALE — HENGKY METHOD", YELLOW)
@@ -381,7 +322,7 @@ st.markdown(
     '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);color:'+LABEL+'">REKOMENDASI</span>'
     '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);font-weight:800;color:'+g_col+'">'+r.action_label+'</span>'
     '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:'+g_col+'">'
-    'Grade '+r.grade+'  ·  Score '+str(r.overall_score)+'/100  ·  EMA '+str(r.ema_score)+'/10  ·  Whale '+str(r.conviction)+'/10</span>'
+    'Grade '+r.grade+'  ·  Score '+str(r.overall_score)+'/100  ·  Zona '+str(r.conviction_pct)+'%  ·  Whale '+str(r.conviction)+'/10</span>'
     '</div>',
     unsafe_allow_html=True)
 
@@ -393,13 +334,17 @@ st.markdown("<br>", unsafe_allow_html=True)
 
 # Hitung nilai checklist dari data analisis
 _pf_regime_ok   = r.regime_tag not in ("WATCHLIST_ONLY", "BEAR_TREND", "BEAR_WEAK", "BEAR_CONSOLIDATION", "")
-_pf_ema_ok      = r.ema_score >= 4
+_pf_ema_ok      = r.conviction_pct >= 40
 _pf_conv_ok     = r.conviction >= 6
 _pf_floor_ok    = fp_dist <= 20
-_pf_risk_ok     = r.risk_pct <= 25
+# v10.1 FIX: risk_pct (EMA lama) & signal CORRECTING/DEEP_CORRECT sudah tak
+# eksis di sistem baru — dulu "risk_pct <= 25" & "signal not in (...)" DIAM2
+# SELALU LOLOS krn field default 0.0/"NONE" (false-positif di checklist
+# pra-entry, ditemukan saat migrasi). Diganti cek zona nyata.
+_pf_risk_ok     = r.zone_status == "WATCHING"
 _pf_vol_ok      = r.vol_ratio >= 1.3
 _pf_dist_ok     = r.activity_type not in ("DISTRIBUSI", "SELL_OFF", "DISTRIBUTION")
-_pf_signal_ok   = r.signal not in ("CORRECTING", "DEEP_CORRECT", "")
+_pf_signal_ok   = r.retest_hold_days > 0
 
 _pf_all_pass    = all([_pf_regime_ok, _pf_ema_ok, _pf_conv_ok, _pf_floor_ok,
                         _pf_risk_ok, _pf_vol_ok, _pf_dist_ok, _pf_signal_ok])
@@ -439,20 +384,20 @@ def _pf_row(ok: bool, label: str, value: str, rule: str) -> str:
 _pf_rows = (
     _pf_row(_pf_regime_ok,  "REGIME",        r.regime_tag or "UNKNOWN",
              "Bukan BEAR/WATCHLIST_ONLY")
-    + _pf_row(_pf_ema_ok,   "EMA SCORE",     f"{r.ema_score}/10",
-               "≥ 4 untuk entry")
-    + _pf_row(_pf_conv_ok,  "CONVICTION",    f"{r.conviction}/10",
+    + _pf_row(_pf_ema_ok,   "CONVICTION%",   f"{r.conviction_pct}%",
+               "≥ 40% utk entry")
+    + _pf_row(_pf_conv_ok,  "WHALE CONV",    f"{r.conviction}/10",
                "≥ 6 untuk full size")
     + _pf_row(_pf_floor_ok, "FLOOR DIST",    f"{fp_dist:.1f}%",
                "≤ 20% dari floor")
-    + _pf_row(_pf_risk_ok,  "RISK %",        f"{r.risk_pct:.1f}%",
-               "≤ 25% per trade")
+    + _pf_row(_pf_risk_ok,  "ZONA STATUS",   r.zone_status,
+               "Harus WATCHING")
     + _pf_row(_pf_vol_ok,   "VOL RATIO",     f"{r.vol_ratio:.1f}×",
                "≥ 1.3× konfirmasi")
     + _pf_row(_pf_dist_ok,  "SINYAL ARAH",   r.activity_type or r.signal or "—",
                "Bukan distribusi/sell-off")
-    + _pf_row(_pf_signal_ok,"EMA SIGNAL",    r.signal or "—",
-               "Bukan CORRECTING/DEEP")
+    + _pf_row(_pf_signal_ok,"RETEST",        f"{r.retest_hold_days}/2 hari",
+               "Minimal 1 retest terkonfirmasi")
 )
 
 # Session state untuk override checklist (trader tetap bisa force entry)
@@ -531,8 +476,11 @@ with tab_journal:
             if j_entry > 0 and j_sl > 0:
                 tid = add_paper_trade(
                     ticker=r.ticker, entry_price=j_entry, sl_price=j_sl,
-                    tp1_price=j_tp1, risk_pct=r.risk_pct, rr_ratio=r.rr_ratio,
-                    ema_score=r.ema_score, ema_signal=r.signal,
+                    # v10.1: risk_pct/rr_ratio (EMA lama) tak lagi ada — kolom
+                    # ema_score/ema_signal di-repurpose utk conviction_pct/
+                    # zone_status (skema DB tetap, bukan biarkan 0/"NONE" diam2)
+                    tp1_price=j_tp1, risk_pct=0, rr_ratio=0,
+                    ema_score=r.conviction_pct, ema_signal=r.zone_status,
                     whale_quality=r.whale_quality, conviction=r.conviction,
                     regime=r.regime_tag, grade=r.grade, notes=j_notes,
                     source="module03",
@@ -603,7 +551,7 @@ with tab_ringkasan:
         'margin:.4rem 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">'
         '<div style="display:flex;align-items:center;gap:.8rem">'
         '<span style="font-family:Orbitron,monospace;font-size:var(--text-xl);font-weight:800;color:' + WHITE + '">' + r.ticker + '</span>'
-        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:' + sig_col + '">' + (r.signal or '—') + '</span>'
+        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:' + zone_status_c + '">' + zone_status_lbl + '</span>'
         '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);color:' + LABEL + '">Rp' + f'{r.close:,.0f}' + '</span>'
         '</div>'
         '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);font-weight:700;'

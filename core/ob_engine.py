@@ -20,7 +20,7 @@ run_engine() diuji wajib truncation-invariant: state pada bar i harus
 IDENTIK baik dataframe dipotong sampai bar i maupun dipakai penuh.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np

@@ -14,10 +14,8 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-import pandas as pd
-
 from core.data_feed import DataFeed, get_catalyst_universe, get_pk_set, get_ihsg_regime
-from core.conviction_engine import run_conviction, STATE_WATCHING, STATE_IDLE
+from core.conviction_engine import run_conviction, STATE_WATCHING
 
 logger = logging.getLogger(__name__)
 
