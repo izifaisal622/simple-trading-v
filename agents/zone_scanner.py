@@ -64,24 +64,29 @@ class ZoneScanner:
         self.feed = DataFeed(timeframe="1d", period="2y")  # sesuai diagnostik yg terbukti cukup
 
     def scan(self, tickers: Optional[list] = None, full_universe: bool = True,
-             max_workers: int = 8, use_multiprocessing: bool = False) -> tuple:
+             max_workers: int = 8) -> tuple:
         """Return (results: list[dict], ctx: dict). Hanya ticker dgn zona
         WATCHING (conviction>0) yang masuk results — IDLE tak ditampilkan
         (tak ada apa pun utk dilaporkan), tapi SEMUA ticker yg berhasil
         dianalisis tetap di-LOG (utk feedback loop, termasuk yg IDLE).
 
-        use_multiprocessing=False (default, AMAN): loop sekuensial biasa.
-        use_multiprocessing=True: ProcessPoolExecutor utk analisis paralel
-        (bypass GIL, beda dgn ThreadPoolExecutor yg TERBUKTI regresi lewat
-        benchmark — loop walk-forward murni Python menahan GIL sepenuhnya).
-        KEBENARAN sudah diverifikasi identik dgn sekuensial (unit test).
-        KECEPATAN belum bisa diverifikasi dari sandbox pengembangan (1 CPU
-        core saja) — harus diuji di mesin produksi. RISIKO: ProcessPoolExecutor
-        di Windows (spawn) + dipanggil dari dalam Streamlit dikenal berpotensi
-        re-eksekusi script di proses anak. SARAN: uji dulu via CLI
-        (python orchestrator.py) dgn use_multiprocessing=True SEBELUM
-        mengaktifkannya di tombol 'RUN ZONE SCAN' pages/1_VIDYA_SMC_Zone.py.
-        Default tetap False sampai terbukti aman di mesinmu sendiri."""
+        v10.1.1 — CATATAN OPTIMASI (utk siapa pun tergoda mencoba lagi):
+        Loop analisis ini SENGAJA sekuensial. Sudah dicoba DUA pendekatan
+        paralel dan KEDUANYA terbukti gagal via benchmark nyata, bukan
+        asumsi teoretis:
+          - ThreadPoolExecutor: 0.92x (regresi) — loop walk-forward murni
+            Python menahan GIL sepenuhnya, thread tak beri paralelisme nyata.
+          - ProcessPoolExecutor: TERUJI DI PRODUKSI (Windows, mesin user
+            sungguhan) 233 detik -> 3021 detik = 13x LEBIH LAMBAT. Windows
+            tidak punya fork() spt Linux — tiap ticker dikirim ke proses
+            pekerja harus di-pickle (serialisasi DataFrame) & dikirim lewat
+            IPC; overhead itu jauh melampaui waktu komputasi asli per ticker.
+            Kebenaran hasil identik dgn sekuensial, tapi tak berguna kalau
+            13x lebih lambat.
+        Percepatan nyata butuh pendekatan BEDA total: caching state antar-
+        hari (skip reproses 480 bar, cuma proses bar baru) — perubahan
+        arsitektur besar, perlu sesi terpisah dgn rigor pengujian setara
+        tahap 1-2 (anti-lookahead adalah jaminan yg tak boleh dikompromikan)."""
         tickers = tickers or get_catalyst_universe(full_universe=full_universe)
         regime_data = get_ihsg_regime()
         pk_set = get_pk_set()
@@ -95,8 +100,9 @@ class ZoneScanner:
         skipped_short = 0
         crashed = 0
 
-        def _handle(status, row):
-            nonlocal skipped_short, crashed
+        for i, ticker in enumerate(tickers):
+            status, row = _process_one_ticker(ticker, data.get(ticker),
+                                              self.internal_size, self.swing_size, pk_set)
             if status == "skip":
                 skipped_short += 1
             elif status == "crash":
@@ -105,27 +111,6 @@ class ZoneScanner:
                 all_scanned.append(row)
                 if row["status"] == STATE_WATCHING and row["conviction_pct"] > 0:
                     results.append(row)
-
-        if use_multiprocessing:
-            from concurrent.futures import ProcessPoolExecutor, as_completed
-            done = 0
-            with ProcessPoolExecutor(max_workers=max_workers) as ex:
-                futures = {
-                    ex.submit(_process_one_ticker, ticker, data.get(ticker),
-                              self.internal_size, self.swing_size, pk_set): ticker
-                    for ticker in tickers
-                }
-                for future in as_completed(futures):
-                    status, row = future.result()
-                    _handle(status, row)
-                    done += 1
-                    if done % 100 == 0:
-                        logger.info(f"[Zone] {done}/{len(tickers)} | {len(results)} watching")
-        else:
-            for i, ticker in enumerate(tickers):
-                status, row = _process_one_ticker(ticker, data.get(ticker),
-                                                  self.internal_size, self.swing_size, pk_set)
-                _handle(status, row)
                 if (i + 1) % 100 == 0:
                     logger.info(f"[Zone] {i+1}/{len(tickers)} | {len(results)} watching")
 
