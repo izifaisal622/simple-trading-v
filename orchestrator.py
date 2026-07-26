@@ -275,26 +275,29 @@ def _print_stats():
 
 def _run_single_ticker(cfg, regime, ticker: str, no_llm: bool = False):
     """Run full analysis on a single ticker — both EMA and Whale context."""
-    # EMA XBO analysis
+    # Zone conviction analysis (v10.1 REPLACE TOTAL — TechnicalEngine class
+    # tak pernah ada di technical_engine.py, import ini sudah rusak sejak
+    # sebelum migrasi, silently ditelan except di bawah. Diganti sekalian.)
     try:
-        from core.data_feed import DataFeed, get_ihsg_regime
-        from core.technical_engine import TechnicalEngine
+        from core.data_feed import DataFeed
+        from core.conviction_engine import run_conviction
 
-        feed    = DataFeed(timeframe="1wk", period="3y")
-        df_wk   = feed.fetch(ticker)
-        feed_d  = DataFeed(timeframe="1d",  period="60d")
-        df_day  = feed_d.fetch(ticker)
+        feed_d = DataFeed(timeframe="1d", period="2y")
+        df_day = feed_d.fetch(ticker)
 
-        if df_wk is not None and len(df_wk) >= 30:
-            eng = TechnicalEngine(cfg)
-            r   = eng.analyze(df_wk, ticker, regime=regime.get("cycle","UNKNOWN"))
-            if r:
-                print(f"  EMA XBO  | Signal: {r.signal:<12} | Score: {r.score}/10 | "
-                      f"Regime: {r.regime_tag}")
-                print(f"           | EMA13: {r.ema13:,.0f} | EMA89: {r.ema89:,.0f} | "
-                      f"Risk: {r.risk_pct:.1f}%")
+        if df_day is not None and len(df_day) >= 260:
+            states = run_conviction(df_day, internal_size=5, swing_size=50)
+            r = states[-1]
+            print(f"  ZONE     | Status: {r.status:<12} | Conviction: {r.conviction_pct}% | "
+                  f"Retest: {r.retest_hold_days}/2")
+            if r.zone_top:
+                print(f"           | Zona: {r.zone_bottom:,.0f}-{r.zone_top:,.0f} | "
+                      f"Base:{r.base_pct} Retest:{r.retest_pct} VIDYA:{r.vidya_pct} "
+                      f"Vol:{r.volume_pct} Struct:{r.structure_pct}")
+        else:
+            print(f"  [ZONE] Data harian tidak cukup utk {ticker} (butuh >=260 bar)")
     except Exception as e:
-        print(f"  [EMA] Error: {e}")
+        print(f"  [ZONE] Error: {e}")
 
     # Whale analysis
     try:

@@ -20,19 +20,6 @@ from pathlib import Path
 import pandas as pd
 
 
-class _DictAsAttr:
-    """v10.0.4 — adapter dict→attribute. DailyEMAEngine.analyze() return dict,
-    SetupResult (weekly) return object attribute-access. Kode konsumsi di bawah
-    ditulis sebagai result.xxx (object-style) — adapter ini menghindari
-    penulisan ulang 20+ baris akses attribute, jadi engine yang dipanggil bisa
-    diganti tanpa menyentuh logika hilir sama sekali."""
-    def __init__(self, d: dict):
-        self._d = d or {}
-
-    def __getattr__(self, name):
-        return self._d.get(name)
-
-
 logger   = logging.getLogger(__name__)
 LOGS_DIR = Path(__file__).parent.parent / "logs"
 
@@ -93,6 +80,18 @@ class StockAnalysis:
     smc_trend:     str   = ""
 
     flags:         list  = field(default_factory=list)
+
+    # ── Zone Conviction (v10.1 — REPLACE TOTAL, ganti EMA-XBO lama) ────────────
+    zone_status:        str   = "IDLE"   # WATCHING/IDLE/INVALIDATED/EXPIRED/SUPERSEDED
+    conviction_pct:     int   = 0        # 0-100
+    zone_top:           float = 0.0
+    zone_bottom:        float = 0.0
+    retest_hold_days:   int   = 0
+    zone_base_pct:      int   = 0
+    zone_retest_pct:    int   = 0
+    zone_vidya_pct:     int   = 0
+    zone_volume_pct:    int   = 0
+    zone_structure_pct: int   = 0
 
     # ── Whale ───────────────────────────────────────────────────────────────
     whale_ok:          bool  = False    # True jika data whale tersedia
@@ -169,133 +168,56 @@ def analyze_single(ticker: str) -> StockAnalysis:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _run_ema_xbo(a: StockAnalysis, ticker: str):
-    from core.data_feed       import DataFeed, get_ihsg_regime
-    from core.technical_engine import (
-        EMABreakoutEngine, DailyEMAEngine, check_daily_entry,
-        analyze_market_structure, compute_mcf,
-    )
-    from config.strategy_config import StrategyConfig
+    """v10.1 — REPLACE TOTAL: technical_engine (DailyEMAEngine/EMABreakoutEngine
+    box-breakout+MCF Hengky) diganti core.conviction_engine (VIDYA+SMC
+    retest-zone, sama persis dgn zone_scanner.py). Engine lama & seluruh
+    turunannya (dual_confirmed, mcf_score, cross_state) tidak lagi punya
+    padanan semantik — field StockAnalysis lama itu DIBIARKAN default (0/False)
+    utk kompatibilitas struktur, TIDAK diisi lagi. Field zone_* baru menampung
+    hasil sistem baru; page 4 UI perlu disesuaikan menampilkan field baru ini
+    (belum dikerjakan di sesi ini)."""
+    from core.data_feed import DataFeed, get_ihsg_regime
+    from core.conviction_engine import run_conviction
 
-    cfg  = StrategyConfig.load()
-    feed   = DataFeed(timeframe="1wk", period="3y")
-    feed_1y = DataFeed(timeframe="1wk", period="1y")
-    feed_d  = DataFeed(timeframe="1d",  period="60d")
-
-    # Fetch data — fallback ke 1y jika 3y tidak cukup (saham baru/illiquid)
-    df = feed.fetch(ticker)
-    if df is None or len(df) < 30:
-        df = feed_1y.fetch(ticker)
+    feed_d = DataFeed(timeframe="1d", period="2y")  # sama persis dgn zone_scanner.py
     df_d = feed_d.fetch(ticker)
 
-    if df is None or len(df) < 10:
-        a.error = f"Data mingguan tidak cukup untuk {ticker}"
+    if df_d is None or len(df_d) < 260:  # MIN_BARS_REQUIRED sama dgn zone_scanner
+        a.error = f"Data harian tidak cukup untuk {ticker} (butuh >=260 bar utk ATR200+swing50)"
         return
 
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    if df_d is not None and isinstance(df_d.columns, pd.MultiIndex):
+    if isinstance(df_d.columns, pd.MultiIndex):
         df_d.columns = df_d.columns.get_level_values(0)
 
-    # Regime
+    # v10.1: FIX bug key sama spt page 1 — get_ihsg_regime() pakai key "cycle",
+    # bukan "regime" (selalu diam2 balik "UNKNOWN" sebelumnya, tak pernah crash
+    # krn .get() dgn default, tapi salah nilai).
     regime_data = get_ihsg_regime()
-    regime_tag  = regime_data.get("regime", "UNKNOWN")
+    a.regime_tag = regime_data.get("cycle", "UNKNOWN")
 
-    # v10.0.4: FIX inkonsistensi lintas-halaman — page 4 sebelumnya SELALU
-    # pakai weekly engine (skala /8, tak pernah dinormalisasi), sementara
-    # page 1 pakai daily engine (skala /10) sebagai primary. Ticker yang sama
-    # bisa menampilkan skor/sinyal berbeda di dua halaman. df_d sudah di-fetch
-    # tapi tak pernah dipakai untuk analisis utama — kini disambungkan, pola
-    # identik scanner_agent (daily primary jika >=30 bar, else weekly fallback
-    # + rescale ×1.25). TIDAK mengubah rumus skor apa pun — engine yang
-    # dipanggil sama persis dgn yang sudah menghasilkan data ema_scans.
-    if df_d is not None and len(df_d) >= 30:
-        _r = DailyEMAEngine(cfg).analyze(
-            df_daily=df_d, ticker=ticker, df_weekly=df,
-            ihsg_df=None, regime=regime_tag,
-        )
-        result = _DictAsAttr(_r) if isinstance(_r, dict) else _r
-    else:
-        engine = EMABreakoutEngine(cfg)
-        result = engine.analyze(df, ticker, ihsg_df=None, regime=regime_tag)
-        if result is not None:
-            # rescale /8 → /10, sama seperti fallback path di scanner_agent
-            _rescaled = min(10, round((getattr(result, "score", 0) or 0) * 1.25))
-            result = _DictAsAttr({**result.__dict__, "score": _rescaled, "score_max": 10})
-
-    if result is None:
-
-        a.error = f"EMA engine tidak bisa analisis {ticker}"
+    try:
+        states = run_conviction(df_d, internal_size=5, swing_size=50)
+    except Exception as exc:
+        a.error = f"Zone engine gagal analisis {ticker}: {exc}"
         return
 
-    # ── Isi dari SetupResult ─────────────────────────────────────────────────
-    a.signal           = result.signal or "NONE"
-    a.ema_score        = result.score
-    a.regime_tag       = result.regime_tag or regime_tag
-    a.cross_state      = result.cross_state
-    a.bars_since_cross = result.bars_since_cross
+    latest = states[-1]
+    a.close = latest.close
+    a.zone_status        = latest.status
+    a.conviction_pct      = latest.conviction_pct
+    a.zone_top            = latest.zone_top or 0.0
+    a.zone_bottom         = latest.zone_bottom or 0.0
+    a.retest_hold_days    = latest.retest_hold_days
+    a.zone_base_pct       = latest.base_pct
+    a.zone_retest_pct     = latest.retest_pct
+    a.zone_vidya_pct      = latest.vidya_pct
+    a.zone_volume_pct     = latest.volume_pct
+    a.zone_structure_pct  = latest.structure_pct
 
-    a.close     = result.close
-    a.ema5      = result.ema5
-    a.ema13     = result.ema13
-    a.ema89     = result.ema89
-    a.ema200    = result.ema200
-    a.ema200_reliable = result.ema200_reliable
-
-    a.entry_price = result.entry_price or result.close
-    a.sl_price    = result.sl_price
-    a.tp1_price   = result.tp1_price
-    a.tp2_price   = result.tp2_price
-    a.risk_pct    = result.risk_pct
-    a.rr_ratio    = result.rr_ratio
-    a.risk_sizing_ok = result.risk_sizing_ok
-
-    a.vol_ratio  = result.vol_ratio
-    a.rs_vs_ihsg = result.rs_vs_ihsg_4w
-    a.rs_signal  = result.rs_signal
-
-    a.smc_trend = result.smc_trend
-    a.ms_score  = result.smc_score
-    a.flags     = list(result.flags or [])
-
-    # ── Daily entry timing ───────────────────────────────────────────────────
-    if df_d is not None and len(df_d) >= 20:
-        if isinstance(df_d.columns, pd.MultiIndex):
-            df_d.columns = df_d.columns.get_level_values(0)
-        daily = check_daily_entry(df_d, str(result.cross_state))
-        a.daily_ok      = daily.get("daily_ok", False)
-        a.daily_pattern = daily.get("daily_pattern", "")
-        a.dual_confirmed = (
-            a.daily_ok and result.cross_state in ("ABOVE", "CROSSING")
-        )
-
-    # ── MCF ─────────────────────────────────────────────────────────────────
-    try:
-        mcf_data = compute_mcf(
-            close=df["Close"],
-            high=df["High"],
-            low=df["Low"],
-            open_=df["Open"],
-            volume=df["Volume"],
-            regime_tag=a.regime_tag,
-        )
-        a.mcf_score        = mcf_data.get("score", 0)
-        a.mcf_label        = mcf_data.get("label", "—")
-        a.mcf_entry_ok     = mcf_data.get("mcf_entry_ok", False)
-        a.mcf_bear_blocked = mcf_data.get("mcf_bear_blocked", False)
-    except Exception as exc:
-        logger.debug(f"MCF error: {exc}")
-
-    # ── Market Structure ─────────────────────────────────────────────────────
-    try:
-        ms = analyze_market_structure(
-            df["Close"].tolist(),
-            ema13_series=None,
-            ema89_series=None,
-        )
-        a.ms_label = ms.get("structure", "")
-        a.ms_score = ms.get("conviction_boost", 0)
-    except Exception:
-        pass
+    # a.signal dipertahankan sbg ringkasan sederhana utk kompatibilitas kode
+    # lama yg mungkin masih membaca field ini (mis. filter WATCHLIST/BREAKOUT
+    # di tempat lain) — dipetakan dari status zona, bukan konsep yg identik.
+    a.signal = "WATCHLIST" if latest.status == "WATCHING" and latest.conviction_pct >= 40 else "NONE"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -484,49 +406,31 @@ def _compute_overall(a: StockAnalysis):
     reasons = []
 
     # ════════════════════════════════════════════════════════════════════════
-    # AXIS 1 — EMA SCORE (0–50)
+    # AXIS 1 — ZONE CONVICTION SCORE (0–50) — v10.1 REPLACE TOTAL
+    # conviction_pct (0-100, dari VIDYA+SMC retest-zone engine) sudah
+    # komprehensif (base+retest+vidya+volume+struktur) — diskalakan langsung
+    # ke 0-50, MENGGANTIKAN seluruh breakdown lama (signal/ema_score/
+    # dual_confirmed/mcf_*/rs_vs_ihsg) yg tak lagi punya padanan semantik di
+    # sistem baru. Threshold "EMA kuat >=25" kini berarti conviction>=50%
+    # (setara: minimal 1 retest hold tercapai, bukan sekadar zona terbentuk).
     # ════════════════════════════════════════════════════════════════════════
-    ema_pts = 0
+    ema_pts = a.conviction_pct * 0.5
 
-    # Signal base: max 20 (BREAKOUT tidak lagi mendominasi 30% total)
-    sig_pts = {
-        "BREAKOUT": 20, "WATCHLIST": 15, "COMPRESSING": 11, "CORRECTING": 8,
-        "DEEP_CORRECT": 4, "NONE": 0,
-        # COMPRESSING: antara CORRECTING dan WATCHLIST — gap EMA menyempit, reversal terbentuk
-    }.get(a.signal, 0)
-    ema_pts += sig_pts
-    if a.signal in ("BREAKOUT", "WATCHLIST"):
-        reasons.append(f"EMA signal: {a.signal}")
+    if a.zone_status == "WATCHING":
+        reasons.append(f"Zona conviction: {a.conviction_pct}% ({a.retest_hold_days}/2 retest)")
+        if a.zone_vidya_pct > 0:
+            reasons.append("VIDYA bullish saat retest")
+        if a.zone_volume_pct > 0:
+            reasons.append("Volume delta menguat")
+        if a.zone_structure_pct > 0:
+            reasons.append("Struktur internal+swing aligned")
+    elif a.zone_status == "INVALIDATED":
+        reasons.append("⛔ Zona invalidasi — harga tembus support")
+    elif a.zone_status == "EXPIRED":
+        reasons.append("Zona kadaluarsa — tak ada retest")
 
-    # Score bonus: max 8
-    ema_pts += min(max(0, (a.ema_score - 3) * 2), 8)
-    if a.ema_score >= 5:
-        reasons.append(f"EMA score: {a.ema_score}/7")
-
-    # Dual timeframe
-    if a.dual_confirmed:
-        ema_pts += 5
-        reasons.append("Dual-timeframe confirmed")
-    elif a.daily_ok:
-        ema_pts += 2
-
-    # MCF
-    if a.mcf_entry_ok and not a.mcf_bear_blocked:
-        ema_pts += min(a.mcf_score, 5)
-        if a.mcf_score >= 8:
-            reasons.append(f"MCF tinggi: {a.mcf_score}/10")
-    elif a.mcf_bear_blocked:
-        ema_pts -= 5
-        reasons.append("⛔ MCF bear-blocked")
-
-    # RS vs IHSG
-    if a.rs_vs_ihsg > 5:
-        ema_pts += 3
-        reasons.append(f"RS vs IHSG: +{a.rs_vs_ihsg:.1f}%")
-    elif a.rs_vs_ihsg < -5:
-        ema_pts -= 3
-
-    # MSCI bonus masuk ke EMA axis (konfirmasi teknikal institusional)
+    # MSCI bonus masuk ke axis ini (konfirmasi teknikal institusional) — TIDAK
+    # berubah, konsep independen dari engine EMA/zone manapun.
     if a.msci_active and a.msci_alert_level == "HIGH_CONVICTION":
         ema_pts += 8
         reasons.append(f"★ MSCI HIGH CONVICTION T-{a.msci_t_minus}")
@@ -534,7 +438,7 @@ def _compute_overall(a: StockAnalysis):
         ema_pts += 4
         reasons.append(f"◈ MSCI MEDIUM T-{a.msci_t_minus}")
 
-    # Regime penalty
+    # Regime penalty — TIDAK berubah
     if a.regime_tag == "WATCHLIST_ONLY":
         ema_pts -= 10
         reasons.append("Regime BEAR — entry berisiko")

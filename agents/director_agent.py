@@ -665,19 +665,18 @@ def _bench_data_feed(cfg) -> dict:
 
 
 def _bench_technical_engine(cfg) -> dict:
-    # v10.0.4: benchmark dialihkan dari EMABreakoutEngine (weekly, bukan lagi
-    # jalur produksi utama sejak DailyEMAEngine jadi primary) ke DailyEMAEngine
-    # — angka speed/memory kini representatif thd apa yang benar2 dijalankan
-    # scanner_agent tiap scan.
-    from core.technical_engine import DailyEMAEngine
+    # v10.1: benchmark dialihkan lagi — technical_engine.py (EMABreakoutEngine/
+    # DailyEMAEngine) sudah tak lagi jadi jalur produksi apa pun sejak page 1
+    # DAN page 4 pindah ke core.conviction_engine (REPLACE TOTAL). Benchmark
+    # kini mengukur run_conviction, satu-satunya engine sinyal yg tersisa.
+    from core.conviction_engine import run_conviction
     from core.data_feed import DataFeed
     std    = STANDARDS["technical_engine"]
-    engine = DailyEMAEngine(cfg)
-    feed   = DataFeed(timeframe="1d")
+    feed   = DataFeed(timeframe="1d", period="2y")
     dfs    = feed.fetch_batch(["BBCA.JK","TLKM.JK","PTBA.JK"], max_workers=3)
     timings, mems = [], []
     for ticker, df in dfs.items():
-        _, elapsed, mem, _ = _measure(engine.analyze, df, ticker)
+        _, elapsed, mem, _ = _measure(run_conviction, df)
         timings.append(elapsed)
         mems.append(mem)
     avg_t  = sum(timings)/len(timings) if timings else 999
