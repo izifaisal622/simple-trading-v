@@ -56,12 +56,63 @@ render_regime_bar(
     datetime.now().strftime("%Y-%m-%d"),
 )
 
+def _load_latest_from_db():
+    """v10.1.2: page dibuka -> tampilkan hasil scan TERAKHIR dari zone_scans
+    (bukan re-run otomatis — scan penuh makan ~4 menit, memaksa itu tiap
+    buka halaman bukan UX yang baik). Tombol RUN ZONE SCAN tetap tersedia
+    utk data terbaru. Fail-safe: return (None, None) kalau DB/tabel kosong
+    atau belum ada (mis. instalasi baru, belum pernah scan)."""
+    try:
+        import sqlite3
+        conn = sqlite3.connect("logs/scan_history.db")
+        latest_date = conn.execute(
+            "SELECT MAX(scan_date) FROM zone_scans"
+        ).fetchone()[0]
+        if not latest_date:
+            conn.close()
+            return None, None
+
+        rows = conn.execute("""
+            SELECT ticker, close_price, status, conviction_pct, zone_top, zone_bottom,
+                   bars_since_formed, retest_hold_days, base_pct, retest_pct,
+                   vidya_pct, volume_pct, structure_pct, pk_board
+            FROM zone_scans WHERE scan_date = ?
+        """, (latest_date,)).fetchall()
+
+        analyzed = len(rows)
+        results = []
+        for r in rows:
+            (ticker, close, status, conv, ztop, zbot, bars_since, retest_days,
+             base_pct, retest_pct, vidya_pct, vol_pct, struct_pct, pk) = r
+            if status == "WATCHING" and conv and conv > 0:
+                results.append({
+                    "ticker": ticker, "close": close, "status": status,
+                    "conviction_pct": conv, "zone_top": ztop, "zone_bottom": zbot,
+                    "formed_bar_index": None, "bars_since_formed": bars_since,
+                    "retest_hold_days": retest_days, "base_pct": base_pct,
+                    "retest_pct": retest_pct, "vidya_pct": vidya_pct,
+                    "volume_pct": vol_pct, "structure_pct": struct_pct,
+                    "pk_board": bool(pk),
+                })
+        conn.close()
+        results.sort(key=lambda r: -r["conviction_pct"])
+        ctx = {
+            "regime": regime_data.get("cycle", "UNKNOWN"), "scan_date": latest_date,
+            "total_universe": analyzed, "analyzed": analyzed,
+            "skipped_short_history": 0, "crashed": 0,
+            "watching_count": len(results),
+        }
+        return results, ctx
+    except Exception:
+        return None, None
+
+
 sec_head("SCAN CONTROLS")
 c1, c2 = st.columns([2, 1])
 with c1:
     run_btn = st.button("RUN ZONE SCAN", type="primary")
 with c2:
-    min_conv_ui = st.number_input("MIN CONVICTION %", 0, 100, 40, 5)
+    min_conv_ui = st.number_input("MIN CONVICTION %", 0, 100, 80, 5)
 
 if run_btn:
     with st.spinner("Scanning universe... (~4-6 menit, unduh 2 tahun data harian)"):
@@ -69,6 +120,14 @@ if run_btn:
         results, ctx = scanner.scan()
         st.session_state["zone_results"] = results
         st.session_state["zone_ctx"] = ctx
+
+# v10.1.2: kalau belum pernah klik RUN sesi ini, muat hasil scan terakhir
+# dari DB dulu (bukan biarkan kosong "belum ada hasil scan").
+if "zone_results" not in st.session_state:
+    _db_results, _db_ctx = _load_latest_from_db()
+    if _db_results is not None:
+        st.session_state["zone_results"] = _db_results
+        st.session_state["zone_ctx"] = _db_ctx
 
 results = st.session_state.get("zone_results", [])
 ctx = st.session_state.get("zone_ctx", {})

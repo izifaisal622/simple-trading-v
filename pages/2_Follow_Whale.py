@@ -305,12 +305,15 @@ margin-bottom:0.4rem">
 
 
 sec_head("◆ SCAN CONTROLS")
-c1,c2,c3,c4,c5 = st.columns([1.6,1.2,1,1.3,1])
+c1,c3,c4,c5 = st.columns([1.6,1,1.3,1])
 with c1: run_scan      = st.button("⟳ RUN ADAPTIVE SCAN", type="primary", width="stretch")
-with c2: mode          = st.selectbox("UNIVERSE", ["Full Universe (~477)","Full IDX (~350)","Watchlist (~100)"], index=0)  # v9.8.0: full universe default
 with c3: top_n         = st.number_input("TOP N", 10, 100, 30, 10)
 with c4: manual_vol    = st.number_input("OVERRIDE VOL× (0=auto)", 0.0, 10.0, 0.0, 0.5)
 with c5: min_conv_ui   = st.number_input("MIN CONVICTION", 1, 10, 7, 1)  # v9.8.3: default 7 (aturan user)
+# v10.1.2: dropdown UNIVERSE dihapus atas permintaan user — dulu ada 3 opsi
+# (Full Universe/Full IDX/Watchlist), sekarang dikunci Full Universe (~477)
+# saja, satu-satunya sumber kebenaran universe (sesuai doktrin sejak 9.8.6).
+mode = "Full Universe (~477)"
 
 if run_scan:
     with st.spinner("◈ ADAPTING TO MARKET · FLOOR PRICES · PENGERINGAN · SECTOR CAP..."):
@@ -322,9 +325,7 @@ if run_scan:
             # FIX #6: scan dengan top_n=100 (pool penuh) agar tab SEMUA tidak kehilangan data.
             # top_n dari user hanya dipakai untuk get_best_long display, bukan untuk cap storage.
             # Sebelumnya scan(top_n=user_top_n) → results hanya 30 → tab SEMUA cuma 30.
-            _fu = "Full Universe" in mode  # v9.7.8: stage-0 universe (~477, +waktu scan ~2x)
-            results_full, new_ctx = (scanner.scan_watchlist(top_n=100)
-                                     if "Watchlist" in mode else scanner.scan(top_n=100, full_universe=_fu))
+            results_full, new_ctx = scanner.scan(top_n=100, full_universe=True)
             # Display list pakai top_n user untuk best long — tetap respek preferensi user
             best     = scanner.get_best_long(results_full, min_conviction=int(min_conv_ui))[:int(top_n)]
             peng     = scanner.get_pengeringan(results_full)
