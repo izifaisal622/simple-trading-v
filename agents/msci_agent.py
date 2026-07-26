@@ -388,7 +388,7 @@ def run_msci_scan(cfg=None) -> str:
 def get_msci_status() -> dict:
     """
     Load dan return status MSCI terbaru dari file.
-    Dipanggil oleh UI (gate.py, 1_EMA_XBO.py).
+    Dipanggil oleh UI (gate.py, 1_VIDYA_SMC_Zone.py).
     """
     try:
         if ALERTS_FILE.exists():

@@ -332,27 +332,33 @@ def _merge_incremental(
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Ticker yang dikecualikan dari scan:
-# - Confirmed delisted atau suspended >24 bulan per Jun 2026
-# - WIKA: suspended KSEI + gagal bayar obligasi
-# - BUMI, ENRG, DEWA: suspended panjang + financial distress
-# - KJEN, HEAL, NISP, LEAD, FIRE, WIFI, WOOD, PSKT: tidak ada data yfinance
-EXCLUDED_TICKERS = {
-    # Original
-    "SRIL", "WSKT", "BKSL", "MPPA",
-    # Suspended/delisted confirmed Jun 2026
-    "WIKA", "BUMI", "ENRG", "DEWA",
-    # Tidak ada data yfinance (suspended/private/ticker error)
-    "KJEN", "HEAL", "LEAD", "FIRE", "WIFI", "WOOD",
-    "RATU", "TRIO", "ZINC", "LABA", "BOAT", "HILL", "ARKO", "CARE",
-    "AXIO", "MITI", "RAJA", "OMRE", "BUVA", "KIJA", "FLMC",
-    # Confirmed no-data dari terminal Jun 2026
-    "ASTRA", "FREN", "MFIN", "MASA", "SMRU",
-}
+# v9.8.2 (diterapkan ulang lagi — 3x hilang akibat reset repo sepanjang sesi
+# panjang ini): EXCLUDED_TICKERS dipensiunkan. Diganti stage-0 screen harian
+# (objektif) + DELISTED_TICKERS auto-learn 2-strike dgn amnesty stage-0.
+EXCLUDED_TICKERS: set = set()
 
 # ── Delisted ticker registry ──────────────────────────────────────────────────
 # Auto-populated saat fetch_dynamic_movers mendeteksi "possibly delisted".
 # Disimpan di logs/delisted_tickers.json agar persistent antar session.
 _DELISTED_FILE = Path(__file__).resolve().parent.parent / "logs" / "delisted_tickers.json"
+
+_S0_ALIVE_MEMO: set | None = None
+
+def _stage0_alive() -> set:
+    """Kode ticker yang lolos stage-0 terakhir — bukti objektif saham hidup.
+    Dipakai utk amnesty DELISTED_TICKERS. Memoized per proses, fail-safe kosong.
+    (v9.8.2, diterapkan ulang)"""
+    global _S0_ALIVE_MEMO
+    if _S0_ALIVE_MEMO is not None:
+        return _S0_ALIVE_MEMO
+    try:
+        _p = Path(__file__).resolve().parent.parent / "logs" / "stage0_cache.json"
+        _d = json.loads(_p.read_text(encoding="utf-8"))
+        _S0_ALIVE_MEMO = {p["t"] for p in _d.get("passed", [])}
+    except Exception:
+        _S0_ALIVE_MEMO = set()
+    return _S0_ALIVE_MEMO
+
 
 def _load_delisted() -> tuple:
     """Return (delisted_set, fail_counter_dict)."""
@@ -619,11 +625,14 @@ class DataFeed:
             ticker += ".JK"
 
         base_ticker = ticker.replace(".JK", "")
-        if base_ticker in EXCLUDED_TICKERS:
-            logger.warning(f"[DataFeed] {ticker} in EXCLUDED_TICKERS")
         if base_ticker in DELISTED_TICKERS:
-            logger.debug(f"[DataFeed] {ticker} in DELISTED_TICKERS — skip fetch")
-            return None
+            if base_ticker in _stage0_alive():
+                DELISTED_TICKERS.discard(base_ticker)
+                _save_delisted(DELISTED_TICKERS)
+                logger.info(f"[DataFeed] {ticker} amnesty — lolos stage-0, keluar dari DELISTED")
+            else:
+                logger.debug(f"[DataFeed] {ticker} in DELISTED_TICKERS — skip fetch")
+                return None
 
         _period      = period   or self.period
         _interval    = interval or self.timeframe

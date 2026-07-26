@@ -23,9 +23,21 @@ def _load():
     try:
         d  = json.loads((LOGS_DIR / "daily_results.json").read_text(encoding="utf-8"))
         rg = d.get("regime", {})
+        zone_n = 0
+        try:
+            import sqlite3
+            _conn = sqlite3.connect(str(LOGS_DIR / "scan_history.db"))
+            _row = _conn.execute(
+                "SELECT COUNT(*) FROM zone_scans WHERE status='WATCHING' AND scan_date=?",
+                (d.get("scan_date",""),)
+            ).fetchone()
+            zone_n = _row[0] if _row else 0
+            _conn.close()
+        except Exception:
+            pass
         return {"cycle": rg.get("cycle","—"), "ihsg": rg.get("ihsg",0),
                 "mom_4w": rg.get("mom_4w",0), "scan_date": d.get("scan_date","—"),
-                "ema_total": len(d.get("ema_results",[])),
+                "ema_total": zone_n,
                 "whale_total": len(d.get("whale_results",[]))}
     except Exception:
         return {"cycle":"—","ihsg":0,"mom_4w":0,"scan_date":"—","ema_total":0,"whale_total":0}
@@ -278,21 +290,21 @@ if _alert_bar:
 # ── HERO GRID ─────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="panel-grid">
-  <div class="hero-panel" onclick="window.location.href='/EMA_XBO'">
+  <div class="hero-panel" onclick="window.location.href='/VIDYA_SMC_Zone'">
     <div class="hero-bg" style="background-image:url('data:image/png;base64,{IMG_EMA}')"></div>
     <div class="hero-overlay"></div>
     <div class="module-tag">◈ MODULE 01</div>
     <div class="live-badge"><div class="live-dot"></div> LIVE</div>
     <div class="hero-content">
-      <div class="hero-eyebrow">BREAKOUT DETECTION</div>
-      <div class="hero-title">EMA<span class="accent">-XBO</span></div>
-      <div class="hero-desc">Dual-timeframe EMA crossover scanner.<br>Weekly trend · Daily entry · MCF confirm.</div>{bear_html}
+      <div class="hero-eyebrow">RETEST-ZONE CONVICTION</div>
+      <div class="hero-title">VIDYA<span class="accent">+SMC</span></div>
+      <div class="hero-desc">VIDYA trend · Internal OB retest.<br>Conviction 20% → 100% bertahap.</div>{bear_html}
       <div class="hero-stats">
-        <span class="stat-chip" style="color:#00ff66;border-color:rgba(0,255,102,.25)"><span class="ctr" data-n="{ema_n}">{ema_n}</span> SETUPS</span>
-        <span class="stat-chip" style="color:#4a9eff;border-color:rgba(74,158,255,.2)">SCORE 1–7</span>
-        <span class="stat-chip" style="color:#6b7280;border-color:rgba(107,114,128,.2)">ATR · MCF · RS</span>
+        <span class="stat-chip" style="color:#00ff66;border-color:rgba(0,255,102,.25)"><span class="ctr" data-n="{ema_n}">{ema_n}</span> ZONA</span>
+        <span class="stat-chip" style="color:#4a9eff;border-color:rgba(74,158,255,.2)">CONVICTION 20–100%</span>
+        <span class="stat-chip" style="color:#6b7280;border-color:rgba(107,114,128,.2)">RETEST · VIDYA · VOL</span>
       </div>
-      <a class="hero-cta" href="/EMA_XBO" target="_self">MASUK ›</a>
+      <a class="hero-cta" href="/VIDYA_SMC_Zone" target="_self">MASUK ›</a>
     </div>
   </div>
   <div class="hero-panel" onclick="window.location.href='/Follow_Whale'">

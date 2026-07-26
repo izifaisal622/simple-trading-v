@@ -22,6 +22,41 @@ logger = logging.getLogger(__name__)
 MIN_BARS_REQUIRED = 260  # ATR(200) butuh min_periods=200 + swing_size(50) buffer
 
 
+def _process_one_ticker(ticker: str, df, internal_size: int, swing_size: int, pk_set: set) -> tuple:
+    """Worker terisolasi (dipakai baik sekuensial maupun paralel — lihat
+    catatan versi di scan() soal ThreadPoolExecutor yg TERBUKTI regresi
+    lewat benchmark nyata, bukan asumsi)."""
+    if df is None or len(df) < MIN_BARS_REQUIRED:
+        return ("skip", None)
+    if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
+        df = df.copy()
+        df.columns = df.columns.get_level_values(0)
+    try:
+        states = run_conviction(df, internal_size=internal_size, swing_size=swing_size)
+    except Exception as exc:
+        logger.debug(f"[Zone] {ticker}: engine crash — {exc}")
+        return ("crash", None)
+
+    latest = states[-1]
+    base_ticker = ticker.replace(".JK", "")
+    row = {
+        "ticker": base_ticker,
+        "close": latest.close,
+        "status": latest.status,
+        "conviction_pct": latest.conviction_pct,
+        "zone_top": latest.zone_top,
+        "zone_bottom": latest.zone_bottom,
+        "formed_bar_index": latest.formed_bar_index,
+        "bars_since_formed": (len(states) - 1 - latest.formed_bar_index) if latest.formed_bar_index is not None else None,
+        "retest_hold_days": latest.retest_hold_days,
+        "base_pct": latest.base_pct, "retest_pct": latest.retest_pct,
+        "vidya_pct": latest.vidya_pct, "volume_pct": latest.volume_pct,
+        "structure_pct": latest.structure_pct,
+        "pk_board": base_ticker in pk_set,
+    }
+    return ("ok", row)
+
+
 class ZoneScanner:
     def __init__(self, internal_size: int = 5, swing_size: int = 50):
         self.internal_size = internal_size
@@ -29,11 +64,24 @@ class ZoneScanner:
         self.feed = DataFeed(timeframe="1d", period="2y")  # sesuai diagnostik yg terbukti cukup
 
     def scan(self, tickers: Optional[list] = None, full_universe: bool = True,
-             max_workers: int = 8) -> tuple:
+             max_workers: int = 8, use_multiprocessing: bool = False) -> tuple:
         """Return (results: list[dict], ctx: dict). Hanya ticker dgn zona
         WATCHING (conviction>0) yang masuk results — IDLE tak ditampilkan
         (tak ada apa pun utk dilaporkan), tapi SEMUA ticker yg berhasil
-        dianalisis tetap di-LOG (utk feedback loop, termasuk yg IDLE)."""
+        dianalisis tetap di-LOG (utk feedback loop, termasuk yg IDLE).
+
+        use_multiprocessing=False (default, AMAN): loop sekuensial biasa.
+        use_multiprocessing=True: ProcessPoolExecutor utk analisis paralel
+        (bypass GIL, beda dgn ThreadPoolExecutor yg TERBUKTI regresi lewat
+        benchmark — loop walk-forward murni Python menahan GIL sepenuhnya).
+        KEBENARAN sudah diverifikasi identik dgn sekuensial (unit test).
+        KECEPATAN belum bisa diverifikasi dari sandbox pengembangan (1 CPU
+        core saja) — harus diuji di mesin produksi. RISIKO: ProcessPoolExecutor
+        di Windows (spawn) + dipanggil dari dalam Streamlit dikenal berpotensi
+        re-eksekusi script di proses anak. SARAN: uji dulu via CLI
+        (python orchestrator.py) dgn use_multiprocessing=True SEBELUM
+        mengaktifkannya di tombol 'RUN ZONE SCAN' pages/1_VIDYA_SMC_Zone.py.
+        Default tetap False sampai terbukti aman di mesinmu sendiri."""
         tickers = tickers or get_catalyst_universe(full_universe=full_universe)
         regime_data = get_ihsg_regime()
         pk_set = get_pk_set()
@@ -47,46 +95,39 @@ class ZoneScanner:
         skipped_short = 0
         crashed = 0
 
-        for i, ticker in enumerate(tickers):
-            df = data.get(ticker)
-            if df is None or len(df) < MIN_BARS_REQUIRED:
+        def _handle(status, row):
+            nonlocal skipped_short, crashed
+            if status == "skip":
                 skipped_short += 1
-                continue
-            if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
-                df = df.copy()
-                df.columns = df.columns.get_level_values(0)
-
-            try:
-                states = run_conviction(df, internal_size=self.internal_size,
-                                        swing_size=self.swing_size)
-            except Exception as exc:
+            elif status == "crash":
                 crashed += 1
-                logger.debug(f"[Zone] {ticker}: engine crash — {exc}")
-                continue
+            else:
+                all_scanned.append(row)
+                if row["status"] == STATE_WATCHING and row["conviction_pct"] > 0:
+                    results.append(row)
 
-            latest = states[-1]
-            base_ticker = ticker.replace(".JK", "")
-            row = {
-                "ticker": base_ticker,
-                "close": latest.close,
-                "status": latest.status,
-                "conviction_pct": latest.conviction_pct,
-                "zone_top": latest.zone_top,
-                "zone_bottom": latest.zone_bottom,
-                "formed_bar_index": latest.formed_bar_index,
-                "bars_since_formed": (len(states) - 1 - latest.formed_bar_index) if latest.formed_bar_index is not None else None,
-                "retest_hold_days": latest.retest_hold_days,
-                "base_pct": latest.base_pct, "retest_pct": latest.retest_pct,
-                "vidya_pct": latest.vidya_pct, "volume_pct": latest.volume_pct,
-                "structure_pct": latest.structure_pct,
-                "pk_board": base_ticker in pk_set,
-            }
-            all_scanned.append(row)
-            if latest.status == STATE_WATCHING and latest.conviction_pct > 0:
-                results.append(row)
-
-            if (i + 1) % 100 == 0:
-                logger.info(f"[Zone] {i+1}/{len(tickers)} | {len(results)} watching")
+        if use_multiprocessing:
+            from concurrent.futures import ProcessPoolExecutor, as_completed
+            done = 0
+            with ProcessPoolExecutor(max_workers=max_workers) as ex:
+                futures = {
+                    ex.submit(_process_one_ticker, ticker, data.get(ticker),
+                              self.internal_size, self.swing_size, pk_set): ticker
+                    for ticker in tickers
+                }
+                for future in as_completed(futures):
+                    status, row = future.result()
+                    _handle(status, row)
+                    done += 1
+                    if done % 100 == 0:
+                        logger.info(f"[Zone] {done}/{len(tickers)} | {len(results)} watching")
+        else:
+            for i, ticker in enumerate(tickers):
+                status, row = _process_one_ticker(ticker, data.get(ticker),
+                                                  self.internal_size, self.swing_size, pk_set)
+                _handle(status, row)
+                if (i + 1) % 100 == 0:
+                    logger.info(f"[Zone] {i+1}/{len(tickers)} | {len(results)} watching")
 
         results.sort(key=lambda r: -r["conviction_pct"])
         ctx = {
