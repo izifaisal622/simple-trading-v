@@ -166,3 +166,72 @@ def get_broker_defense_streak(ticker: str, broker_code: str, price_df,
         "n_defends": len(defend_days), "window_days": window_days,
         "watch_worthy": len(defend_days) >= min_defends,
     }
+
+
+# ═══ TAHAP 2 — Ranking top-N broker per saham ═══════════════════════════════
+# Bobot skor (bisa disesuaikan — angka awal, belum divalidasi thd data nyata
+# krn broker_daily masih dlm proses pengumpulan per 2026-07-27):
+WEIGHT_POSITION   = 40  # posisi kumulatif (rank persentil antar broker aktif di ticker ini)
+WEIGHT_DEFENSE    = 40  # jumlah hari defend (di-cap DEFENSE_CAP biar 1 broker tak mendominasi)
+WEIGHT_BOTTOM_BUY = 20  # jumlah hari beli-di-bottom (di-cap BOTTOM_BUY_CAP)
+DEFENSE_CAP     = 3
+BOTTOM_BUY_CAP  = 5
+
+
+def get_top_brokers_to_watch(ticker: str, price_df, top_n: int = 3,
+                              window_days: int = DEFAULT_WINDOW_DAYS,
+                              min_defends: int = DEFAULT_MIN_DEFENDS) -> list:
+    """Gabungkan get_broker_position + get_broker_bottom_buys +
+    get_broker_defense_streak jadi SATU skor per broker, urutkan, ambil top_n.
+    Hanya broker dgn cumulative_net_lot > 0 (akumulator, bukan distributor)
+    yg dipertimbangkan — sesuai filosofi 'follow the whale' (ikuti yg beli,
+    bukan yg jual).
+
+    Skor = position_percentile*WEIGHT_POSITION
+         + min(n_defends,DEFENSE_CAP)/DEFENSE_CAP*WEIGHT_DEFENSE
+         + min(n_bottom_buys,BOTTOM_BUY_CAP)/BOTTOM_BUY_CAP*WEIGHT_BOTTOM_BUY
+    (rentang skor 0-100). Bobot BELUM divalidasi thd data nyata (broker_daily
+    msh dikumpulkan) — mudah disesuaikan lewat konstanta modul di atas
+    setelah data cukup utk evaluasi empiris."""
+    t = ticker.replace(".JK", "")
+    conn = get_db()
+    try:
+        codes = [r["broker_code"] for r in conn.execute(
+            "SELECT DISTINCT broker_code FROM broker_daily WHERE ticker=?", (t,)
+        ).fetchall()]
+    finally:
+        conn.close()
+
+    if not codes:
+        return []
+
+    profiles = []
+    for code in codes:
+        pos = get_broker_position(t, code)
+        if pos["cumulative_net_lot"] <= 0:
+            continue  # skip distributor — cuma follow akumulator
+        bottom = get_broker_bottom_buys(t, code, price_df)
+        defense = get_broker_defense_streak(t, code, price_df, window_days, min_defends)
+        profiles.append({
+            "broker_code": code, "position": pos,
+            "n_bottom_buys": len(bottom), "bottom_buys": bottom,
+            "n_defends": defense["n_defends"], "defend_days": defense["defend_days"],
+            "watch_worthy": defense["watch_worthy"],
+        })
+
+    if not profiles:
+        return []
+
+    max_lot = max(p["position"]["cumulative_net_lot"] for p in profiles)
+    for p in profiles:
+        position_pct = (p["position"]["cumulative_net_lot"] / max_lot) if max_lot > 0 else 0
+        defend_pct   = min(p["n_defends"], DEFENSE_CAP) / DEFENSE_CAP
+        bottom_pct   = min(p["n_bottom_buys"], BOTTOM_BUY_CAP) / BOTTOM_BUY_CAP
+        p["score"] = round(
+            position_pct * WEIGHT_POSITION +
+            defend_pct   * WEIGHT_DEFENSE +
+            bottom_pct   * WEIGHT_BOTTOM_BUY, 1
+        )
+
+    profiles.sort(key=lambda p: -p["score"])
+    return profiles[:top_n]

@@ -1,1 +1,138 @@
-{}
+{
+  "sb_BBCA": {
+    "ticker": "BBCA",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "DX",
+        "name": "Phillip Sekuritas",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 283067,
+        "sell_lot": 0,
+        "net_lot": 283067,
+        "buy_val": 175.98,
+        "sell_val": 0.0
+      },
+      {
+        "code": "RX",
+        "name": "Macquarie",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 190890,
+        "sell_lot": 0,
+        "net_lot": 190890,
+        "buy_val": 118.4,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 153144,
+        "sell_lot": 0,
+        "net_lot": 153144,
+        "buy_val": 95.65,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 52871,
+        "sell_lot": 0,
+        "net_lot": 52871,
+        "buy_val": 31.88,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 23507,
+        "sell_lot": 0,
+        "net_lot": 23507,
+        "buy_val": 14.54,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 157992,
+        "net_lot": -157992,
+        "buy_val": 0.0,
+        "sell_val": 98.4
+      },
+      {
+        "code": "IF",
+        "name": "Samuel Sekuritas",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 138845,
+        "net_lot": -138845,
+        "buy_val": 0.0,
+        "sell_val": 85.4
+      },
+      {
+        "code": "BB",
+        "name": "Deutsche",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 137162,
+        "net_lot": -137162,
+        "buy_val": 0.0,
+        "sell_val": 84.95
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 49494,
+        "net_lot": -49494,
+        "buy_val": 0.0,
+        "sell_val": 30.84
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 49059,
+        "net_lot": -49059,
+        "buy_val": 0.0,
+        "sell_val": 30.3
+      }
+    ],
+    "dominant_buyer": {
+      "code": "DX",
+      "name": "Phillip Sekuritas",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 283067,
+      "sell_lot": 0,
+      "net_lot": 283067,
+      "buy_val": 175.98,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 30.8,
+    "smart_buy_lot": 233655,
+    "retail_sell_lot": 92005,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-24",
+    "source": "stockbit",
+    "_fetched": "2026-07-27T12:33:12.565527"
+  }
+}
