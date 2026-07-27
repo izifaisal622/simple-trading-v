@@ -326,6 +326,29 @@ if run_scan:
             # top_n dari user hanya dipakai untuk get_best_long display, bukan untuk cap storage.
             # Sebelumnya scan(top_n=user_top_n) → results hanya 30 → tab SEMUA cuma 30.
             results_full, new_ctx = scanner.scan(top_n=100, full_universe=True)
+
+            # v10.2.1 FIX: broker_daily TIDAK PERNAH terisi dari tombol ini
+            # sebelumnya. Investigasi lebih dalam: WhaleScanner.scan() SUDAH
+            # memanggil enrich_top_results() secara internal (whale_scanner.py
+            # L2865) yg mengisi top_buyers/top_sellers pada results_full utk
+            # ticker conviction>=4 (top 50) — TAPI tak pernah dipersist ke
+            # broker_daily. Jadi cukup AMBIL data yg sudah ter-enrich (tanpa
+            # fetch API ulang — beda dgn pola orchestrator.py yg fetch lagi
+            # via get_broker_summary_stockbit, boros & rawan rate-limit).
+            try:
+                from agents.broker_history import save_broker_data
+                _saved = 0
+                for _w in results_full:
+                    if _w.get("broker_live"):
+                        _bl = _w.get("top_buyers", []) + _w.get("top_sellers", [])
+                        if _bl:
+                            save_broker_data(_w.get("ticker", ""), _bl)
+                            _saved += 1
+                if _saved:
+                    st.toast(f"📊 Broker history disimpan: {_saved} ticker", icon="📊")
+            except Exception:
+                pass  # best-effort, spt pola orchestrator.py
+
             # Display list pakai top_n user untuk best long — tetap respek preferensi user
             best     = scanner.get_best_long(results_full, min_conviction=int(min_conv_ui))[:int(top_n)]
             peng     = scanner.get_pengeringan(results_full)
