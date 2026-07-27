@@ -1,0 +1,168 @@
+"""
+agents/broker_defense.py — Tahap 1: kalkulasi murni per-broker (posisi,
+bottom-buy, defense streak). Dipakai sbg fondasi utk tahap 2 (ranking top-3
+broker per saham) dan tahap 3 (integrasi UI).
+
+DESAIN PENTING (hasil diskusi + pembuktian data nyata):
+  - DEFENSE mewarisi PERSIS logika test_whale_defense() di whale_scanner.py
+    (heavy vol >2x avg20 + price_dropped + recovered ke atas 50% rentang
+    hi-lo) — bukan definisi paralel baru. "Yang defend" = broker spesifik
+    net-buy PADA hari yg memenuhi kondisi itu.
+  - Kriteria RENTANG (bukan "N hari BERTURUT-TURUT"), krn terbukti via
+    diagnose_defense_multi.py: hit-rate defend level-saham cuma ~0.2-0.4%
+    hari (BUMI/BBCA/ANTM/GOTO semua serupa) — mensyaratkan 3 hari berurutan
+    scr statistik nyaris mustahil terpicu. Default: >=1 defend dlm 60 hari
+    terakhir dianggap "watch-worthy" (bisa di-tune stlh data broker_daily
+    nyata terkumpul cukup byk — saat ini tabel MASIH KOSONG per 2026-07-26).
+  - Posisi kumulatif TIDAK pakai window waktu tetap — data broker_daily
+    saat ini sporadis (cuma terisi saat token Stockbit fresh), jadi
+    "SEMUA hari yg tercatat" lebih realistis drpd window 30/60/90 hari yg
+    mgkn justru mayoritas kosong.
+"""
+
+import logging
+from agents.broker_history import get_db
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_WINDOW_DAYS = 60
+DEFAULT_MIN_DEFENDS = 1
+
+
+def get_broker_position(ticker: str, broker_code: str) -> dict:
+    """Posisi kumulatif broker tsb pada ticker — total net_lot dari SEMUA
+    hari yg tercatat di broker_daily (bukan window tetap, lihat catatan modul)."""
+    t = ticker.replace(".JK", "")
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT date, buy_lot, sell_lot, net_lot FROM broker_daily
+            WHERE ticker=? AND broker_code=? ORDER BY date
+        """, (t, broker_code)).fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {"ticker": t, "broker_code": broker_code, "n_days": 0,
+                "cumulative_net_lot": 0, "cumulative_buy_lot": 0,
+                "cumulative_sell_lot": 0, "first_date": None, "last_date": None}
+
+    cum_net  = sum(r["net_lot"]  for r in rows)
+    cum_buy  = sum(r["buy_lot"]  for r in rows)
+    cum_sell = sum(r["sell_lot"] for r in rows)
+    return {
+        "ticker": t, "broker_code": broker_code, "n_days": len(rows),
+        "cumulative_net_lot": cum_net, "cumulative_buy_lot": cum_buy,
+        "cumulative_sell_lot": cum_sell,
+        "first_date": rows[0]["date"], "last_date": rows[-1]["date"],
+    }
+
+
+def get_broker_bottom_buys(ticker: str, broker_code: str, price_df,
+                            weak_close_threshold: float = 0.3) -> list:
+    """Hari2 broker tsb net-buy (net_lot>0) DAN closing hari itu DEKAT LOW
+    harian (weak close) — beda dgn 'defense' (yg butuh RECOVER ke atas).
+    Ini pola "beli saat harga lemah", bukan "menahan harga".
+
+    price_df: DataFrame harga dgn index tanggal (Timestamp/str 'YYYY-MM-DD')
+    dan kolom Close/High/Low — dari DataFeed.fetch() yg sama dipakai scanner.
+    weak_close_threshold: (close-low)/(high-low) <= ini dianggap "dekat low"
+    (default 0.3 — simetris dgn 'recovered' test_whale_defense yg pakai >0.5
+    utk arah sebaliknya)."""
+    t = ticker.replace(".JK", "")
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT date, net_lot, buy_lot FROM broker_daily
+            WHERE ticker=? AND broker_code=? AND net_lot>0 ORDER BY date
+        """, (t, broker_code)).fetchall()
+    finally:
+        conn.close()
+
+    if not rows or price_df is None or len(price_df) == 0:
+        return []
+
+    price_by_date = {str(idx.date()) if hasattr(idx, "date") else str(idx): row
+                      for idx, row in price_df.iterrows()}
+
+    bottom_buys = []
+    for r in rows:
+        prow = price_by_date.get(r["date"])
+        if prow is None:
+            continue
+        hi, lo, c = float(prow["High"]), float(prow["Low"]), float(prow["Close"])
+        if (hi - lo) <= 0:
+            continue
+        close_pos = (c - lo) / (hi - lo)
+        if close_pos <= weak_close_threshold:
+            bottom_buys.append({
+                "date": r["date"], "net_lot": r["net_lot"],
+                "close": c, "close_pos_in_range": round(close_pos, 3),
+            })
+    return bottom_buys
+
+
+def get_broker_defense_streak(ticker: str, broker_code: str, price_df,
+                               window_days: int = DEFAULT_WINDOW_DAYS,
+                               min_defends: int = DEFAULT_MIN_DEFENDS) -> dict:
+    """Deteksi 'defend' per-broker dlm window_days terakhir: hari2 di mana
+    (a) kondisi test_whale_defense TERPENUHI (heavy vol >2x avg20 + price
+    turun + recover >50% rentang hi-lo) DAN (b) broker tsb net-buy hari itu.
+    Kriteria RENTANG (min_defends dlm window_days), BUKAN berturut-turut
+    ketat — lihat docstring modul utk alasan (hit-rate defend ~0.2-0.4%/hari,
+    3 hari berurutan scr statistik nyaris mustahil).
+
+    price_df: DataFrame harga dgn index tanggal, kolom Close/High/Low/Volume,
+    urut kronologis (dipakai jg utk hitung vol_ma20 & prev_close)."""
+    t = ticker.replace(".JK", "")
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT date, net_lot FROM broker_daily
+            WHERE ticker=? AND broker_code=? AND net_lot>0 ORDER BY date
+        """, (t, broker_code)).fetchall()
+    finally:
+        conn.close()
+
+    empty = {"ticker": t, "broker_code": broker_code, "defend_days": [],
+             "n_defends": 0, "watch_worthy": False, "window_days": window_days}
+    if not rows or price_df is None or len(price_df) < 21:
+        return empty
+
+    broker_buy_dates = {r["date"]: r["net_lot"] for r in rows}
+    vol_ma = price_df["Volume"].rolling(20).mean()
+
+    # Batas window: window_days TERAKHIR dari harga yg tersedia (bukan dari
+    # broker_buy_dates — krn kita perlu tahu vol_ma20 & prev_close jg utk
+    # hari2 broker itu, dan window dihitung dari kalender harga, konsisten
+    # dgn cara test_whale_defense menghitung window 20 harinya sendiri).
+    start_idx = max(20, len(price_df) - window_days)
+
+    defend_days = []
+    for i in range(start_idx, len(price_df)):
+        date_str = str(price_df.index[i].date()) if hasattr(price_df.index[i], "date") else str(price_df.index[i])
+        if date_str not in broker_buy_dates:
+            continue
+        v      = float(price_df["Volume"].iloc[i])
+        c      = float(price_df["Close"].iloc[i])
+        lo     = float(price_df["Low"].iloc[i])
+        hi     = float(price_df["High"].iloc[i])
+        prev_c = float(price_df["Close"].iloc[i - 1])
+        vma    = float(vol_ma.iloc[i])
+        if vma <= 0 or (hi - lo) <= 0:
+            continue
+
+        is_heavy_vol  = v > vma * 2.0
+        price_dropped = c < prev_c
+        recovered     = (c - lo) / (hi - lo) > 0.5
+        if is_heavy_vol and price_dropped and recovered:
+            defend_days.append({
+                "date": date_str, "net_lot": broker_buy_dates[date_str],
+                "vol_vs_avg": round(v / vma, 2),
+            })
+
+    return {
+        "ticker": t, "broker_code": broker_code, "defend_days": defend_days,
+        "n_defends": len(defend_days), "window_days": window_days,
+        "watch_worthy": len(defend_days) >= min_defends,
+    }
