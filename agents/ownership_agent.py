@@ -283,7 +283,15 @@ class OwnershipAgent:
 
         try:
             import requests
-            url     = f"https://exodus.stockbit.com/broker-summary/{t}"
+            # v10.2.2 FIX: endpoint LAMA (/broker-summary/{t}) 404 sejak
+            # Stockbit ubah struktur API. Endpoint baru ditemukan via DevTools
+            # user 2026-07-27: /marketdetectors/{t} dgn query param wajib.
+            url = (f"https://exodus.stockbit.com/marketdetectors/{t}"
+                   f"?transaction_type=TRANSACTION_TYPE_NET"
+                   f"&market_board=MARKET_BOARD_REGULER"
+                   f"&investor_type=INVESTOR_TYPE_ALL"
+                   f"&limit=25"
+                   f"&period=BROKER_SUMMARY_PERIOD_LATEST")
             headers = {
                 "Authorization":   f"Bearer {token}",
                 "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -360,6 +368,7 @@ class OwnershipAgent:
                 r["smart_buy_pct"]  = sb.get("smart_buy_pct", 0)
                 r["bandar_signal"]  = sb.get("bandar_signal", "")
                 r["dominant_buyer"] = sb.get("dominant_buyer", {})
+                r["broker_trade_date"] = sb.get("trade_date", "")  # v10.2.2 BARU
                 enriched += 1
                 logger.debug(f"[Enrich] {t} ✓")
 
@@ -399,48 +408,61 @@ class OwnershipAgent:
         return results
 
     def _parse_stockbit_broker(self, ticker: str, raw: dict) -> dict:
-        """Parse Stockbit broker summary response."""
+        """Parse respons /marketdetectors (v10.2.2 — endpoint LAMA /broker-summary
+        404, diganti 2026-07-27). Struktur ASLI (diverifikasi lgsg dari sample
+        respons user, BUKAN tebakan):
+          data.broker_summary.brokers_buy  = [broker NET-BELI hari itu]
+          data.broker_summary.brokers_sell = [broker NET-JUAL hari itu]
+        Tiap entri broker SUDAH ternetkan Stockbit sendiri (bukan buy+sell
+        terpisah per broker spt endpoint lama) — field 'blot'/'slot' = lot
+        BERSIH (net), sementara 'blotv'/'slotv' = volume KOTOR (gross, beda
+        metrik, TERBUKTI via cross-check: blot*100==blotv HANYA utk broker
+        aktivitas 1 arah murni; broker 2 arah berat spt DX/RO beda jauh) —
+        blotv/svalv/bvalv SENGAJA tidak dipakai, skema kita cuma butuh net.
+        'slot'/'sval' pada sisi sell SUDAH negatif dari sononya.
+        Tanggal data adalah data['from'] (format API kirim tanggal TRADING
+        terakhir, BISA BEDA dari tanggal hari ini — mis. weekend/libur —
+        jadi TIDAK boleh asumsi datetime.now())."""
         try:
-            data = raw.get("data", raw)
+            bs = raw.get("data", {}).get("broker_summary", {})
+            trade_date_raw = raw.get("data", {}).get("from", "")  # 'YYYY-MM-DD' sudah
             buyers  = []
             sellers = []
 
-            # Stockbit returns list of broker transactions
-            for item in data if isinstance(data, list) else []:
-                code    = item.get("broker_code","?")
-                buy_lot = int(item.get("buy_lot", 0))
-                sel_lot = int(item.get("sell_lot", 0))
-                net_lot = buy_lot - sel_lot
-                buy_val = float(item.get("buy_value", 0)) / 1e9
-                sel_val = float(item.get("sell_value", 0)) / 1e9
-
+            for item in bs.get("brokers_buy", []):
+                code    = item.get("netbs_broker_code", "?")
+                buy_lot = int(float(item.get("blot", 0)))
+                buy_val = float(item.get("bval", 0)) / 1e9
                 broker_info = BROKER_PROFILES_DEFAULT.get(code, {})
-                entry = {
-                    "code":     code,
-                    "name":     broker_info.get("name", code),
-                    "type":     broker_info.get("type", "UNKNOWN"),
-                    "signal":   broker_info.get("signal", "NEUTRAL"),
-                    "buy_lot":  buy_lot,
-                    "sell_lot": sel_lot,
-                    "net_lot":  net_lot,
-                    "buy_val":  round(buy_val, 2),
-                    "sell_val": round(sel_val, 2),
-                }
-                if net_lot > 0:   buyers.append(entry)
-                elif net_lot < 0: sellers.append(entry)
+                buyers.append({
+                    "code": code, "name": broker_info.get("name", code),
+                    "type": broker_info.get("type", "UNKNOWN"),
+                    "signal": broker_info.get("signal", "NEUTRAL"),
+                    "buy_lot": buy_lot, "sell_lot": 0, "net_lot": buy_lot,
+                    "buy_val": round(buy_val, 2), "sell_val": 0.0,
+                })
 
-            buyers.sort(key=lambda x: -x["buy_lot"])
+            for item in bs.get("brokers_sell", []):
+                code     = item.get("netbs_broker_code", "?")
+                sell_lot = abs(int(float(item.get("slot", 0))))
+                sell_val = abs(float(item.get("sval", 0))) / 1e9
+                broker_info = BROKER_PROFILES_DEFAULT.get(code, {})
+                sellers.append({
+                    "code": code, "name": broker_info.get("name", code),
+                    "type": broker_info.get("type", "UNKNOWN"),
+                    "signal": broker_info.get("signal", "NEUTRAL"),
+                    "buy_lot": 0, "sell_lot": sell_lot, "net_lot": -sell_lot,
+                    "buy_val": 0.0, "sell_val": round(sell_val, 2),
+                })
+
+            buyers.sort(key=lambda x: -x["net_lot"])
             sellers.sort(key=lambda x: x["net_lot"])
 
-            # Smart money analysis
-            smart_buy  = sum(e["buy_lot"]  for e in buyers  if e["signal"]=="SMART")
-            _ = sum(e["sell_lot"] for e in sellers if e["signal"]=="SMART")
-            retail_sell= sum(e["sell_lot"] for e in sellers if e["signal"]=="RETAIL")
+            smart_buy   = sum(e["buy_lot"]  for e in buyers  if e["signal"]=="SMART")
+            retail_sell = sum(e["sell_lot"] for e in sellers if e["signal"]=="RETAIL")
+            total_buy   = sum(e["buy_lot"] for e in buyers)
+            smart_pct   = smart_buy / total_buy * 100 if total_buy > 0 else 0
 
-            total_buy = sum(e["buy_lot"] for e in buyers)
-            smart_pct = smart_buy / total_buy * 100 if total_buy > 0 else 0
-
-            # Dominant buyer
             dominant = buyers[0] if buyers else {}
             dom_signal = "ACCUMULATION" if dominant.get("signal")=="SMART" else "NEUTRAL"
 
@@ -454,6 +476,7 @@ class OwnershipAgent:
                 "smart_buy_lot": smart_buy,
                 "retail_sell_lot": retail_sell,
                 "bandar_signal": dom_signal,
+                "trade_date":   trade_date_raw,  # v10.2.2 BARU: tanggal TRADING asli dr API
                 "source":       "stockbit",
             }
         except Exception as e:

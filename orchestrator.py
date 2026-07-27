@@ -119,7 +119,9 @@ def run_whale_scan(cfg, regime):
                 _sb = _oa.get_broker_summary_stockbit(_t)
                 if _sb.get("available"):
                     _bl = _sb.get("top_buyers",[]) + _sb.get("top_sellers",[])
-                    save_broker_data(_t, _bl)
+                    # v10.2.2: pakai tanggal trading asli dari API, bukan hari ini
+                    _tdate = _sb.get("trade_date") or None
+                    save_broker_data(_t, _bl, date=_tdate)
                     _saved += 1
             if _saved:
                 print(f"[Broker] Saved broker history: {_saved} tickers")

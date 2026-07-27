@@ -342,7 +342,11 @@ if run_scan:
                     if _w.get("broker_live"):
                         _bl = _w.get("top_buyers", []) + _w.get("top_sellers", [])
                         if _bl:
-                            save_broker_data(_w.get("ticker", ""), _bl)
+                            # v10.2.2: pakai TANGGAL TRADING asli dari respons API
+                            # (bisa beda dari hari ini — weekend/libur), BUKAN
+                            # default datetime.now() di save_broker_data.
+                            _tdate = _w.get("broker_trade_date") or None
+                            save_broker_data(_w.get("ticker", ""), _bl, date=_tdate)
                             _saved += 1
                 if _saved:
                     st.toast(f"📊 Broker history disimpan: {_saved} ticker", icon="📊")
