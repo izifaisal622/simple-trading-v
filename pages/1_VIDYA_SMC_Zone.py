@@ -151,6 +151,128 @@ if ctx.get("skipped_short_history") or ctx.get("crashed"):
     st.caption(f"Skip data pendek: {ctx.get('skipped_short_history',0)} | "
               f"Crash: {ctx.get('crashed',0)}")
 
+
+def _floor_price_row(ticker: str, price_df) -> dict:
+    """v10.3.5: hitung Floor Price/VWAP/%Floor/FF-Vol/Sector — REUSE
+    estimate_floor_price() dari whale_scanner.py (fungsi murni, sudah teruji
+    di produksi page 2), BUKAN reimplementasi baru. Sengaja TIDAK sertakan
+    klasifikasi Whale (classify_whale_quality) — itu butuh 10+ field dari
+    pipeline deteksi whale_scanner yg sama sekali tak dihasilkan engine
+    VIDYA+SMC, beban komputasi dobel yg tak sepadan (disepakati bersama user)."""
+    from agents.whale_scanner import estimate_floor_price, _IDX_SECTOR_MAP, _IDX_PREFIX_MAP
+    close, vol, low = price_df["Close"], price_df["Volume"], price_df["Low"]
+    fp = estimate_floor_price(close, vol, low)
+    vol_ma20 = vol.rolling(20).mean()
+    ff_vol = float(vol.iloc[-1] / vol_ma20.iloc[-1]) if vol_ma20.iloc[-1] > 0 else 0.0
+    base_t = ticker.replace(".JK", "")
+    sector = _IDX_SECTOR_MAP.get(base_t) or _IDX_PREFIX_MAP.get(base_t[:2], "OTHER")
+    return {
+        "floor_price": fp["floor_price"], "vwap_60d": fp["vwap_60d"],
+        "pct_above_floor": fp["pct_above_floor"], "entry_zone": fp["entry_zone"],
+        "entry_zone_label": fp["entry_zone_label"], "ff_vol": ff_vol, "sector": sector,
+    }
+
+
+if filtered:
+    sec_head("FLOOR PRICE DETAILS")
+    from core.data_feed import DataFeed
+    _feed = DataFeed(timeframe="1d", period="2y")
+    floor_rows = []
+    for r in filtered:
+        try:
+            df = _feed.fetch(f"{r['ticker']}.JK")
+            if df is None or len(df) < 21:
+                continue
+            if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
+                df = df.copy()
+                df.columns = df.columns.get_level_values(0)
+            fm = _floor_price_row(r["ticker"], df)
+            floor_rows.append((r, fm))
+        except Exception:
+            continue
+
+    if floor_rows:
+        zone_icon = {"AT_FLOOR": "\U0001f3af", "NEAR_FLOOR": "\u2705",
+                     "MID_RANGE": "\U0001f7e1", "FAR_FROM_FLOOR": "\u274c"}
+        table_rows = ""
+        for r, fm in floor_rows:
+            icon = zone_icon.get(fm["entry_zone"], "")
+            table_rows += (
+                '<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
+                f'<td style="padding:0.5rem 0.8rem;font-family:Orbitron,monospace;'
+                f'font-weight:700">{r["ticker"]}</td>'
+                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
+                f'font-family:Share Tech Mono,monospace">Rp{r["close"]:,.0f}</td>'
+                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
+                f'font-family:Share Tech Mono,monospace">Rp{fm["floor_price"]:,.0f}</td>'
+                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
+                f'font-family:Share Tech Mono,monospace">Rp{fm["vwap_60d"]:,.0f}</td>'
+                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
+                f'font-family:Share Tech Mono,monospace">{fm["pct_above_floor"]:+.1f}%</td>'
+                f'<td style="padding:0.5rem 0.8rem">{icon} {fm["entry_zone_label"]}</td>'
+                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
+                f'font-family:Share Tech Mono,monospace">{r["conviction_pct"]}%</td>'
+                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
+                f'font-family:Share Tech Mono,monospace">{fm["ff_vol"]:.1f}\u00d7</td>'
+                f'<td style="padding:0.5rem 0.8rem">{fm["sector"]}</td>'
+                '</tr>'
+            )
+        table_html = (
+            '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;'
+            'font-size:var(--text-sm)">'
+            '<thead><tr style="background:rgba(255,255,255,0.03);text-align:left">'
+            '<th style="padding:0.5rem 0.8rem">Ticker</th>'
+            '<th style="padding:0.5rem 0.8rem;text-align:right">Price</th>'
+            '<th style="padding:0.5rem 0.8rem;text-align:right">Floor</th>'
+            '<th style="padding:0.5rem 0.8rem;text-align:right">VWAP60</th>'
+            '<th style="padding:0.5rem 0.8rem;text-align:right">%\u2191Floor</th>'
+            '<th style="padding:0.5rem 0.8rem">Zone</th>'
+            '<th style="padding:0.5rem 0.8rem;text-align:right">Conv</th>'
+            '<th style="padding:0.5rem 0.8rem;text-align:right">FF-Vol\u00d7</th>'
+            '<th style="padding:0.5rem 0.8rem">Sector</th>'
+            '</tr></thead><tbody>' + table_rows + '</tbody></table></div>'
+        )
+        st.markdown(table_html, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    sec_head("RINGKASAN ANALISIS")
+    st.caption("Framework Hengky: Signal -> EMA -> Floor -> Conviction -> Supply -> Action")
+    _tickers_for_select = [r["ticker"] for r in filtered]
+    _selected_ticker = st.selectbox(
+        "Pilih saham untuk lihat ringkasan analisis",
+        options=["-- pilih saham --"] + _tickers_for_select,
+        index=0,
+    )
+    if _selected_ticker != "-- pilih saham --":
+        _sel_r = next((r for r, _ in floor_rows if r["ticker"] == _selected_ticker), None)
+        _sel_fm = next((fm for r, fm in floor_rows if r["ticker"] == _selected_ticker), None)
+        if _sel_r and _sel_fm:
+            zona_str = ("Rp{:,.0f} - Rp{:,.0f}".format(_sel_r["zone_bottom"], _sel_r["zone_top"])
+                       if _sel_r["zone_top"] else "-")
+            icon = zone_icon.get(_sel_fm["entry_zone"], "")
+            detail_html = (
+                '<div style="background:var(--bg-card);border-left:4px solid var(--accent);'
+                'border-radius:var(--r-md);padding:1rem 1.2rem">'
+                '<div style="display:flex;justify-content:space-between;align-items:center;'
+                'flex-wrap:wrap;gap:0.5rem">'
+                '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);'
+                'font-weight:800">' + _sel_r["ticker"] + '</span>'
+                '<span style="font-family:Share Tech Mono,monospace;color:var(--text-muted)">'
+                'Rp' + '{:,.0f}'.format(_sel_r["close"]) + ' | Status: ' + _sel_r["status"] + '</span>'
+                '</div>'
+                '<div style="margin-top:0.6rem;font-family:Share Tech Mono,monospace;'
+                'font-size:var(--text-sm);line-height:1.8">'
+                f'Conviction: <b>{_sel_r["conviction_pct"]}%</b> | '
+                f'Zona retest: {zona_str} | Retest {_sel_r["retest_hold_days"]}/2 hari<br>'
+                f'Floor: Rp{_sel_fm["floor_price"]:,.0f} | VWAP60: Rp{_sel_fm["vwap_60d"]:,.0f} | '
+                f'{icon} {_sel_fm["entry_zone_label"]}<br>'
+                f'Sector: {_sel_fm["sector"]} | FF-Vol: {_sel_fm["ff_vol"]:.1f}\u00d7'
+                '</div></div>'
+            )
+            st.markdown(detail_html, unsafe_allow_html=True)
+        else:
+            st.info("Data floor price ticker ini belum tersedia (kemungkinan riwayat harga kurang dari 21 hari).")
+
 st.markdown("<br>", unsafe_allow_html=True)
 sec_head(f"ZONA AKTIF -- {len(filtered)} setup (filter conviction >={min_conv_ui}%)")
 
