@@ -174,18 +174,25 @@ CYCLE_SETTINGS = {
 
 def check_market_breadth(regime: dict) -> dict:
     cycle   = regime.get("cycle", "UNKNOWN")
-    breadth = regime.get("breadth", 0)   # 0-6 berapa saham di atas EMA
+    # v10.3.1 FIX: breadth SEBENARNYA skala 0-100 (persentase 20 bar mingguan
+    # IHSG di atas EMA13-nya sendiri — lihat get_ihsg_regime() di data_feed.py),
+    # BUKAN 0-6 spt komentar lama di sini. Ambang lama (>=4,>=3,>=2) dikalibrasi
+    # utk skala 0-6 yg salah — kalau breadth naik sedikit saja di skala 0-100
+    # nyata, ambang lama otomatis lolos jauh lebih gampang drpd niat aslinya.
+    # Diperbaiki: pertahankan PROPORSI RELATIF desain asli (4/6≈67%, 3/6=50%,
+    # 2/6≈33%), bukan angka baru sembarangan.
+    breadth = regime.get("breadth", 0)   # 0-100, % bar IHSG di atas EMA13
     mom_4w  = regime.get("mom_4w", 0)
 
-    if cycle == "BULL_TREND" and breadth >= 4 and mom_4w > 1:
+    if cycle == "BULL_TREND" and breadth >= 67 and mom_4w > 1:
         status  = "RAMAI"
         advice  = "Market ramai. Agresif. MG dan asing aktif. Ikut breakout."
         tradeable = True
-    elif cycle in ("BULL_TREND","BULL_CONSOLIDATION") and breadth >= 3:
+    elif cycle in ("BULL_TREND","BULL_CONSOLIDATION") and breadth >= 50:
         status  = "NORMAL"
         advice  = "Market normal. Trade selektif, pilih setup terbaik."
         tradeable = True
-    elif cycle == "TRANSITION" or (breadth >= 2 and mom_4w > -3):
+    elif cycle == "TRANSITION" or (breadth >= 33 and mom_4w > -3):
         status  = "SEPI"
         advice  = "Market sepi. Hengky: 'Breakout tanpa follower = hammer closing.' Hati-hati."
         tradeable = True  # still ok, but be careful

@@ -1071,7 +1071,7 @@ def render_regime_bar(cycle: str, ihsg: float, mom_4w: float,
         '<span class="r-label">2W <b style="color:' + mc2 + '">' + ('%+.1f%%' % mom_2w) + '</b></span>' +
         '<span class="r-label">4W <b style="color:' + mc4 + '">' + ('%+.1f%%' % mom_4w) + '</b></span>' +
         from_low_html +
-        '<span class="r-label">BREADTH <b>' + str(breadth) + '/6</b></span>' +
+        '<span class="r-label">BREADTH <b>' + str(breadth) + '%</b></span>' +
         extra +
         '<span style="color:var(--text-dim);margin-left:auto;font-family:Share Tech Mono,monospace;' +
         'font-size:var(--text-2xs);letter-spacing:0.1em">SCAN: ' + scan_date + '</span>' +

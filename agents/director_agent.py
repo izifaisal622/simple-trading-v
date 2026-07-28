@@ -943,7 +943,7 @@ def _generate_playbook(ihsg, sectors, history, deep) -> str:
         "# 📋 Edge Playbook — Simple Trading V9",
         f"*{today} | {'WEEKLY DEEP' if deep else 'Daily'} | Director-Approved*","",
         "## 🌏 Market Regime",
-        f"- IHSG: {ihsg.get('ihsg',0):,.0f} | **{cycle}** ({ihsg.get('breadth',0)}/6 breadth)",
+        f"- IHSG: {ihsg.get('ihsg',0):,.0f} | **{cycle}** ({ihsg.get('breadth',0)}% breadth)",
         f"- 4W: {ihsg.get('mom_4w',0):+.1f}% | 13W: {ihsg.get('mom_13w',0):+.1f}%","",
         "## 📋 Execution Rules (Director-Set)",
     ]

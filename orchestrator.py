@@ -375,7 +375,7 @@ def main():
     print("[Regime] Fetching IHSG regime...")
     regime = get_ihsg_regime()
     print(f"[Regime] {regime.get('cycle')} | IHSG {regime.get('ihsg'):,.0f} | "
-          f"4W {regime.get('mom_4w',0):+.1f}% | Breadth {regime.get('breadth',0)}/6")
+          f"4W {regime.get('mom_4w',0):+.1f}% | Breadth {regime.get('breadth',0)}%")
 
     mode    = args.mode
     no_llm  = getattr(args, "no_llm", False)
