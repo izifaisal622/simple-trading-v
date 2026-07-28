@@ -1406,11 +1406,13 @@ display:flex;align-items:flex-start;gap:0.7rem;flex-wrap:wrap">
 
 
 def _broker_defense_row(w: dict) -> str:
-    """v10.4.0 TAHAP 3: integrasi broker_defense.py (tahap 1-2, agents/broker_defense.py)
-    ke kartu. Cek dulu apakah ticker punya data di broker_daily SEBELUM fetch
-    harga (quick check murah) — hindari fetch sia-sia utk ratusan ticker yg
-    memang belum py riwayat broker (broker_daily saat ini baru terisi utk
-    ticker yg pernah broker_live=True saat scan, msh subset kecil dr universe)."""
+    """v10.4.0 TAHAP 3 (revisi v10.3.3): integrasi broker_defense.py ke kartu.
+    Ganti dari flex-wrap top-3 (berantakan saat wrap) jadi LIST VERTIKAL
+    top-10, semua broker aktif (akumulator + distributor) dgn badge peran
+    masing2 — pakai get_broker_leaderboard() (BUKAN get_top_brokers_to_watch
+    yg cuma akumulator, sengaja dipertahankan terpisah utk kompatibilitas).
+    Cek dulu apakah ticker punya data di broker_daily SEBELUM fetch harga
+    (quick check murah) — hindari fetch sia-sia utk ratusan ticker lain."""
     ticker = w.get("ticker", "").replace(".JK", "")
     try:
         import sqlite3
@@ -1427,7 +1429,7 @@ def _broker_defense_row(w: dict) -> str:
 
     try:
         from core.data_feed import DataFeed
-        from agents.broker_defense import get_top_brokers_to_watch
+        from agents.broker_defense import get_broker_leaderboard
         feed = DataFeed(timeframe="1d", period="2y")
         df = feed.fetch(f"{ticker}.JK")
         if df is None or len(df) < 21:
@@ -1435,38 +1437,55 @@ def _broker_defense_row(w: dict) -> str:
         if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
             df = df.copy()
             df.columns = df.columns.get_level_values(0)
-        top = get_top_brokers_to_watch(ticker, df, top_n=3)
+        board = get_broker_leaderboard(ticker, df, top_n=10)
     except Exception:
         return ""
 
-    if not top:
+    if not board:
         return ""
 
-    entries = []
-    for i, r in enumerate(top):
+    rows_html = []
+    for i, r in enumerate(board):
+        is_accum = r["role"] == "AKUMULATOR"
+        role_color = "var(--accent)" if is_accum else "var(--c-danger)"
+        role_label = "AKUM" if is_accum else "DIST"
         pos = r["position"]["cumulative_net_lot"]
+        pos_str = f"{pos:+,}"
+        score_str = f"{r['score']:.0f}" if r["score"] is not None else "—"
         watch_badge = (
-            '<span style="color:var(--accent);font-weight:700">✓WATCH</span>'
-            if r["watch_worthy"] else
-            '<span style="color:var(--text-muted)">·</span>'
+            '<span style="color:var(--accent);font-weight:700;margin-left:0.4rem">✓WATCH</span>'
+            if r.get("watch_worthy") else ""
         )
-        entries.append(
+        detail = (
+            f'D{r["n_defends"]}·B{r["n_bottom_buys"]}' if is_accum else "—"
+        )
+        rows_html.append(
+            '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.15rem 0;'
+            'border-bottom:1px solid rgba(255,255,255,0.04)">'
             f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
-            f'color:var(--text-dim)">#{i+1}</span> '
+            f'color:var(--text-dim);width:1.4rem">#{i+1}</span>'
             f'<b style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
-            f'color:var(--text-primary)">{r["broker_code"]}</b> '
+            f'color:var(--text-primary);width:2.8rem">{r["broker_code"]}</b>'
+            f'<span style="background:{role_color}18;border:1px solid {role_color}44;'
+            f'border-radius:var(--r-sm);padding:0px 5px;font-family:Share Tech Mono,monospace;'
+            f'font-size:var(--text-2xs);color:{role_color};width:3.2rem;text-align:center">{role_label}</span>'
             f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
-            f'color:var(--text-muted)">{pos:,}lot·D{r["n_defends"]}·B{r["n_bottom_buys"]}·skor{r["score"]:.0f}</span> '
+            f'color:var(--text-secondary);width:5.5rem;text-align:right">{pos_str} lot</span>'
+            f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+            f'color:var(--text-muted);width:4rem">{detail}</span>'
+            f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+            f'color:var(--text-secondary)">skor {score_str}</span>'
             f'{watch_badge}'
+            '</div>'
         )
 
     return (
-        '<div style="display:flex;align-items:center;gap:0.7rem;flex-wrap:wrap;'
-        'background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.15);'
-        'border-radius:var(--r-sm);padding:0.3rem 0.7rem;margin-top:0.25rem">'
-        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
-        'color:var(--text-dim);letter-spacing:0.1em">🐋 TOP BROKER</span>'
-        + '<span style="color:rgba(255,255,255,0.15)">│</span>'.join(entries) +
+        '<div style="background:rgba(139,92,246,0.04);border:1px solid rgba(139,92,246,0.15);'
+        'border-radius:var(--r-sm);padding:0.4rem 0.7rem;margin-top:0.3rem">'
+        '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+        'color:var(--text-dim);letter-spacing:0.1em;margin-bottom:0.25rem">'
+        '🐋 TOP 10 BROKER (AKUM = net-buy · DIST = net-sell)</div>'
+        + "".join(rows_html) +
         '</div>'
     )
 

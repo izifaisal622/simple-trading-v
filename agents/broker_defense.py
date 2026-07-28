@@ -235,3 +235,74 @@ def get_top_brokers_to_watch(ticker: str, price_df, top_n: int = 3,
 
     profiles.sort(key=lambda p: -p["score"])
     return profiles[:top_n]
+
+
+def get_broker_leaderboard(ticker: str, price_df, top_n: int = 10,
+                            window_days: int = DEFAULT_WINDOW_DAYS,
+                            min_defends: int = DEFAULT_MIN_DEFENDS) -> list:
+    """v10.3.3: leaderboard SEMUA broker aktif (akumulator DAN distributor),
+    diurutkan |posisi| terbesar — beda dgn get_top_brokers_to_watch (yg CUMA
+    tampilkan akumulator, dipakai utk badge WATCH). Ini utk gambaran lengkap
+    siapa beli siapa jual di ticker itu, tanpa menyaring.
+
+    Skor/defend/bottom-buy CUMA dihitung utk AKUMULATOR (net_lot>0) — sinyal2
+    itu spesifik pola akumulasi (defend/beli-di-bottom), tak relevan scr
+    definisi utk distributor. Distributor tampil dgn score=None."""
+    t = ticker.replace(".JK", "")
+    conn = get_db()
+    try:
+        codes = [r["broker_code"] for r in conn.execute(
+            "SELECT DISTINCT broker_code FROM broker_daily WHERE ticker=?", (t,)
+        ).fetchall()]
+    finally:
+        conn.close()
+
+    if not codes:
+        return []
+
+    profiles = []
+    for code in codes:
+        pos = get_broker_position(t, code)
+        net = pos["cumulative_net_lot"]
+        if net == 0:
+            continue
+        is_accum = net > 0
+        entry = {
+            "broker_code": code, "position": pos,
+            "role": "AKUMULATOR" if is_accum else "DISTRIBUTOR",
+        }
+        if is_accum:
+            bottom = get_broker_bottom_buys(t, code, price_df)
+            defense = get_broker_defense_streak(t, code, price_df, window_days, min_defends)
+            entry["n_bottom_buys"] = len(bottom)
+            entry["n_defends"] = defense["n_defends"]
+            entry["watch_worthy"] = defense["watch_worthy"]
+        else:
+            entry["n_bottom_buys"] = None
+            entry["n_defends"] = None
+            entry["watch_worthy"] = False
+        profiles.append(entry)
+
+    if not profiles:
+        return []
+
+    # Basis skor (max_lot) HANYA dari akumulator — biar skala 0-100 tetap
+    # konsisten dgn get_top_brokers_to_watch, tak tercampur skala distributor
+    # yg net_lot-nya negatif.
+    accum_lots = [p["position"]["cumulative_net_lot"] for p in profiles if p["role"] == "AKUMULATOR"]
+    max_lot = max(accum_lots) if accum_lots else 1
+    for p in profiles:
+        if p["role"] == "AKUMULATOR":
+            position_pct = (p["position"]["cumulative_net_lot"] / max_lot) if max_lot > 0 else 0
+            defend_pct   = min(p["n_defends"], DEFENSE_CAP) / DEFENSE_CAP
+            bottom_pct   = min(p["n_bottom_buys"], BOTTOM_BUY_CAP) / BOTTOM_BUY_CAP
+            p["score"] = round(
+                position_pct * WEIGHT_POSITION +
+                defend_pct   * WEIGHT_DEFENSE +
+                bottom_pct   * WEIGHT_BOTTOM_BUY, 1
+            )
+        else:
+            p["score"] = None
+
+    profiles.sort(key=lambda p: -abs(p["position"]["cumulative_net_lot"]))
+    return profiles[:top_n]
