@@ -1484,7 +1484,7 @@ def _broker_defense_row(w: dict) -> str:
         'border-radius:var(--r-sm);padding:0.4rem 0.7rem;margin-top:0.3rem">'
         '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
         'color:var(--text-dim);letter-spacing:0.1em;margin-bottom:0.25rem">'
-        '🐋 TOP 10 BROKER (AKUM = net-buy · DIST = net-sell)</div>'
+        '🐋 TOP 10 BROKER · posisi 14 hari · defend/bottom-buy 60 hari</div>'
         + "".join(rows_html) +
         '</div>'
     )

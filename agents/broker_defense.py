@@ -25,27 +25,42 @@ from agents.broker_history import get_db
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_WINDOW_DAYS = 60
+DEFAULT_WINDOW_DAYS = 60  # utk defend/bottom-buy — rekam jejak historis, butuh rentang panjang krn langka
 DEFAULT_MIN_DEFENDS = 1
+DEFAULT_POSITION_WINDOW_DAYS = 14  # utk posisi kumulatif — aktivitas TERKINI, sengaja beda horizon dr defend
 
 
-def get_broker_position(ticker: str, broker_code: str) -> dict:
-    """Posisi kumulatif broker tsb pada ticker — total net_lot dari SEMUA
-    hari yg tercatat di broker_daily (bukan window tetap, lihat catatan modul)."""
+def get_broker_position(ticker: str, broker_code: str,
+                         window_days: int = DEFAULT_POSITION_WINDOW_DAYS) -> dict:
+    """Posisi kumulatif broker tsb pada ticker — total net_lot dlm window_days
+    TERAKHIR (kalender, dihitung dr hari ini) — bukan lagi 'semua riwayat'
+    (diubah v10.3.4, sesuai keputusan: posisi cerminan AKTIVITAS TERKINI,
+    beda horizon dr defend/bottom-buy yg tetap 60 hari krn itu soal REKAM
+    JEJAK historis, bukan kebaruan). window_days=None -> perilaku lama (semua
+    riwayat), dipertahankan utk kompatibilitas mundur bila diperlukan."""
     t = ticker.replace(".JK", "")
     conn = get_db()
     try:
-        rows = conn.execute("""
-            SELECT date, buy_lot, sell_lot, net_lot FROM broker_daily
-            WHERE ticker=? AND broker_code=? ORDER BY date
-        """, (t, broker_code)).fetchall()
+        if window_days is None:
+            rows = conn.execute("""
+                SELECT date, buy_lot, sell_lot, net_lot FROM broker_daily
+                WHERE ticker=? AND broker_code=? ORDER BY date
+            """, (t, broker_code)).fetchall()
+        else:
+            from datetime import datetime, timedelta
+            cutoff = (datetime.now() - timedelta(days=window_days)).strftime("%Y-%m-%d")
+            rows = conn.execute("""
+                SELECT date, buy_lot, sell_lot, net_lot FROM broker_daily
+                WHERE ticker=? AND broker_code=? AND date>=? ORDER BY date
+            """, (t, broker_code, cutoff)).fetchall()
     finally:
         conn.close()
 
     if not rows:
         return {"ticker": t, "broker_code": broker_code, "n_days": 0,
                 "cumulative_net_lot": 0, "cumulative_buy_lot": 0,
-                "cumulative_sell_lot": 0, "first_date": None, "last_date": None}
+                "cumulative_sell_lot": 0, "first_date": None, "last_date": None,
+                "window_days": window_days}
 
     cum_net  = sum(r["net_lot"]  for r in rows)
     cum_buy  = sum(r["buy_lot"]  for r in rows)
@@ -55,6 +70,7 @@ def get_broker_position(ticker: str, broker_code: str) -> dict:
         "cumulative_net_lot": cum_net, "cumulative_buy_lot": cum_buy,
         "cumulative_sell_lot": cum_sell,
         "first_date": rows[0]["date"], "last_date": rows[-1]["date"],
+        "window_days": window_days,
     }
 
 
