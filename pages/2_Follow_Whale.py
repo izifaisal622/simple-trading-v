@@ -1405,6 +1405,72 @@ display:flex;align-items:flex-start;gap:0.7rem;flex-wrap:wrap">
 </div>"""
 
 
+def _broker_defense_row(w: dict) -> str:
+    """v10.4.0 TAHAP 3: integrasi broker_defense.py (tahap 1-2, agents/broker_defense.py)
+    ke kartu. Cek dulu apakah ticker punya data di broker_daily SEBELUM fetch
+    harga (quick check murah) — hindari fetch sia-sia utk ratusan ticker yg
+    memang belum py riwayat broker (broker_daily saat ini baru terisi utk
+    ticker yg pernah broker_live=True saat scan, msh subset kecil dr universe)."""
+    ticker = w.get("ticker", "").replace(".JK", "")
+    try:
+        import sqlite3
+        from agents.broker_history import DB_PATH
+        conn = sqlite3.connect(str(DB_PATH))
+        has_data = conn.execute(
+            "SELECT 1 FROM broker_daily WHERE ticker=? LIMIT 1", (ticker,)
+        ).fetchone()
+        conn.close()
+        if not has_data:
+            return ""
+    except Exception:
+        return ""
+
+    try:
+        from core.data_feed import DataFeed
+        from agents.broker_defense import get_top_brokers_to_watch
+        feed = DataFeed(timeframe="1d", period="2y")
+        df = feed.fetch(f"{ticker}.JK")
+        if df is None or len(df) < 21:
+            return ""
+        if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
+            df = df.copy()
+            df.columns = df.columns.get_level_values(0)
+        top = get_top_brokers_to_watch(ticker, df, top_n=3)
+    except Exception:
+        return ""
+
+    if not top:
+        return ""
+
+    entries = []
+    for i, r in enumerate(top):
+        pos = r["position"]["cumulative_net_lot"]
+        watch_badge = (
+            '<span style="color:var(--accent);font-weight:700">✓WATCH</span>'
+            if r["watch_worthy"] else
+            '<span style="color:var(--text-muted)">·</span>'
+        )
+        entries.append(
+            f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+            f'color:var(--text-dim)">#{i+1}</span> '
+            f'<b style="font-family:Share Tech Mono,monospace;font-size:var(--text-xs);'
+            f'color:var(--text-primary)">{r["broker_code"]}</b> '
+            f'<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+            f'color:var(--text-muted)">{pos:,}lot·D{r["n_defends"]}·B{r["n_bottom_buys"]}·skor{r["score"]:.0f}</span> '
+            f'{watch_badge}'
+        )
+
+    return (
+        '<div style="display:flex;align-items:center;gap:0.7rem;flex-wrap:wrap;'
+        'background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.15);'
+        'border-radius:var(--r-sm);padding:0.3rem 0.7rem;margin-top:0.25rem">'
+        '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-2xs);'
+        'color:var(--text-dim);letter-spacing:0.1em">🐋 TOP BROKER</span>'
+        + '<span style="color:rgba(255,255,255,0.15)">│</span>'.join(entries) +
+        '</div>'
+    )
+
+
 def whale_card(w: dict, border_color: str = NEON_GREEN) -> str:
     ticker  = w.get("ticker","").replace(".JK","")
     chg     = w.get("chg_pct",0)
@@ -1601,6 +1667,7 @@ border-radius:var(--r-sm);padding:0.5rem 0.65rem">
         _v4_row(w) +
         _ownership_row(w) +
         _trading_summary_row(w) +
+        _broker_defense_row(w) +
         '</div>'
     )
 
