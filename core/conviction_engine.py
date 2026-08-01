@@ -41,6 +41,20 @@ from core.ob_engine import run_engine, BULLISH
 RETEST_CAP_DAYS = 2
 EXPIRY_BARS = 5  # hari bursa
 
+# v10.4.0 — EXTENSION-MOVE PENALTY (freeze discontinued sadar oleh user utk
+# bulan ini, per instruksi eksplisit "bangun sistem terkuat"). Motivasi:
+# formula skor SEBELUMNYA memperlakukan retest setelah naik 10% SAMA PERSIS
+# dgn retest setelah naik 200%. User menunjukkan kasus nyata (RGAS, retest
+# dekat 'Weak High' setelah rally ~3x) di mana conviction 100% terasa tak
+# masuk akal scr visual.
+#
+# extension_atr = (close - origin_low) / atr_saat_zona_terbentuk
+# Ambang BELUM divalidasi empiris thd data IDX nyata — heuristik awal,
+# mudah disesuaikan via konstanta ini stlh data zone_scans cukup utk evaluasi.
+EXTENSION_SAFE_ATR       = 3.0
+EXTENSION_MAX_PENALTY    = 25
+EXTENSION_PENALTY_PER_ATR = 8
+
 STATE_WATCHING = "WATCHING"
 STATE_INVALIDATED = "INVALIDATED"
 STATE_EXPIRED = "EXPIRED"
@@ -65,6 +79,8 @@ class ConvictionState:
     vidya_pct: int = 0
     volume_pct: int = 0
     structure_pct: int = 0
+    extension_penalty: int = 0        # v10.4.0 BARU
+    extension_atr: float = 0.0        # v10.4.0 BARU
     note: str = ""
 
 
@@ -78,14 +94,17 @@ class _ActiveZone:
     retest_deltas: list = dc_field(default_factory=list)  # delta_volume_pct tiap hari retest
     last_vidya_up: Optional[bool] = None
     last_struct_ok: bool = False
+    origin_low: float = float("nan")   # v10.4.0 — trailing_bottom SAAT zona terbentuk (dibekukan)
+    origin_atr: float = float("nan")   # v10.4.0 — atr200 SAAT zona terbentuk (dibekukan)
 
 
 
-def _score(zone: _ActiveZone) -> tuple:
-    """Hitung breakdown skor dari state zona aktif. Return (total, base, retest, vidya, vol, struct)."""
+def _score(zone: _ActiveZone, current_close: float) -> tuple:
+    """Hitung breakdown skor. Return (total, base, retest, vidya, vol, struct,
+    extension_penalty, extension_atr)."""
     base = 20
     retest_days_capped = min(zone.retest_hold_days, RETEST_CAP_DAYS)
-    retest = 20 * retest_days_capped  # 0, 20, atau 40 → total dasar 20/40/60
+    retest = 20 * retest_days_capped
 
     vidya_pct = 0
     if zone.retest_hold_days > 0 and zone.last_vidya_up is True:
@@ -96,14 +115,21 @@ def _score(zone: _ActiveZone) -> tuple:
         if zone.retest_hold_days == 1:
             if zone.retest_deltas and zone.retest_deltas[-1] > 0:
                 volume_pct = 15
-        else:  # >=2 hari — butuh MENGUAT (hari terakhir > hari sebelumnya), bukan cuma positif
+        else:
             if len(zone.retest_deltas) >= 2 and zone.retest_deltas[-1] > 0 and zone.retest_deltas[-1] > zone.retest_deltas[-2]:
                 volume_pct = 15
 
     struct_pct = 10 if (zone.retest_hold_days > 0 and zone.last_struct_ok) else 0
 
-    total = min(100, base + retest + vidya_pct + volume_pct + struct_pct)
-    return total, base, retest, vidya_pct, volume_pct, struct_pct
+    extension_atr = 0.0
+    extension_penalty = 0
+    if zone.origin_atr and zone.origin_atr > 0 and not (zone.origin_atr != zone.origin_atr):
+        extension_atr = (current_close - zone.origin_low) / zone.origin_atr
+        excess = max(0.0, extension_atr - EXTENSION_SAFE_ATR)
+        extension_penalty = min(EXTENSION_MAX_PENALTY, round(excess * EXTENSION_PENALTY_PER_ATR))
+
+    total = max(0, min(100, base + retest + vidya_pct + volume_pct + struct_pct - extension_penalty))
+    return total, base, retest, vidya_pct, volume_pct, struct_pct, extension_penalty, round(extension_atr, 2)
 
 
 def run_conviction(df: pd.DataFrame, **engine_kwargs) -> list:
@@ -172,6 +198,7 @@ def run_conviction(df: pd.DataFrame, **engine_kwargs) -> list:
                 active = _ActiveZone(
                     top=es.ob_candidate_top, bottom=es.ob_candidate_bottom,
                     formed_bar_index=i, pivot_bar_index=es.internal_high.bar_index,
+                    origin_low=es.trailing_bottom, origin_atr=es.atr200,
                 )
                 last_seen_pivot_bar = es.internal_high.bar_index
                 status = STATE_WATCHING
@@ -180,7 +207,7 @@ def run_conviction(df: pd.DataFrame, **engine_kwargs) -> list:
 
         # ── 3) Hitung skor kalau ada zona aktif ──
         if active is not None:
-            total, base, retest, vidya_pct, vol_pct, struct_pct = _score(active)
+            total, base, retest, vidya_pct, vol_pct, struct_pct, ext_pen, ext_atr = _score(active, close)
             out.append(ConvictionState(
                 bar_index=i, date=es.date, close=close, status=status,
                 zone_top=active.top, zone_bottom=active.bottom,
@@ -188,6 +215,7 @@ def run_conviction(df: pd.DataFrame, **engine_kwargs) -> list:
                 retest_hold_days=active.retest_hold_days,
                 conviction_pct=total, base_pct=base, retest_pct=retest,
                 vidya_pct=vidya_pct, volume_pct=vol_pct, structure_pct=struct_pct,
+                extension_penalty=ext_pen, extension_atr=ext_atr,
                 note=note,
             ))
         else:

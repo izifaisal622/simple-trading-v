@@ -400,6 +400,7 @@ def _ensure_zone_table(conn: sqlite3.Connection) -> None:
         retest_hold_days  INTEGER,
         base_pct          INTEGER, retest_pct INTEGER,
         vidya_pct         INTEGER, volume_pct INTEGER, structure_pct INTEGER,
+        extension_penalty INTEGER, extension_atr REAL,
         pk_board          INTEGER DEFAULT 0,
         raw_json          TEXT,
         fwd_ret_5d        REAL, fwd_ret_10d REAL, fwd_ret_20d REAL,
@@ -410,6 +411,17 @@ def _ensure_zone_table(conn: sqlite3.Connection) -> None:
         UNIQUE(ticker, scan_date)
     );
     """)
+    # v10.4.0 MIGRASI — kolom baru tak otomatis masuk ke DB yg SUDAH ADA
+    # (CREATE TABLE IF NOT EXISTS cuma berlaku utk DB baru). Tambah scr
+    # eksplisit kalau belum ada, dibungkus try/except (SQLite lama tak
+    # dukung "ADD COLUMN IF NOT EXISTS").
+    existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(zone_scans)").fetchall()}
+    for col, coltype in [("extension_penalty", "INTEGER"), ("extension_atr", "REAL")]:
+        if col not in existing_cols:
+            try:
+                conn.execute(f"ALTER TABLE zone_scans ADD COLUMN {col} {coltype}")
+            except Exception:
+                pass
 
 
 def log_zone_results(results: list, ctx: dict) -> int:
@@ -440,6 +452,8 @@ def log_zone_results(results: list, ctx: dict) -> int:
                 int(r.get("base_pct", 0) or 0), int(r.get("retest_pct", 0) or 0),
                 int(r.get("vidya_pct", 0) or 0), int(r.get("volume_pct", 0) or 0),
                 int(r.get("structure_pct", 0) or 0),
+                int(r.get("extension_penalty", 0) or 0),
+                float(r.get("extension_atr", 0) or 0),
                 1 if r.get("pk_board") else 0,
                 json.dumps(r, default=str, ensure_ascii=False),
             ))
@@ -455,8 +469,8 @@ def log_zone_results(results: list, ctx: dict) -> int:
             (ticker, scan_date, scan_ts, close_price, status, conviction_pct,
              zone_top, zone_bottom, bars_since_formed, retest_hold_days,
              base_pct, retest_pct, vidya_pct, volume_pct, structure_pct,
-             pk_board, raw_json)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             extension_penalty, extension_atr, pk_board, raw_json)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
         conn.close()

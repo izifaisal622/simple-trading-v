@@ -52,6 +52,8 @@ def _process_one_ticker(ticker: str, df, internal_size: int, swing_size: int, pk
         "base_pct": latest.base_pct, "retest_pct": latest.retest_pct,
         "vidya_pct": latest.vidya_pct, "volume_pct": latest.volume_pct,
         "structure_pct": latest.structure_pct,
+        "extension_penalty": latest.extension_penalty,
+        "extension_atr": latest.extension_atr,
         "pk_board": base_ticker in pk_set,
     }
     return ("ok", row)

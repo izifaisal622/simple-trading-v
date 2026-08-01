@@ -192,11 +192,23 @@ if filtered:
             continue
 
     if floor_rows:
-        zone_icon = {"AT_FLOOR": "\U0001f3af", "NEAR_FLOOR": "\u2705",
-                     "MID_RANGE": "\U0001f7e1", "FAR_FROM_FLOOR": "\u274c"}
+        # v10.4.0 FIX: entry_zone_label bawaan whale_scanner.py mengandung
+        # bahasa verdict trading ("Skip"/"Acceptable") yg dirancang utk
+        # filosofi AKUMULASI-DI-FLOOR (mean-reversion) — BERTENTANGAN dgn
+        # filosofi inti page 1 (breakout-retest, yg SENGAJA menunggu harga
+        # naik dulu sebelum retest, jadi harga WAJAR jauh dari floor absolut).
+        # User menunjukkan kasus nyata (RGAS: conviction 100% VIDYA+SMC tapi
+        # "Skip" dari floor whale) — dua sinyal saling bertentangan di kartu
+        # yg sama. Diganti label NETRAL (jarak fakta, tanpa rekomendasi
+        # trading) — verdict trading di halaman ini murni dari conviction_pct
+        # milik page 1 sendiri, bukan dicampur logika page 2.
+        zone_label_neutral = {
+            "AT_FLOOR": "Dekat floor", "NEAR_FLOOR": "Dekat floor",
+            "MID_RANGE": "Jarak sedang dari floor", "FAR_FROM_FLOOR": "Jauh dari floor",
+        }
         table_rows = ""
         for r, fm in floor_rows:
-            icon = zone_icon.get(fm["entry_zone"], "")
+            label = zone_label_neutral.get(fm["entry_zone"], "-")
             table_rows += (
                 '<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
                 f'<td style="padding:0.5rem 0.8rem;font-family:Orbitron,monospace;'
@@ -209,7 +221,7 @@ if filtered:
                 f'font-family:Share Tech Mono,monospace">Rp{fm["vwap_60d"]:,.0f}</td>'
                 f'<td style="padding:0.5rem 0.8rem;text-align:right;'
                 f'font-family:Share Tech Mono,monospace">{fm["pct_above_floor"]:+.1f}%</td>'
-                f'<td style="padding:0.5rem 0.8rem">{icon} {fm["entry_zone_label"]}</td>'
+                f'<td style="padding:0.5rem 0.8rem;color:var(--text-muted)">{label}</td>'
                 f'<td style="padding:0.5rem 0.8rem;text-align:right;'
                 f'font-family:Share Tech Mono,monospace">{r["conviction_pct"]}%</td>'
                 f'<td style="padding:0.5rem 0.8rem;text-align:right;'
@@ -249,7 +261,14 @@ if filtered:
         if _sel_r and _sel_fm:
             zona_str = ("Rp{:,.0f} - Rp{:,.0f}".format(_sel_r["zone_bottom"], _sel_r["zone_top"])
                        if _sel_r["zone_top"] else "-")
-            icon = zone_icon.get(_sel_fm["entry_zone"], "")
+            label = zone_label_neutral.get(_sel_fm["entry_zone"], "-")
+            ext_pen = _sel_r.get("extension_penalty", 0) or 0
+            ext_atr = _sel_r.get("extension_atr", 0) or 0
+            ext_line = (
+                f'<br><span style="color:{C_WARNING}">\u26a0 Extended move: '
+                f'-{ext_pen} poin (harga {ext_atr:.1f}x ATR dari swing low awal)</span>'
+                if ext_pen > 0 else ""
+            )
             detail_html = (
                 '<div style="background:var(--bg-card);border-left:4px solid var(--accent);'
                 'border-radius:var(--r-md);padding:1rem 1.2rem">'
@@ -263,9 +282,9 @@ if filtered:
                 '<div style="margin-top:0.6rem;font-family:Share Tech Mono,monospace;'
                 'font-size:var(--text-sm);line-height:1.8">'
                 f'Conviction: <b>{_sel_r["conviction_pct"]}%</b> | '
-                f'Zona retest: {zona_str} | Retest {_sel_r["retest_hold_days"]}/2 hari<br>'
+                f'Zona retest: {zona_str} | Retest {_sel_r["retest_hold_days"]}/2 hari{ext_line}<br>'
                 f'Floor: Rp{_sel_fm["floor_price"]:,.0f} | VWAP60: Rp{_sel_fm["vwap_60d"]:,.0f} | '
-                f'{icon} {_sel_fm["entry_zone_label"]}<br>'
+                f'{label} ({_sel_fm["pct_above_floor"]:+.1f}%)<br>'
                 f'Sector: {_sel_fm["sector"]} | FF-Vol: {_sel_fm["ff_vol"]:.1f}\u00d7'
                 '</div></div>'
             )
@@ -296,6 +315,19 @@ else:
                'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;' +
                'margin-right:4px">' + label + ' ' + str(val) + '%</span>')
 
+    def _penalty_badge(val):
+        # v10.4.0 BARU — beda dari _badge biasa: ini PENGURANG skor, bukan
+        # penambah, jadi tampilkan tanda minus + warna bahaya, dan HANYA
+        # muncul kalau ada penalti (tak perlu tampilkan "EXTENSION 0%" di
+        # tiap kartu, cuma bikin ramai tanpa informasi baru).
+        if val <= 0:
+            return ""
+        return ('<span style="opacity:1;border:1px solid ' + C_DANGER +
+               ';color:' + C_DANGER + ';border-radius:3px;padding:1px 6px;' +
+               'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;' +
+               'margin-right:4px" title="Extended move — harga sudah jauh dari swing low awal">'
+               '\u26a0 EXT -' + str(val) + '%</span>')
+
     cols = st.columns(2)
     for idx, r in enumerate(filtered):
         col = cols[idx % 2]
@@ -310,7 +342,8 @@ else:
                 _badge("RETEST", r["retest_pct"], NEON_GREEN) +
                 _badge("VIDYA", r["vidya_pct"], C_INFO) +
                 _badge("VOL", r["volume_pct"], C_INFO) +
-                _badge("STRUCT", r["structure_pct"], C_WARNING)
+                _badge("STRUCT", r["structure_pct"], C_WARNING) +
+                _penalty_badge(r.get("extension_penalty", 0) or 0)
             )
             card_html = (
                 '<div style="background:var(--bg-card);border:1px solid ' + cc + '55;'

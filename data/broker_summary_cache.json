@@ -1228,36 +1228,25 @@
     "available": true,
     "top_buyers": [
       {
-        "code": "MG",
-        "name": "Semesta Indovest",
-        "type": "MARKET_MAKER",
-        "signal": "SMART",
-        "buy_lot": 35587,
-        "sell_lot": 0,
-        "net_lot": 35587,
-        "buy_val": 0.81,
-        "sell_val": 0.0
-      },
-      {
-        "code": "PD",
-        "name": "Indo Mirae Asset",
-        "type": "MARKET_MAKER",
-        "signal": "NEUTRAL",
-        "buy_lot": 17561,
-        "sell_lot": 0,
-        "net_lot": 17561,
-        "buy_val": 0.35,
-        "sell_val": 0.0
-      },
-      {
         "code": "XL",
         "name": "XL",
         "type": "UNKNOWN",
         "signal": "NEUTRAL",
-        "buy_lot": 17331,
+        "buy_lot": 15010,
         "sell_lot": 0,
-        "net_lot": 17331,
-        "buy_val": 0.26,
+        "net_lot": 15010,
+        "buy_val": 0.39,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BQ",
+        "name": "BQ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 4748,
+        "sell_lot": 0,
+        "net_lot": 4748,
+        "buy_val": 0.11,
         "sell_val": 0.0
       },
       {
@@ -1265,99 +1254,110 @@
         "name": "CP",
         "type": "UNKNOWN",
         "signal": "NEUTRAL",
-        "buy_lot": 9475,
+        "buy_lot": 3747,
         "sell_lot": 0,
-        "net_lot": 9475,
-        "buy_val": 0.25,
+        "net_lot": 3747,
+        "buy_val": 0.09,
         "sell_val": 0.0
-      },
-      {
-        "code": "AO",
-        "name": "AO",
-        "type": "UNKNOWN",
-        "signal": "NEUTRAL",
-        "buy_lot": 9286,
-        "sell_lot": 0,
-        "net_lot": 9286,
-        "buy_val": 0.16,
-        "sell_val": 0.0
-      }
-    ],
-    "top_sellers": [
-      {
-        "code": "YP",
-        "name": "Indo Premier (IPOT)",
-        "type": "RETAIL",
-        "signal": "RETAIL",
-        "buy_lot": 0,
-        "sell_lot": 28279,
-        "net_lot": -28279,
-        "buy_val": 0.0,
-        "sell_val": 0.58
-      },
-      {
-        "code": "RG",
-        "name": "RG",
-        "type": "UNKNOWN",
-        "signal": "NEUTRAL",
-        "buy_lot": 0,
-        "sell_lot": 10000,
-        "net_lot": -10000,
-        "buy_val": 0.0,
-        "sell_val": 0.18
-      },
-      {
-        "code": "KK",
-        "name": "KK",
-        "type": "UNKNOWN",
-        "signal": "NEUTRAL",
-        "buy_lot": 0,
-        "sell_lot": 8026,
-        "net_lot": -8026,
-        "buy_val": 0.0,
-        "sell_val": 0.17
       },
       {
         "code": "CC",
         "name": "Mandiri Sekuritas",
         "type": "LOCAL_INST",
         "signal": "SMART",
-        "buy_lot": 0,
-        "sell_lot": 7089,
-        "net_lot": -7089,
-        "buy_val": 0.0,
-        "sell_val": 0.14
+        "buy_lot": 3488,
+        "sell_lot": 0,
+        "net_lot": 3488,
+        "buy_val": 0.07,
+        "sell_val": 0.0
       },
       {
-        "code": "DR",
-        "name": "OSO Sekuritas",
-        "type": "GORENGAN",
-        "signal": "CAUTION",
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 2054,
+        "sell_lot": 0,
+        "net_lot": 2054,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
         "buy_lot": 0,
-        "sell_lot": 6986,
-        "net_lot": -6986,
+        "sell_lot": 8020,
+        "net_lot": -8020,
+        "buy_val": 0.0,
+        "sell_val": 0.19
+      },
+      {
+        "code": "YJ",
+        "name": "YJ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 5915,
+        "net_lot": -5915,
         "buy_val": 0.0,
         "sell_val": 0.15
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 5517,
+        "net_lot": -5517,
+        "buy_val": 0.0,
+        "sell_val": 0.12
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 3745,
+        "net_lot": -3745,
+        "buy_val": 0.0,
+        "sell_val": 0.1
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1937,
+        "net_lot": -1937,
+        "buy_val": 0.0,
+        "sell_val": 0.05
       }
     ],
     "dominant_buyer": {
-      "code": "MG",
-      "name": "Semesta Indovest",
-      "type": "MARKET_MAKER",
-      "signal": "SMART",
-      "buy_lot": 35587,
+      "code": "XL",
+      "name": "XL",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 15010,
       "sell_lot": 0,
-      "net_lot": 35587,
-      "buy_val": 0.81,
+      "net_lot": 15010,
+      "buy_val": 0.39,
       "sell_val": 0.0
     },
-    "smart_buy_pct": 42.9,
-    "smart_buy_lot": 41968,
-    "retail_sell_lot": 34253,
-    "bandar_signal": "ACCUMULATION",
-    "trade_date": "2026-07-27",
+    "smart_buy_pct": 10.7,
+    "smart_buy_lot": 3512,
+    "retail_sell_lot": 2178,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-07-28T10:55:10.853760"
+    "_fetched": "2026-08-01T11:05:41.022374"
   },
   "sb_MAHA": {
     "ticker": "MAHA",
@@ -2310,5 +2310,8268 @@
     "trade_date": "2026-07-27",
     "source": "stockbit",
     "_fetched": "2026-07-28T10:55:12.263233"
+  },
+  "sb_GJTL": {
+    "ticker": "GJTL",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "BB",
+        "name": "Deutsche",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 61610,
+        "sell_lot": 0,
+        "net_lot": 61610,
+        "buy_val": 7.35,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 40134,
+        "sell_lot": 0,
+        "net_lot": 40134,
+        "buy_val": 4.8,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 34128,
+        "sell_lot": 0,
+        "net_lot": 34128,
+        "buy_val": 4.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 28985,
+        "sell_lot": 0,
+        "net_lot": 28985,
+        "buy_val": 3.47,
+        "sell_val": 0.0
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 11554,
+        "sell_lot": 0,
+        "net_lot": 11554,
+        "buy_val": 1.38,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 172666,
+        "net_lot": -172666,
+        "buy_val": 0.0,
+        "sell_val": 20.61
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 16169,
+        "net_lot": -16169,
+        "buy_val": 0.0,
+        "sell_val": 1.95
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 7570,
+        "net_lot": -7570,
+        "buy_val": 0.0,
+        "sell_val": 0.9
+      },
+      {
+        "code": "AI",
+        "name": "AI",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3445,
+        "net_lot": -3445,
+        "buy_val": 0.0,
+        "sell_val": 0.41
+      },
+      {
+        "code": "AT",
+        "name": "AT",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 2685,
+        "net_lot": -2685,
+        "buy_val": 0.0,
+        "sell_val": 0.32
+      }
+    ],
+    "dominant_buyer": {
+      "code": "BB",
+      "name": "Deutsche",
+      "type": "FOREIGN_INST",
+      "signal": "SMART",
+      "buy_lot": 61610,
+      "sell_lot": 0,
+      "net_lot": 61610,
+      "buy_val": 7.35,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 68.7,
+    "smart_buy_lot": 147426,
+    "retail_sell_lot": 791,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-27",
+    "source": "stockbit",
+    "_fetched": "2026-07-28T16:20:48.558753"
+  },
+  "sb_HOPE": {
+    "ticker": "HOPE",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 157049,
+        "sell_lot": 0,
+        "net_lot": 157049,
+        "buy_val": 2.74,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AT",
+        "name": "AT",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 37728,
+        "sell_lot": 0,
+        "net_lot": 37728,
+        "buy_val": 0.64,
+        "sell_val": 0.0
+      },
+      {
+        "code": "RO",
+        "name": "RO",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 37686,
+        "sell_lot": 0,
+        "net_lot": 37686,
+        "buy_val": 0.66,
+        "sell_val": 0.0
+      },
+      {
+        "code": "IU",
+        "name": "IU",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 33052,
+        "sell_lot": 0,
+        "net_lot": 33052,
+        "buy_val": 0.6,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 8924,
+        "sell_lot": 0,
+        "net_lot": 8924,
+        "buy_val": 0.16,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 77227,
+        "net_lot": -77227,
+        "buy_val": 0.0,
+        "sell_val": 1.33
+      },
+      {
+        "code": "YB",
+        "name": "YB",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 70407,
+        "net_lot": -70407,
+        "buy_val": 0.0,
+        "sell_val": 1.17
+      },
+      {
+        "code": "YJ",
+        "name": "YJ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 39739,
+        "net_lot": -39739,
+        "buy_val": 0.0,
+        "sell_val": 0.69
+      },
+      {
+        "code": "PG",
+        "name": "PG",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 30073,
+        "net_lot": -30073,
+        "buy_val": 0.0,
+        "sell_val": 0.47
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 22266,
+        "net_lot": -22266,
+        "buy_val": 0.0,
+        "sell_val": 0.42
+      }
+    ],
+    "dominant_buyer": {
+      "code": "YP",
+      "name": "Indo Premier (IPOT)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 157049,
+      "sell_lot": 0,
+      "net_lot": 157049,
+      "buy_val": 2.74,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 0.9,
+    "smart_buy_lot": 2600,
+    "retail_sell_lot": 77227,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-27",
+    "source": "stockbit",
+    "_fetched": "2026-07-28T16:20:48.685719"
+  },
+  "sb_BMTR": {
+    "ticker": "BMTR",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 22070,
+        "sell_lot": 0,
+        "net_lot": 22070,
+        "buy_val": 0.25,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 7079,
+        "sell_lot": 0,
+        "net_lot": 7079,
+        "buy_val": 0.08,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 4260,
+        "sell_lot": 0,
+        "net_lot": 4260,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 3618,
+        "sell_lot": 0,
+        "net_lot": 3618,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 2880,
+        "sell_lot": 0,
+        "net_lot": 2880,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 31888,
+        "net_lot": -31888,
+        "buy_val": 0.0,
+        "sell_val": 0.36
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 14849,
+        "net_lot": -14849,
+        "buy_val": 0.0,
+        "sell_val": 0.17
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 6382,
+        "net_lot": -6382,
+        "buy_val": 0.0,
+        "sell_val": 0.07
+      },
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 6158,
+        "net_lot": -6158,
+        "buy_val": 0.0,
+        "sell_val": 0.07
+      },
+      {
+        "code": "AO",
+        "name": "AO",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1696,
+        "net_lot": -1696,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      }
+    ],
+    "dominant_buyer": {
+      "code": "AK",
+      "name": "UBS",
+      "type": "FOREIGN_INST",
+      "signal": "SMART",
+      "buy_lot": 22070,
+      "sell_lot": 0,
+      "net_lot": 22070,
+      "buy_val": 0.25,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 61.2,
+    "smart_buy_lot": 37833,
+    "retail_sell_lot": 893,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-27",
+    "source": "stockbit",
+    "_fetched": "2026-07-28T16:20:48.697642"
+  },
+  "sb_DOOH": {
+    "ticker": "DOOH",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 154632,
+        "sell_lot": 0,
+        "net_lot": 154632,
+        "buy_val": 4.09,
+        "sell_val": 0.0
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 133229,
+        "sell_lot": 0,
+        "net_lot": 133229,
+        "buy_val": 3.52,
+        "sell_val": 0.0
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 109943,
+        "sell_lot": 0,
+        "net_lot": 109943,
+        "buy_val": 2.98,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 109923,
+        "sell_lot": 0,
+        "net_lot": 109923,
+        "buy_val": 2.85,
+        "sell_val": 0.0
+      },
+      {
+        "code": "HP",
+        "name": "HP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 74142,
+        "sell_lot": 0,
+        "net_lot": 74142,
+        "buy_val": 1.96,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 150108,
+        "net_lot": -150108,
+        "buy_val": 0.0,
+        "sell_val": 3.84
+      },
+      {
+        "code": "YB",
+        "name": "YB",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 95408,
+        "net_lot": -95408,
+        "buy_val": 0.0,
+        "sell_val": 2.5
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 90691,
+        "net_lot": -90691,
+        "buy_val": 0.0,
+        "sell_val": 2.4
+      },
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 53302,
+        "net_lot": -53302,
+        "buy_val": 0.0,
+        "sell_val": 1.41
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 49617,
+        "net_lot": -49617,
+        "buy_val": 0.0,
+        "sell_val": 1.33
+      }
+    ],
+    "dominant_buyer": {
+      "code": "LG",
+      "name": "Bahana",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 154632,
+      "sell_lot": 0,
+      "net_lot": 154632,
+      "buy_val": 4.09,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 48.9,
+    "smart_buy_lot": 349815,
+    "retail_sell_lot": 103721,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:31.869866"
+  },
+  "sb_SDMU": {
+    "ticker": "SDMU",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 16907,
+        "sell_lot": 0,
+        "net_lot": 16907,
+        "buy_val": 0.13,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 9776,
+        "sell_lot": 0,
+        "net_lot": 9776,
+        "buy_val": 0.08,
+        "sell_val": 0.0
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 7262,
+        "sell_lot": 0,
+        "net_lot": 7262,
+        "buy_val": 0.06,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 5628,
+        "sell_lot": 0,
+        "net_lot": 5628,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 5504,
+        "sell_lot": 0,
+        "net_lot": 5504,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 20801,
+        "net_lot": -20801,
+        "buy_val": 0.0,
+        "sell_val": 0.16
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 17945,
+        "net_lot": -17945,
+        "buy_val": 0.0,
+        "sell_val": 0.13
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 5833,
+        "net_lot": -5833,
+        "buy_val": 0.0,
+        "sell_val": 0.05
+      },
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 4152,
+        "net_lot": -4152,
+        "buy_val": 0.0,
+        "sell_val": 0.03
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 2656,
+        "net_lot": -2656,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      }
+    ],
+    "dominant_buyer": {
+      "code": "LG",
+      "name": "Bahana",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 16907,
+      "sell_lot": 0,
+      "net_lot": 16907,
+      "buy_val": 0.13,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 60.7,
+    "smart_buy_lot": 32528,
+    "retail_sell_lot": 2656,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-27",
+    "source": "stockbit",
+    "_fetched": "2026-07-28T16:20:49.144997"
+  },
+  "sb_JATI": {
+    "ticker": "JATI",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 102748,
+        "sell_lot": 0,
+        "net_lot": 102748,
+        "buy_val": 0.97,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 4147,
+        "sell_lot": 0,
+        "net_lot": 4147,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 2924,
+        "sell_lot": 0,
+        "net_lot": 2924,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 2343,
+        "sell_lot": 0,
+        "net_lot": 2343,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 2130,
+        "sell_lot": 0,
+        "net_lot": 2130,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "SH",
+        "name": "SH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 22345,
+        "net_lot": -22345,
+        "buy_val": 0.0,
+        "sell_val": 0.21
+      },
+      {
+        "code": "IH",
+        "name": "IH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 12450,
+        "net_lot": -12450,
+        "buy_val": 0.0,
+        "sell_val": 0.12
+      },
+      {
+        "code": "YJ",
+        "name": "YJ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 12154,
+        "net_lot": -12154,
+        "buy_val": 0.0,
+        "sell_val": 0.12
+      },
+      {
+        "code": "PC",
+        "name": "PC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 9774,
+        "net_lot": -9774,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      },
+      {
+        "code": "AO",
+        "name": "AO",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 8750,
+        "net_lot": -8750,
+        "buy_val": 0.0,
+        "sell_val": 0.08
+      }
+    ],
+    "dominant_buyer": {
+      "code": "AZ",
+      "name": "Sucorinvest",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 102748,
+      "sell_lot": 0,
+      "net_lot": 102748,
+      "buy_val": 0.97,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 3.4,
+    "smart_buy_lot": 4055,
+    "retail_sell_lot": 3099,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-27",
+    "source": "stockbit",
+    "_fetched": "2026-07-28T16:20:49.258526"
+  },
+  "sb_HOKI": {
+    "ticker": "HOKI",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 18296,
+        "sell_lot": 0,
+        "net_lot": 18296,
+        "buy_val": 0.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 10641,
+        "sell_lot": 0,
+        "net_lot": 10641,
+        "buy_val": 0.06,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 9290,
+        "sell_lot": 0,
+        "net_lot": 9290,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 5972,
+        "sell_lot": 0,
+        "net_lot": 5972,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 4419,
+        "sell_lot": 0,
+        "net_lot": 4419,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "AT",
+        "name": "AT",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 45484,
+        "net_lot": -45484,
+        "buy_val": 0.0,
+        "sell_val": 0.24
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 9999,
+        "net_lot": -9999,
+        "buy_val": 0.0,
+        "sell_val": 0.05
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1216,
+        "net_lot": -1216,
+        "buy_val": 0.0,
+        "sell_val": 0.01
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 100,
+        "net_lot": -100,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      },
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 85,
+        "net_lot": -85,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      }
+    ],
+    "dominant_buyer": {
+      "code": "XL",
+      "name": "XL",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 18296,
+      "sell_lot": 0,
+      "net_lot": 18296,
+      "buy_val": 0.1,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 8.1,
+    "smart_buy_lot": 4617,
+    "retail_sell_lot": 0,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-27",
+    "source": "stockbit",
+    "_fetched": "2026-07-28T16:20:49.298059"
+  },
+  "sb_ERAL": {
+    "ticker": "ERAL",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 40046,
+        "sell_lot": 0,
+        "net_lot": 40046,
+        "buy_val": 1.12,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 10853,
+        "sell_lot": 0,
+        "net_lot": 10853,
+        "buy_val": 0.31,
+        "sell_val": 0.0
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 10000,
+        "sell_lot": 0,
+        "net_lot": 10000,
+        "buy_val": 0.29,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 6910,
+        "sell_lot": 0,
+        "net_lot": 6910,
+        "buy_val": 0.2,
+        "sell_val": 0.0
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 2001,
+        "sell_lot": 0,
+        "net_lot": 2001,
+        "buy_val": 0.06,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "RF",
+        "name": "RF",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 25000,
+        "net_lot": -25000,
+        "buy_val": 0.0,
+        "sell_val": 0.7
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 17935,
+        "net_lot": -17935,
+        "buy_val": 0.0,
+        "sell_val": 0.51
+      },
+      {
+        "code": "DP",
+        "name": "DP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 15000,
+        "net_lot": -15000,
+        "buy_val": 0.0,
+        "sell_val": 0.43
+      },
+      {
+        "code": "KI",
+        "name": "Ciptadana",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 8000,
+        "net_lot": -8000,
+        "buy_val": 0.0,
+        "sell_val": 0.22
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3179,
+        "net_lot": -3179,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      }
+    ],
+    "dominant_buyer": {
+      "code": "XL",
+      "name": "XL",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 40046,
+      "sell_lot": 0,
+      "net_lot": 40046,
+      "buy_val": 1.12,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 13.7,
+    "smart_buy_lot": 10159,
+    "retail_sell_lot": 8000,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-27",
+    "source": "stockbit",
+    "_fetched": "2026-07-28T16:20:49.694822"
+  },
+  "sb_NOBU": {
+    "ticker": "NOBU",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 1737,
+        "sell_lot": 0,
+        "net_lot": 1737,
+        "buy_val": 0.08,
+        "sell_val": 0.0
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 989,
+        "sell_lot": 0,
+        "net_lot": 989,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 877,
+        "sell_lot": 0,
+        "net_lot": 877,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AG",
+        "name": "AG",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 400,
+        "sell_lot": 0,
+        "net_lot": 400,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      },
+      {
+        "code": "LS",
+        "name": "LS",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 362,
+        "sell_lot": 0,
+        "net_lot": 362,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1946,
+        "net_lot": -1946,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1306,
+        "net_lot": -1306,
+        "buy_val": 0.0,
+        "sell_val": 0.06
+      },
+      {
+        "code": "YJ",
+        "name": "YJ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1208,
+        "net_lot": -1208,
+        "buy_val": 0.0,
+        "sell_val": 0.05
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 985,
+        "net_lot": -985,
+        "buy_val": 0.0,
+        "sell_val": 0.04
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 203,
+        "net_lot": -203,
+        "buy_val": 0.0,
+        "sell_val": 0.01
+      }
+    ],
+    "dominant_buyer": {
+      "code": "YP",
+      "name": "Indo Premier (IPOT)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 1737,
+      "sell_lot": 0,
+      "net_lot": 1737,
+      "buy_val": 0.08,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 4.5,
+    "smart_buy_lot": 257,
+    "retail_sell_lot": 0,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-27",
+    "source": "stockbit",
+    "_fetched": "2026-07-28T16:20:50.607634"
+  },
+  "sb_TMAS": {
+    "ticker": "TMAS",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 4421,
+        "sell_lot": 0,
+        "net_lot": 4421,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 3380,
+        "sell_lot": 0,
+        "net_lot": 3380,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 912,
+        "sell_lot": 0,
+        "net_lot": 912,
+        "buy_val": 0.01,
+        "sell_val": 0.0
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 201,
+        "sell_lot": 0,
+        "net_lot": 201,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 197,
+        "sell_lot": 0,
+        "net_lot": 197,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 4385,
+        "net_lot": -4385,
+        "buy_val": 0.0,
+        "sell_val": 0.05
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 2098,
+        "net_lot": -2098,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      },
+      {
+        "code": "PO",
+        "name": "PO",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1000,
+        "net_lot": -1000,
+        "buy_val": 0.0,
+        "sell_val": 0.01
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 712,
+        "net_lot": -712,
+        "buy_val": 0.0,
+        "sell_val": 0.01
+      },
+      {
+        "code": "AG",
+        "name": "AG",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 500,
+        "net_lot": -500,
+        "buy_val": 0.0,
+        "sell_val": 0.01
+      }
+    ],
+    "dominant_buyer": {
+      "code": "PD",
+      "name": "Indo Mirae Asset",
+      "type": "MARKET_MAKER",
+      "signal": "NEUTRAL",
+      "buy_lot": 4421,
+      "sell_lot": 0,
+      "net_lot": 4421,
+      "buy_val": 0.05,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 0.9,
+    "smart_buy_lot": 85,
+    "retail_sell_lot": 1,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-27",
+    "source": "stockbit",
+    "_fetched": "2026-07-28T16:20:51.262393"
+  },
+  "sb_BULL": {
+    "ticker": "BULL",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "SS",
+        "name": "SS",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 340000,
+        "sell_lot": 0,
+        "net_lot": 340000,
+        "buy_val": 15.77,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 153291,
+        "sell_lot": 0,
+        "net_lot": 153291,
+        "buy_val": 7.18,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 138774,
+        "sell_lot": 0,
+        "net_lot": 138774,
+        "buy_val": 6.58,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AI",
+        "name": "AI",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 137185,
+        "sell_lot": 0,
+        "net_lot": 137185,
+        "buy_val": 6.26,
+        "sell_val": 0.0
+      },
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 78975,
+        "sell_lot": 0,
+        "net_lot": 78975,
+        "buy_val": 3.7,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "II",
+        "name": "II",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 320000,
+        "net_lot": -320000,
+        "buy_val": 0.0,
+        "sell_val": 14.78
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 280227,
+        "net_lot": -280227,
+        "buy_val": 0.0,
+        "sell_val": 13.04
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 224576,
+        "net_lot": -224576,
+        "buy_val": 0.0,
+        "sell_val": 10.45
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 154832,
+        "net_lot": -154832,
+        "buy_val": 0.0,
+        "sell_val": 7.38
+      },
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 108362,
+        "net_lot": -108362,
+        "buy_val": 0.0,
+        "sell_val": 5.16
+      }
+    ],
+    "dominant_buyer": {
+      "code": "SS",
+      "name": "SS",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 340000,
+      "sell_lot": 0,
+      "net_lot": 340000,
+      "buy_val": 15.77,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 12.4,
+    "smart_buy_lot": 161193,
+    "retail_sell_lot": 332938,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:25.220406"
+  },
+  "sb_TINS": {
+    "ticker": "TINS",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 144491,
+        "sell_lot": 0,
+        "net_lot": 144491,
+        "buy_val": 54.19,
+        "sell_val": 0.0
+      },
+      {
+        "code": "IF",
+        "name": "Samuel Sekuritas",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 116523,
+        "sell_lot": 0,
+        "net_lot": 116523,
+        "buy_val": 44.26,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KZ",
+        "name": "CIMB Sekuritas",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 107230,
+        "sell_lot": 0,
+        "net_lot": 107230,
+        "buy_val": 40.51,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 70861,
+        "sell_lot": 0,
+        "net_lot": 70861,
+        "buy_val": 26.65,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 67813,
+        "sell_lot": 0,
+        "net_lot": 67813,
+        "buy_val": 25.93,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 91098,
+        "net_lot": -91098,
+        "buy_val": 0.0,
+        "sell_val": 34.46
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 63583,
+        "net_lot": -63583,
+        "buy_val": 0.0,
+        "sell_val": 24.15
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 60091,
+        "net_lot": -60091,
+        "buy_val": 0.0,
+        "sell_val": 23.05
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 59316,
+        "net_lot": -59316,
+        "buy_val": 0.0,
+        "sell_val": 22.48
+      },
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 46314,
+        "net_lot": -46314,
+        "buy_val": 0.0,
+        "sell_val": 17.59
+      }
+    ],
+    "dominant_buyer": {
+      "code": "AK",
+      "name": "UBS",
+      "type": "FOREIGN_INST",
+      "signal": "SMART",
+      "buy_lot": 144491,
+      "sell_lot": 0,
+      "net_lot": 144491,
+      "buy_val": 54.19,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 71.4,
+    "smart_buy_lot": 390395,
+    "retail_sell_lot": 98301,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:25.221225"
+  },
+  "sb_PACK": {
+    "ticker": "PACK",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 324129,
+        "sell_lot": 0,
+        "net_lot": 324129,
+        "buy_val": 7.83,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AO",
+        "name": "AO",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 144500,
+        "sell_lot": 0,
+        "net_lot": 144500,
+        "buy_val": 3.59,
+        "sell_val": 0.0
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 115955,
+        "sell_lot": 0,
+        "net_lot": 115955,
+        "buy_val": 2.75,
+        "sell_val": 0.0
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 97865,
+        "sell_lot": 0,
+        "net_lot": 97865,
+        "buy_val": 2.52,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 50510,
+        "sell_lot": 0,
+        "net_lot": 50510,
+        "buy_val": 1.21,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 356919,
+        "net_lot": -356919,
+        "buy_val": 0.0,
+        "sell_val": 8.68
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 206553,
+        "net_lot": -206553,
+        "buy_val": 0.0,
+        "sell_val": 4.96
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 109446,
+        "net_lot": -109446,
+        "buy_val": 0.0,
+        "sell_val": 2.73
+      },
+      {
+        "code": "QA",
+        "name": "QA",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 85721,
+        "net_lot": -85721,
+        "buy_val": 0.0,
+        "sell_val": 2.04
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 44430,
+        "net_lot": -44430,
+        "buy_val": 0.0,
+        "sell_val": 1.09
+      }
+    ],
+    "dominant_buyer": {
+      "code": "AK",
+      "name": "UBS",
+      "type": "FOREIGN_INST",
+      "signal": "SMART",
+      "buy_lot": 324129,
+      "sell_lot": 0,
+      "net_lot": 324129,
+      "buy_val": 7.83,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 52.3,
+    "smart_buy_lot": 498602,
+    "retail_sell_lot": 98167,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:25.323394"
+  },
+  "sb_ERAA": {
+    "ticker": "ERAA",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 224198,
+        "sell_lot": 0,
+        "net_lot": 224198,
+        "buy_val": 9.47,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 201308,
+        "sell_lot": 0,
+        "net_lot": 201308,
+        "buy_val": 8.46,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 187109,
+        "sell_lot": 0,
+        "net_lot": 187109,
+        "buy_val": 7.88,
+        "sell_val": 0.0
+      },
+      {
+        "code": "TP",
+        "name": "Sinarmas Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 46746,
+        "sell_lot": 0,
+        "net_lot": 46746,
+        "buy_val": 1.97,
+        "sell_val": 0.0
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 46099,
+        "sell_lot": 0,
+        "net_lot": 46099,
+        "buy_val": 1.96,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 204309,
+        "net_lot": -204309,
+        "buy_val": 0.0,
+        "sell_val": 8.61
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 138811,
+        "net_lot": -138811,
+        "buy_val": 0.0,
+        "sell_val": 5.79
+      },
+      {
+        "code": "RF",
+        "name": "RF",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 102492,
+        "net_lot": -102492,
+        "buy_val": 0.0,
+        "sell_val": 4.34
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 75908,
+        "net_lot": -75908,
+        "buy_val": 0.0,
+        "sell_val": 3.21
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 43238,
+        "net_lot": -43238,
+        "buy_val": 0.0,
+        "sell_val": 1.85
+      }
+    ],
+    "dominant_buyer": {
+      "code": "ZP",
+      "name": "Kim Eng (Maybank)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 224198,
+      "sell_lot": 0,
+      "net_lot": 224198,
+      "buy_val": 9.47,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 57.4,
+    "smart_buy_lot": 452691,
+    "retail_sell_lot": 68488,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:25.331339"
+  },
+  "sb_IRSX": {
+    "ticker": "IRSX",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "FZ",
+        "name": "Waterfront",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 182153,
+        "sell_lot": 0,
+        "net_lot": 182153,
+        "buy_val": 6.5,
+        "sell_val": 0.0
+      },
+      {
+        "code": "SA",
+        "name": "SA",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 168899,
+        "sell_lot": 0,
+        "net_lot": 168899,
+        "buy_val": 5.87,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 81581,
+        "sell_lot": 0,
+        "net_lot": 81581,
+        "buy_val": 2.72,
+        "sell_val": 0.0
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 63731,
+        "sell_lot": 0,
+        "net_lot": 63731,
+        "buy_val": 2.11,
+        "sell_val": 0.0
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 55737,
+        "sell_lot": 0,
+        "net_lot": 55737,
+        "buy_val": 1.98,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "YB",
+        "name": "YB",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 480356,
+        "net_lot": -480356,
+        "buy_val": 0.0,
+        "sell_val": 16.79
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 32966,
+        "net_lot": -32966,
+        "buy_val": 0.0,
+        "sell_val": 1.08
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 25648,
+        "net_lot": -25648,
+        "buy_val": 0.0,
+        "sell_val": 0.88
+      },
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 20533,
+        "net_lot": -20533,
+        "buy_val": 0.0,
+        "sell_val": 0.69
+      },
+      {
+        "code": "YJ",
+        "name": "YJ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 20000,
+        "net_lot": -20000,
+        "buy_val": 0.0,
+        "sell_val": 0.66
+      }
+    ],
+    "dominant_buyer": {
+      "code": "FZ",
+      "name": "Waterfront",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 182153,
+      "sell_lot": 0,
+      "net_lot": 182153,
+      "buy_val": 6.5,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 29.0,
+    "smart_buy_lot": 193591,
+    "retail_sell_lot": 29240,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:25.438382"
+  },
+  "sb_KOTA": {
+    "ticker": "KOTA",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 422536,
+        "sell_lot": 0,
+        "net_lot": 422536,
+        "buy_val": 6.16,
+        "sell_val": 0.0
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 317523,
+        "sell_lot": 0,
+        "net_lot": 317523,
+        "buy_val": 4.99,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 186656,
+        "sell_lot": 0,
+        "net_lot": 186656,
+        "buy_val": 2.94,
+        "sell_val": 0.0
+      },
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 90704,
+        "sell_lot": 0,
+        "net_lot": 90704,
+        "buy_val": 1.38,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 72010,
+        "sell_lot": 0,
+        "net_lot": 72010,
+        "buy_val": 1.07,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 498171,
+        "net_lot": -498171,
+        "buy_val": 0.0,
+        "sell_val": 7.55
+      },
+      {
+        "code": "II",
+        "name": "II",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 212864,
+        "net_lot": -212864,
+        "buy_val": 0.0,
+        "sell_val": 3.15
+      },
+      {
+        "code": "FS",
+        "name": "FS",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 175377,
+        "net_lot": -175377,
+        "buy_val": 0.0,
+        "sell_val": 2.65
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 95516,
+        "net_lot": -95516,
+        "buy_val": 0.0,
+        "sell_val": 1.41
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 85895,
+        "net_lot": -85895,
+        "buy_val": 0.0,
+        "sell_val": 1.25
+      }
+    ],
+    "dominant_buyer": {
+      "code": "XL",
+      "name": "XL",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 422536,
+      "sell_lot": 0,
+      "net_lot": 422536,
+      "buy_val": 6.16,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 48.0,
+    "smart_buy_lot": 691675,
+    "retail_sell_lot": 148120,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:25.465863"
+  },
+  "sb_DMAS": {
+    "ticker": "DMAS",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 182776,
+        "sell_lot": 0,
+        "net_lot": 182776,
+        "buy_val": 2.69,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 175822,
+        "sell_lot": 0,
+        "net_lot": 175822,
+        "buy_val": 2.58,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 169017,
+        "sell_lot": 0,
+        "net_lot": 169017,
+        "buy_val": 2.48,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 126524,
+        "sell_lot": 0,
+        "net_lot": 126524,
+        "buy_val": 1.86,
+        "sell_val": 0.0
+      },
+      {
+        "code": "IN",
+        "name": "IN",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 50000,
+        "sell_lot": 0,
+        "net_lot": 50000,
+        "buy_val": 0.73,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 281643,
+        "net_lot": -281643,
+        "buy_val": 0.0,
+        "sell_val": 4.13
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 114886,
+        "net_lot": -114886,
+        "buy_val": 0.0,
+        "sell_val": 1.69
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 72162,
+        "net_lot": -72162,
+        "buy_val": 0.0,
+        "sell_val": 1.07
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 70758,
+        "net_lot": -70758,
+        "buy_val": 0.0,
+        "sell_val": 1.05
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 43595,
+        "net_lot": -43595,
+        "buy_val": 0.0,
+        "sell_val": 0.64
+      }
+    ],
+    "dominant_buyer": {
+      "code": "ZP",
+      "name": "Kim Eng (Maybank)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 182776,
+      "sell_lot": 0,
+      "net_lot": 182776,
+      "buy_val": 2.69,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 63.1,
+    "smart_buy_lot": 472788,
+    "retail_sell_lot": 81040,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:25.638088"
+  },
+  "sb_GPSO": {
+    "ticker": "GPSO",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 20551,
+        "sell_lot": 0,
+        "net_lot": 20551,
+        "buy_val": 0.6,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 6774,
+        "sell_lot": 0,
+        "net_lot": 6774,
+        "buy_val": 0.29,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 4899,
+        "sell_lot": 0,
+        "net_lot": 4899,
+        "buy_val": 0.14,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 4339,
+        "sell_lot": 0,
+        "net_lot": 4339,
+        "buy_val": 0.13,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 4162,
+        "sell_lot": 0,
+        "net_lot": 4162,
+        "buy_val": 0.09,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 23355,
+        "net_lot": -23355,
+        "buy_val": 0.0,
+        "sell_val": 0.7
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 5866,
+        "net_lot": -5866,
+        "buy_val": 0.0,
+        "sell_val": 0.18
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 4708,
+        "net_lot": -4708,
+        "buy_val": 0.0,
+        "sell_val": 0.14
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 3251,
+        "net_lot": -3251,
+        "buy_val": 0.0,
+        "sell_val": 0.1
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 3200,
+        "net_lot": -3200,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      }
+    ],
+    "dominant_buyer": {
+      "code": "AK",
+      "name": "UBS",
+      "type": "FOREIGN_INST",
+      "signal": "SMART",
+      "buy_lot": 20551,
+      "sell_lot": 0,
+      "net_lot": 20551,
+      "buy_val": 0.6,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 57.8,
+    "smart_buy_lot": 30334,
+    "retail_sell_lot": 3806,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:25.666030"
+  },
+  "sb_SGER": {
+    "ticker": "SGER",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 80312,
+        "sell_lot": 0,
+        "net_lot": 80312,
+        "buy_val": 3.87,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 37355,
+        "sell_lot": 0,
+        "net_lot": 37355,
+        "buy_val": 1.76,
+        "sell_val": 0.0
+      },
+      {
+        "code": "IH",
+        "name": "IH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 21486,
+        "sell_lot": 0,
+        "net_lot": 21486,
+        "buy_val": 1.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 4657,
+        "sell_lot": 0,
+        "net_lot": 4657,
+        "buy_val": 0.23,
+        "sell_val": 0.0
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 4381,
+        "sell_lot": 0,
+        "net_lot": 4381,
+        "buy_val": 0.21,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "TP",
+        "name": "Sinarmas Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 65389,
+        "net_lot": -65389,
+        "buy_val": 0.0,
+        "sell_val": 3.09
+      },
+      {
+        "code": "FS",
+        "name": "FS",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 12430,
+        "net_lot": -12430,
+        "buy_val": 0.0,
+        "sell_val": 0.6
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 11283,
+        "net_lot": -11283,
+        "buy_val": 0.0,
+        "sell_val": 0.54
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 10099,
+        "net_lot": -10099,
+        "buy_val": 0.0,
+        "sell_val": 0.49
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 8811,
+        "net_lot": -8811,
+        "buy_val": 0.0,
+        "sell_val": 0.41
+      }
+    ],
+    "dominant_buyer": {
+      "code": "GR",
+      "name": "Trimegah",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 80312,
+      "sell_lot": 0,
+      "net_lot": 80312,
+      "buy_val": 3.87,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 81.1,
+    "smart_buy_lot": 122324,
+    "retail_sell_lot": 14477,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:27.904134"
+  },
+  "sb_SIDO": {
+    "ticker": "SIDO",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 136142,
+        "sell_lot": 0,
+        "net_lot": 136142,
+        "buy_val": 4.93,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 78494,
+        "sell_lot": 0,
+        "net_lot": 78494,
+        "buy_val": 2.85,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 45090,
+        "sell_lot": 0,
+        "net_lot": 45090,
+        "buy_val": 1.63,
+        "sell_val": 0.0
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 35778,
+        "sell_lot": 0,
+        "net_lot": 35778,
+        "buy_val": 1.29,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 17014,
+        "sell_lot": 0,
+        "net_lot": 17014,
+        "buy_val": 0.62,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "BB",
+        "name": "Deutsche",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 137777,
+        "net_lot": -137777,
+        "buy_val": 0.0,
+        "sell_val": 4.99
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 101327,
+        "net_lot": -101327,
+        "buy_val": 0.0,
+        "sell_val": 3.68
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 96131,
+        "net_lot": -96131,
+        "buy_val": 0.0,
+        "sell_val": 3.48
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 48556,
+        "net_lot": -48556,
+        "buy_val": 0.0,
+        "sell_val": 1.76
+      },
+      {
+        "code": "YB",
+        "name": "YB",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 437,
+        "net_lot": -437,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      }
+    ],
+    "dominant_buyer": {
+      "code": "YP",
+      "name": "Indo Premier (IPOT)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 136142,
+      "sell_lot": 0,
+      "net_lot": 136142,
+      "buy_val": 4.93,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 27.7,
+    "smart_buy_lot": 106036,
+    "retail_sell_lot": 0,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:28.166684"
+  },
+  "sb_MDIA": {
+    "ticker": "MDIA",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 330448,
+        "sell_lot": 0,
+        "net_lot": 330448,
+        "buy_val": 5.82,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 243569,
+        "sell_lot": 0,
+        "net_lot": 243569,
+        "buy_val": 4.37,
+        "sell_val": 0.0
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 198906,
+        "sell_lot": 0,
+        "net_lot": 198906,
+        "buy_val": 3.56,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 188062,
+        "sell_lot": 0,
+        "net_lot": 188062,
+        "buy_val": 3.39,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 168714,
+        "sell_lot": 0,
+        "net_lot": 168714,
+        "buy_val": 3.38,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "KI",
+        "name": "Ciptadana",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 558323,
+        "net_lot": -558323,
+        "buy_val": 0.0,
+        "sell_val": 10.25
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 197798,
+        "net_lot": -197798,
+        "buy_val": 0.0,
+        "sell_val": 2.97
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 182971,
+        "net_lot": -182971,
+        "buy_val": 0.0,
+        "sell_val": 3.31
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 72665,
+        "net_lot": -72665,
+        "buy_val": 0.0,
+        "sell_val": 1.44
+      },
+      {
+        "code": "IF",
+        "name": "Samuel Sekuritas",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 57691,
+        "net_lot": -57691,
+        "buy_val": 0.0,
+        "sell_val": 0.97
+      }
+    ],
+    "dominant_buyer": {
+      "code": "ZP",
+      "name": "Kim Eng (Maybank)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 330448,
+      "sell_lot": 0,
+      "net_lot": 330448,
+      "buy_val": 5.82,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 42.5,
+    "smart_buy_lot": 626564,
+    "retail_sell_lot": 572218,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:28.939070"
+  },
+  "sb_BWPT": {
+    "ticker": "BWPT",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 991369,
+        "sell_lot": 0,
+        "net_lot": 991369,
+        "buy_val": 8.95,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YB",
+        "name": "YB",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 374139,
+        "sell_lot": 0,
+        "net_lot": 374139,
+        "buy_val": 3.4,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 123823,
+        "sell_lot": 0,
+        "net_lot": 123823,
+        "buy_val": 1.11,
+        "sell_val": 0.0
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 102782,
+        "sell_lot": 0,
+        "net_lot": 102782,
+        "buy_val": 0.82,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 64660,
+        "sell_lot": 0,
+        "net_lot": 64660,
+        "buy_val": 0.61,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1434275,
+        "net_lot": -1434275,
+        "buy_val": 0.0,
+        "sell_val": 12.97
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 153520,
+        "net_lot": -153520,
+        "buy_val": 0.0,
+        "sell_val": 1.43
+      },
+      {
+        "code": "YJ",
+        "name": "YJ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 104708,
+        "net_lot": -104708,
+        "buy_val": 0.0,
+        "sell_val": 0.94
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 78172,
+        "net_lot": -78172,
+        "buy_val": 0.0,
+        "sell_val": 0.65
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 77352,
+        "net_lot": -77352,
+        "buy_val": 0.0,
+        "sell_val": 0.62
+      }
+    ],
+    "dominant_buyer": {
+      "code": "XL",
+      "name": "XL",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 991369,
+      "sell_lot": 0,
+      "net_lot": 991369,
+      "buy_val": 8.95,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 1.8,
+    "smart_buy_lot": 34012,
+    "retail_sell_lot": 25367,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:28.960683"
+  },
+  "sb_SIMP": {
+    "ticker": "SIMP",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 30833,
+        "sell_lot": 0,
+        "net_lot": 30833,
+        "buy_val": 1.88,
+        "sell_val": 0.0
+      },
+      {
+        "code": "DR",
+        "name": "OSO Sekuritas",
+        "type": "GORENGAN",
+        "signal": "CAUTION",
+        "buy_lot": 25263,
+        "sell_lot": 0,
+        "net_lot": 25263,
+        "buy_val": 1.52,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 13045,
+        "sell_lot": 0,
+        "net_lot": 13045,
+        "buy_val": 0.8,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CD",
+        "name": "CD",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 10700,
+        "sell_lot": 0,
+        "net_lot": 10700,
+        "buy_val": 0.65,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 8539,
+        "sell_lot": 0,
+        "net_lot": 8539,
+        "buy_val": 0.52,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 22538,
+        "net_lot": -22538,
+        "buy_val": 0.0,
+        "sell_val": 1.36
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 10530,
+        "net_lot": -10530,
+        "buy_val": 0.0,
+        "sell_val": 0.63
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 9458,
+        "net_lot": -9458,
+        "buy_val": 0.0,
+        "sell_val": 0.58
+      },
+      {
+        "code": "BQ",
+        "name": "BQ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 9060,
+        "net_lot": -9060,
+        "buy_val": 0.0,
+        "sell_val": 0.55
+      },
+      {
+        "code": "TP",
+        "name": "Sinarmas Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 7819,
+        "net_lot": -7819,
+        "buy_val": 0.0,
+        "sell_val": 0.48
+      }
+    ],
+    "dominant_buyer": {
+      "code": "LG",
+      "name": "Bahana",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 30833,
+      "sell_lot": 0,
+      "net_lot": 30833,
+      "buy_val": 1.88,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 30.3,
+    "smart_buy_lot": 31039,
+    "retail_sell_lot": 10107,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:29.007587"
+  },
+  "sb_YELO": {
+    "ticker": "YELO",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 69643,
+        "sell_lot": 0,
+        "net_lot": 69643,
+        "buy_val": 0.63,
+        "sell_val": 0.0
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 39899,
+        "sell_lot": 0,
+        "net_lot": 39899,
+        "buy_val": 0.33,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 36609,
+        "sell_lot": 0,
+        "net_lot": 36609,
+        "buy_val": 0.34,
+        "sell_val": 0.0
+      },
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 21094,
+        "sell_lot": 0,
+        "net_lot": 21094,
+        "buy_val": 0.18,
+        "sell_val": 0.0
+      },
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 17452,
+        "sell_lot": 0,
+        "net_lot": 17452,
+        "buy_val": 0.15,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 55035,
+        "net_lot": -55035,
+        "buy_val": 0.0,
+        "sell_val": 0.48
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 49076,
+        "net_lot": -49076,
+        "buy_val": 0.0,
+        "sell_val": 0.43
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 27914,
+        "net_lot": -27914,
+        "buy_val": 0.0,
+        "sell_val": 0.26
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 24580,
+        "net_lot": -24580,
+        "buy_val": 0.0,
+        "sell_val": 0.22
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 16284,
+        "net_lot": -16284,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      }
+    ],
+    "dominant_buyer": {
+      "code": "XA",
+      "name": "Henan Putihrai",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 69643,
+      "sell_lot": 0,
+      "net_lot": 69643,
+      "buy_val": 0.63,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 23.7,
+    "smart_buy_lot": 60993,
+    "retail_sell_lot": 924,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:29.240456"
+  },
+  "sb_JARR": {
+    "ticker": "JARR",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 3089,
+        "sell_lot": 0,
+        "net_lot": 3089,
+        "buy_val": 0.6,
+        "sell_val": 0.0
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 1071,
+        "sell_lot": 0,
+        "net_lot": 1071,
+        "buy_val": 0.21,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 1024,
+        "sell_lot": 0,
+        "net_lot": 1024,
+        "buy_val": 0.2,
+        "sell_val": 0.0
+      },
+      {
+        "code": "DX",
+        "name": "Phillip Sekuritas",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 700,
+        "sell_lot": 0,
+        "net_lot": 700,
+        "buy_val": 0.14,
+        "sell_val": 0.0
+      },
+      {
+        "code": "TP",
+        "name": "Sinarmas Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 500,
+        "sell_lot": 0,
+        "net_lot": 500,
+        "buy_val": 0.1,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1976,
+        "net_lot": -1976,
+        "buy_val": 0.0,
+        "sell_val": 0.38
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1753,
+        "net_lot": -1753,
+        "buy_val": 0.0,
+        "sell_val": 0.34
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1481,
+        "net_lot": -1481,
+        "buy_val": 0.0,
+        "sell_val": 0.28
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 549,
+        "net_lot": -549,
+        "buy_val": 0.0,
+        "sell_val": 0.11
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 396,
+        "net_lot": -396,
+        "buy_val": 0.0,
+        "sell_val": 0.08
+      }
+    ],
+    "dominant_buyer": {
+      "code": "CC",
+      "name": "Mandiri Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 3089,
+      "sell_lot": 0,
+      "net_lot": 3089,
+      "buy_val": 0.6,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 75.8,
+    "smart_buy_lot": 5704,
+    "retail_sell_lot": 764,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:29.366874"
+  },
+  "sb_NISP": {
+    "ticker": "NISP",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 23996,
+        "sell_lot": 0,
+        "net_lot": 23996,
+        "buy_val": 3.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 13008,
+        "sell_lot": 0,
+        "net_lot": 13008,
+        "buy_val": 1.68,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 4115,
+        "sell_lot": 0,
+        "net_lot": 4115,
+        "buy_val": 0.53,
+        "sell_val": 0.0
+      },
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 1377,
+        "sell_lot": 0,
+        "net_lot": 1377,
+        "buy_val": 0.18,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YJ",
+        "name": "YJ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 1200,
+        "sell_lot": 0,
+        "net_lot": 1200,
+        "buy_val": 0.15,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "RX",
+        "name": "Macquarie",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 18000,
+        "net_lot": -18000,
+        "buy_val": 0.0,
+        "sell_val": 2.33
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 5472,
+        "net_lot": -5472,
+        "buy_val": 0.0,
+        "sell_val": 0.7
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 5426,
+        "net_lot": -5426,
+        "buy_val": 0.0,
+        "sell_val": 0.7
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 3320,
+        "net_lot": -3320,
+        "buy_val": 0.0,
+        "sell_val": 0.43
+      },
+      {
+        "code": "TP",
+        "name": "Sinarmas Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 2942,
+        "net_lot": -2942,
+        "buy_val": 0.0,
+        "sell_val": 0.38
+      }
+    ],
+    "dominant_buyer": {
+      "code": "NI",
+      "name": "BNI Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 23996,
+      "sell_lot": 0,
+      "net_lot": 23996,
+      "buy_val": 3.1,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 86.0,
+    "smart_buy_lot": 40036,
+    "retail_sell_lot": 4371,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:30.055498"
+  },
+  "sb_MPMX": {
+    "ticker": "MPMX",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 9732,
+        "sell_lot": 0,
+        "net_lot": 9732,
+        "buy_val": 0.98,
+        "sell_val": 0.0
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 6216,
+        "sell_lot": 0,
+        "net_lot": 6216,
+        "buy_val": 0.62,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 5553,
+        "sell_lot": 0,
+        "net_lot": 5553,
+        "buy_val": 0.56,
+        "sell_val": 0.0
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 1948,
+        "sell_lot": 0,
+        "net_lot": 1948,
+        "buy_val": 0.2,
+        "sell_val": 0.0
+      },
+      {
+        "code": "HD",
+        "name": "HD",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 1624,
+        "sell_lot": 0,
+        "net_lot": 1624,
+        "buy_val": 0.16,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 10196,
+        "net_lot": -10196,
+        "buy_val": 0.0,
+        "sell_val": 1.02
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 6551,
+        "net_lot": -6551,
+        "buy_val": 0.0,
+        "sell_val": 0.66
+      },
+      {
+        "code": "BQ",
+        "name": "BQ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3830,
+        "net_lot": -3830,
+        "buy_val": 0.0,
+        "sell_val": 0.38
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 2892,
+        "net_lot": -2892,
+        "buy_val": 0.0,
+        "sell_val": 0.29
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 2227,
+        "net_lot": -2227,
+        "buy_val": 0.0,
+        "sell_val": 0.22
+      }
+    ],
+    "dominant_buyer": {
+      "code": "CC",
+      "name": "Mandiri Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 9732,
+      "sell_lot": 0,
+      "net_lot": 9732,
+      "buy_val": 0.98,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 42.9,
+    "smart_buy_lot": 12771,
+    "retail_sell_lot": 2945,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:30.452743"
+  },
+  "sb_MBSS": {
+    "ticker": "MBSS",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "HP",
+        "name": "HP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 7887,
+        "sell_lot": 0,
+        "net_lot": 7887,
+        "buy_val": 2.27,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 7099,
+        "sell_lot": 0,
+        "net_lot": 7099,
+        "buy_val": 2.06,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 5486,
+        "sell_lot": 0,
+        "net_lot": 5486,
+        "buy_val": 1.58,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 2705,
+        "sell_lot": 0,
+        "net_lot": 2705,
+        "buy_val": 0.79,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 2538,
+        "sell_lot": 0,
+        "net_lot": 2538,
+        "buy_val": 0.72,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 24820,
+        "net_lot": -24820,
+        "buy_val": 0.0,
+        "sell_val": 7.17
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3035,
+        "net_lot": -3035,
+        "buy_val": 0.0,
+        "sell_val": 0.87
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1161,
+        "net_lot": -1161,
+        "buy_val": 0.0,
+        "sell_val": 0.33
+      },
+      {
+        "code": "PO",
+        "name": "PO",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 885,
+        "net_lot": -885,
+        "buy_val": 0.0,
+        "sell_val": 0.25
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 821,
+        "net_lot": -821,
+        "buy_val": 0.0,
+        "sell_val": 0.23
+      }
+    ],
+    "dominant_buyer": {
+      "code": "HP",
+      "name": "HP",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 7887,
+      "sell_lot": 0,
+      "net_lot": 7887,
+      "buy_val": 2.27,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 31.9,
+    "smart_buy_lot": 10267,
+    "retail_sell_lot": 25242,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:30.712428"
+  },
+  "sb_SRSN": {
+    "ticker": "SRSN",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 151107,
+        "sell_lot": 0,
+        "net_lot": 151107,
+        "buy_val": 1.05,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 107127,
+        "sell_lot": 0,
+        "net_lot": 107127,
+        "buy_val": 0.74,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PC",
+        "name": "PC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 99627,
+        "sell_lot": 0,
+        "net_lot": 99627,
+        "buy_val": 0.69,
+        "sell_val": 0.0
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 68502,
+        "sell_lot": 0,
+        "net_lot": 68502,
+        "buy_val": 0.48,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KI",
+        "name": "Ciptadana",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 36437,
+        "sell_lot": 0,
+        "net_lot": 36437,
+        "buy_val": 0.26,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 274182,
+        "net_lot": -274182,
+        "buy_val": 0.0,
+        "sell_val": 1.9
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 65198,
+        "net_lot": -65198,
+        "buy_val": 0.0,
+        "sell_val": 0.46
+      },
+      {
+        "code": "DR",
+        "name": "OSO Sekuritas",
+        "type": "GORENGAN",
+        "signal": "CAUTION",
+        "buy_lot": 0,
+        "sell_lot": 54941,
+        "net_lot": -54941,
+        "buy_val": 0.0,
+        "sell_val": 0.38
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 48450,
+        "net_lot": -48450,
+        "buy_val": 0.0,
+        "sell_val": 0.35
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 42063,
+        "net_lot": -42063,
+        "buy_val": 0.0,
+        "sell_val": 0.29
+      }
+    ],
+    "dominant_buyer": {
+      "code": "CC",
+      "name": "Mandiri Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 151107,
+      "sell_lot": 0,
+      "net_lot": 151107,
+      "buy_val": 1.05,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 39.7,
+    "smart_buy_lot": 232499,
+    "retail_sell_lot": 91092,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:31.673540"
+  },
+  "sb_SMSM": {
+    "ticker": "SMSM",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 5798,
+        "sell_lot": 0,
+        "net_lot": 5798,
+        "buy_val": 1.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 3999,
+        "sell_lot": 0,
+        "net_lot": 3999,
+        "buy_val": 0.72,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 2084,
+        "sell_lot": 0,
+        "net_lot": 2084,
+        "buy_val": 0.37,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 1605,
+        "sell_lot": 0,
+        "net_lot": 1605,
+        "buy_val": 0.29,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 1335,
+        "sell_lot": 0,
+        "net_lot": 1335,
+        "buy_val": 0.24,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 8436,
+        "net_lot": -8436,
+        "buy_val": 0.0,
+        "sell_val": 1.51
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 5379,
+        "net_lot": -5379,
+        "buy_val": 0.0,
+        "sell_val": 0.96
+      },
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3479,
+        "net_lot": -3479,
+        "buy_val": 0.0,
+        "sell_val": 0.62
+      },
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 420,
+        "net_lot": -420,
+        "buy_val": 0.0,
+        "sell_val": 0.07
+      },
+      {
+        "code": "DR",
+        "name": "OSO Sekuritas",
+        "type": "GORENGAN",
+        "signal": "CAUTION",
+        "buy_lot": 0,
+        "sell_lot": 204,
+        "net_lot": -204,
+        "buy_val": 0.0,
+        "sell_val": 0.04
+      }
+    ],
+    "dominant_buyer": {
+      "code": "ZP",
+      "name": "Kim Eng (Maybank)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 5798,
+      "sell_lot": 0,
+      "net_lot": 5798,
+      "buy_val": 1.04,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 22.8,
+    "smart_buy_lot": 4109,
+    "retail_sell_lot": 423,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:31.871127"
+  },
+  "sb_SMDR": {
+    "ticker": "SMDR",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 12702,
+        "sell_lot": 0,
+        "net_lot": 12702,
+        "buy_val": 0.38,
+        "sell_val": 0.0
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 12461,
+        "sell_lot": 0,
+        "net_lot": 12461,
+        "buy_val": 0.38,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 12114,
+        "sell_lot": 0,
+        "net_lot": 12114,
+        "buy_val": 0.37,
+        "sell_val": 0.0
+      },
+      {
+        "code": "IF",
+        "name": "Samuel Sekuritas",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 10000,
+        "sell_lot": 0,
+        "net_lot": 10000,
+        "buy_val": 0.3,
+        "sell_val": 0.0
+      },
+      {
+        "code": "TP",
+        "name": "Sinarmas Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 9611,
+        "sell_lot": 0,
+        "net_lot": 9611,
+        "buy_val": 0.29,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 42865,
+        "net_lot": -42865,
+        "buy_val": 0.0,
+        "sell_val": 1.29
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 19563,
+        "net_lot": -19563,
+        "buy_val": 0.0,
+        "sell_val": 0.59
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 8900,
+        "net_lot": -8900,
+        "buy_val": 0.0,
+        "sell_val": 0.27
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 4927,
+        "net_lot": -4927,
+        "buy_val": 0.0,
+        "sell_val": 0.15
+      },
+      {
+        "code": "AT",
+        "name": "AT",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 4691,
+        "net_lot": -4691,
+        "buy_val": 0.0,
+        "sell_val": 0.14
+      }
+    ],
+    "dominant_buyer": {
+      "code": "YP",
+      "name": "Indo Premier (IPOT)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 12702,
+      "sell_lot": 0,
+      "net_lot": 12702,
+      "buy_val": 0.38,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 26.2,
+    "smart_buy_lot": 23706,
+    "retail_sell_lot": 43054,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:32.207230"
+  },
+  "sb_ULTJ": {
+    "ticker": "ULTJ",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 23483,
+        "sell_lot": 0,
+        "net_lot": 23483,
+        "buy_val": 3.47,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KZ",
+        "name": "CIMB Sekuritas",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 10000,
+        "sell_lot": 0,
+        "net_lot": 10000,
+        "buy_val": 1.47,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 9252,
+        "sell_lot": 0,
+        "net_lot": 9252,
+        "buy_val": 1.38,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 7474,
+        "sell_lot": 0,
+        "net_lot": 7474,
+        "buy_val": 1.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 6846,
+        "sell_lot": 0,
+        "net_lot": 6846,
+        "buy_val": 1.02,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "RX",
+        "name": "Macquarie",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 16311,
+        "net_lot": -16311,
+        "buy_val": 0.0,
+        "sell_val": 2.42
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 10680,
+        "net_lot": -10680,
+        "buy_val": 0.0,
+        "sell_val": 1.57
+      },
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 7700,
+        "net_lot": -7700,
+        "buy_val": 0.0,
+        "sell_val": 1.13
+      },
+      {
+        "code": "BB",
+        "name": "Deutsche",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 7232,
+        "net_lot": -7232,
+        "buy_val": 0.0,
+        "sell_val": 1.07
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 6897,
+        "net_lot": -6897,
+        "buy_val": 0.0,
+        "sell_val": 1.02
+      }
+    ],
+    "dominant_buyer": {
+      "code": "YP",
+      "name": "Indo Premier (IPOT)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 23483,
+      "sell_lot": 0,
+      "net_lot": 23483,
+      "buy_val": 3.47,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 45.0,
+    "smart_buy_lot": 29935,
+    "retail_sell_lot": 17597,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:32.296305"
+  },
+  "sb_BIRD": {
+    "ticker": "BIRD",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 3021,
+        "sell_lot": 0,
+        "net_lot": 3021,
+        "buy_val": 0.48,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KZ",
+        "name": "CIMB Sekuritas",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 2532,
+        "sell_lot": 0,
+        "net_lot": 2532,
+        "buy_val": 0.41,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 700,
+        "sell_lot": 0,
+        "net_lot": 700,
+        "buy_val": 0.11,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 462,
+        "sell_lot": 0,
+        "net_lot": 462,
+        "buy_val": 0.07,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 288,
+        "sell_lot": 0,
+        "net_lot": 288,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 2172,
+        "net_lot": -2172,
+        "buy_val": 0.0,
+        "sell_val": 0.35
+      },
+      {
+        "code": "RX",
+        "name": "Macquarie",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1819,
+        "net_lot": -1819,
+        "buy_val": 0.0,
+        "sell_val": 0.29
+      },
+      {
+        "code": "TP",
+        "name": "Sinarmas Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1004,
+        "net_lot": -1004,
+        "buy_val": 0.0,
+        "sell_val": 0.16
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 1003,
+        "net_lot": -1003,
+        "buy_val": 0.0,
+        "sell_val": 0.16
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 310,
+        "net_lot": -310,
+        "buy_val": 0.0,
+        "sell_val": 0.05
+      }
+    ],
+    "dominant_buyer": {
+      "code": "NI",
+      "name": "BNI Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 3021,
+      "sell_lot": 0,
+      "net_lot": 3021,
+      "buy_val": 0.48,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 85.3,
+    "smart_buy_lot": 6304,
+    "retail_sell_lot": 1092,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:33.314024"
+  },
+  "sb_OPMS": {
+    "ticker": "OPMS",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 144859,
+        "sell_lot": 0,
+        "net_lot": 144859,
+        "buy_val": 1.58,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YB",
+        "name": "YB",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 63108,
+        "sell_lot": 0,
+        "net_lot": 63108,
+        "buy_val": 0.84,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 8209,
+        "sell_lot": 0,
+        "net_lot": 8209,
+        "buy_val": 0.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YJ",
+        "name": "YJ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 2000,
+        "sell_lot": 0,
+        "net_lot": 2000,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 1683,
+        "sell_lot": 0,
+        "net_lot": 1683,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 35603,
+        "net_lot": -35603,
+        "buy_val": 0.0,
+        "sell_val": 0.38
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 31089,
+        "net_lot": -31089,
+        "buy_val": 0.0,
+        "sell_val": 0.38
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 29336,
+        "net_lot": -29336,
+        "buy_val": 0.0,
+        "sell_val": 0.34
+      },
+      {
+        "code": "AG",
+        "name": "AG",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 24107,
+        "net_lot": -24107,
+        "buy_val": 0.0,
+        "sell_val": 0.3
+      },
+      {
+        "code": "BQ",
+        "name": "BQ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 22193,
+        "net_lot": -22193,
+        "buy_val": 0.0,
+        "sell_val": 0.25
+      }
+    ],
+    "dominant_buyer": {
+      "code": "CP",
+      "name": "CP",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 144859,
+      "sell_lot": 0,
+      "net_lot": 144859,
+      "buy_val": 1.58,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 0.9,
+    "smart_buy_lot": 1931,
+    "retail_sell_lot": 36604,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:33.478593"
+  },
+  "sb_TOTL": {
+    "ticker": "TOTL",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 4866,
+        "sell_lot": 0,
+        "net_lot": 4866,
+        "buy_val": 0.56,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PF",
+        "name": "PF",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 4000,
+        "sell_lot": 0,
+        "net_lot": 4000,
+        "buy_val": 0.46,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 2874,
+        "sell_lot": 0,
+        "net_lot": 2874,
+        "buy_val": 0.33,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 2500,
+        "sell_lot": 0,
+        "net_lot": 2500,
+        "buy_val": 0.29,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 2366,
+        "sell_lot": 0,
+        "net_lot": 2366,
+        "buy_val": 0.27,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 12089,
+        "net_lot": -12089,
+        "buy_val": 0.0,
+        "sell_val": 1.39
+      },
+      {
+        "code": "KZ",
+        "name": "CIMB Sekuritas",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 7081,
+        "net_lot": -7081,
+        "buy_val": 0.0,
+        "sell_val": 0.81
+      },
+      {
+        "code": "DR",
+        "name": "OSO Sekuritas",
+        "type": "GORENGAN",
+        "signal": "CAUTION",
+        "buy_lot": 0,
+        "sell_lot": 3270,
+        "net_lot": -3270,
+        "buy_val": 0.0,
+        "sell_val": 0.37
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 2249,
+        "net_lot": -2249,
+        "buy_val": 0.0,
+        "sell_val": 0.26
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1056,
+        "net_lot": -1056,
+        "buy_val": 0.0,
+        "sell_val": 0.12
+      }
+    ],
+    "dominant_buyer": {
+      "code": "KK",
+      "name": "KK",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 4866,
+      "sell_lot": 0,
+      "net_lot": 4866,
+      "buy_val": 0.56,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 23.9,
+    "smart_buy_lot": 6296,
+    "retail_sell_lot": 10,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:34.046280"
+  },
+  "sb_BINA": {
+    "ticker": "BINA",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "RS",
+        "name": "RS",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 23795,
+        "sell_lot": 0,
+        "net_lot": 23795,
+        "buy_val": 10.47,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 516,
+        "sell_lot": 0,
+        "net_lot": 516,
+        "buy_val": 0.21,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "RF",
+        "name": "RF",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 11351,
+        "net_lot": -11351,
+        "buy_val": 0.0,
+        "sell_val": 4.91
+      },
+      {
+        "code": "SS",
+        "name": "SS",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 4636,
+        "net_lot": -4636,
+        "buy_val": 0.0,
+        "sell_val": 1.96
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3520,
+        "net_lot": -3520,
+        "buy_val": 0.0,
+        "sell_val": 1.5
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 2979,
+        "net_lot": -2979,
+        "buy_val": 0.0,
+        "sell_val": 1.39
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 733,
+        "net_lot": -733,
+        "buy_val": 0.0,
+        "sell_val": 0.33
+      }
+    ],
+    "dominant_buyer": {
+      "code": "RS",
+      "name": "RS",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 23795,
+      "sell_lot": 0,
+      "net_lot": 23795,
+      "buy_val": 10.47,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 2.1,
+    "smart_buy_lot": 516,
+    "retail_sell_lot": 3329,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:34.203110"
+  },
+  "sb_CFIN": {
+    "ticker": "CFIN",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 30799,
+        "sell_lot": 0,
+        "net_lot": 30799,
+        "buy_val": 1.06,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 1111,
+        "sell_lot": 0,
+        "net_lot": 1111,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 999,
+        "sell_lot": 0,
+        "net_lot": 999,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 884,
+        "sell_lot": 0,
+        "net_lot": 884,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 180,
+        "sell_lot": 0,
+        "net_lot": 180,
+        "buy_val": 0.01,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 25017,
+        "net_lot": -25017,
+        "buy_val": 0.0,
+        "sell_val": 0.86
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1655,
+        "net_lot": -1655,
+        "buy_val": 0.0,
+        "sell_val": 0.06
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1195,
+        "net_lot": -1195,
+        "buy_val": 0.0,
+        "sell_val": 0.04
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 992,
+        "net_lot": -992,
+        "buy_val": 0.0,
+        "sell_val": 0.03
+      },
+      {
+        "code": "DR",
+        "name": "OSO Sekuritas",
+        "type": "GORENGAN",
+        "signal": "CAUTION",
+        "buy_lot": 0,
+        "sell_lot": 980,
+        "net_lot": -980,
+        "buy_val": 0.0,
+        "sell_val": 0.03
+      }
+    ],
+    "dominant_buyer": {
+      "code": "DH",
+      "name": "DH",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 30799,
+      "sell_lot": 0,
+      "net_lot": 30799,
+      "buy_val": 1.06,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 3.3,
+    "smart_buy_lot": 1125,
+    "retail_sell_lot": 938,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:34.822217"
+  },
+  "sb_PANS": {
+    "ticker": "PANS",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 2375,
+        "sell_lot": 0,
+        "net_lot": 2375,
+        "buy_val": 0.37,
+        "sell_val": 0.0
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 899,
+        "sell_lot": 0,
+        "net_lot": 899,
+        "buy_val": 0.14,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 524,
+        "sell_lot": 0,
+        "net_lot": 524,
+        "buy_val": 0.08,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 340,
+        "sell_lot": 0,
+        "net_lot": 340,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 277,
+        "sell_lot": 0,
+        "net_lot": 277,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 2362,
+        "net_lot": -2362,
+        "buy_val": 0.0,
+        "sell_val": 0.36
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1165,
+        "net_lot": -1165,
+        "buy_val": 0.0,
+        "sell_val": 0.18
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 672,
+        "net_lot": -672,
+        "buy_val": 0.0,
+        "sell_val": 0.1
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 578,
+        "net_lot": -578,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      },
+      {
+        "code": "YB",
+        "name": "YB",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 100,
+        "net_lot": -100,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      }
+    ],
+    "dominant_buyer": {
+      "code": "AK",
+      "name": "UBS",
+      "type": "FOREIGN_INST",
+      "signal": "SMART",
+      "buy_lot": 2375,
+      "sell_lot": 0,
+      "net_lot": 2375,
+      "buy_val": 0.37,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 75.9,
+    "smart_buy_lot": 3826,
+    "retail_sell_lot": 703,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:35.708272"
+  },
+  "sb_KDTN": {
+    "ticker": "KDTN",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 22842,
+        "sell_lot": 0,
+        "net_lot": 22842,
+        "buy_val": 0.82,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 7390,
+        "sell_lot": 0,
+        "net_lot": 7390,
+        "buy_val": 0.27,
+        "sell_val": 0.0
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 2847,
+        "sell_lot": 0,
+        "net_lot": 2847,
+        "buy_val": 0.11,
+        "sell_val": 0.0
+      },
+      {
+        "code": "QA",
+        "name": "QA",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 2811,
+        "sell_lot": 0,
+        "net_lot": 2811,
+        "buy_val": 0.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 2041,
+        "sell_lot": 0,
+        "net_lot": 2041,
+        "buy_val": 0.07,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 12335,
+        "net_lot": -12335,
+        "buy_val": 0.0,
+        "sell_val": 0.45
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 11535,
+        "net_lot": -11535,
+        "buy_val": 0.0,
+        "sell_val": 0.42
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3466,
+        "net_lot": -3466,
+        "buy_val": 0.0,
+        "sell_val": 0.12
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 2127,
+        "net_lot": -2127,
+        "buy_val": 0.0,
+        "sell_val": 0.08
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1612,
+        "net_lot": -1612,
+        "buy_val": 0.0,
+        "sell_val": 0.06
+      }
+    ],
+    "dominant_buyer": {
+      "code": "GR",
+      "name": "Trimegah",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 22842,
+      "sell_lot": 0,
+      "net_lot": 22842,
+      "buy_val": 0.82,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 67.2,
+    "smart_buy_lot": 25871,
+    "retail_sell_lot": 12010,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:35.965129"
+  },
+  "sb_PSDN": {
+    "ticker": "PSDN",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 39679,
+        "sell_lot": 0,
+        "net_lot": 39679,
+        "buy_val": 0.54,
+        "sell_val": 0.0
+      },
+      {
+        "code": "FZ",
+        "name": "Waterfront",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 9066,
+        "sell_lot": 0,
+        "net_lot": 9066,
+        "buy_val": 0.13,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 3948,
+        "sell_lot": 0,
+        "net_lot": 3948,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 2922,
+        "sell_lot": 0,
+        "net_lot": 2922,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AD",
+        "name": "AD",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 2000,
+        "sell_lot": 0,
+        "net_lot": 2000,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 12628,
+        "net_lot": -12628,
+        "buy_val": 0.0,
+        "sell_val": 0.17
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 12176,
+        "net_lot": -12176,
+        "buy_val": 0.0,
+        "sell_val": 0.17
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 11923,
+        "net_lot": -11923,
+        "buy_val": 0.0,
+        "sell_val": 0.17
+      },
+      {
+        "code": "IU",
+        "name": "IU",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 7336,
+        "net_lot": -7336,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      },
+      {
+        "code": "BQ",
+        "name": "BQ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3377,
+        "net_lot": -3377,
+        "buy_val": 0.0,
+        "sell_val": 0.05
+      }
+    ],
+    "dominant_buyer": {
+      "code": "XL",
+      "name": "XL",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 39679,
+      "sell_lot": 0,
+      "net_lot": 39679,
+      "buy_val": 0.54,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 9.0,
+    "smart_buy_lot": 5654,
+    "retail_sell_lot": 12210,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:37.022630"
+  },
+  "sb_WEHA": {
+    "ticker": "WEHA",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 21775,
+        "sell_lot": 0,
+        "net_lot": 21775,
+        "buy_val": 0.23,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CD",
+        "name": "CD",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 19990,
+        "sell_lot": 0,
+        "net_lot": 19990,
+        "buy_val": 0.21,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 14348,
+        "sell_lot": 0,
+        "net_lot": 14348,
+        "buy_val": 0.16,
+        "sell_val": 0.0
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 9153,
+        "sell_lot": 0,
+        "net_lot": 9153,
+        "buy_val": 0.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 6627,
+        "sell_lot": 0,
+        "net_lot": 6627,
+        "buy_val": 0.07,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "TP",
+        "name": "Sinarmas Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 16325,
+        "net_lot": -16325,
+        "buy_val": 0.0,
+        "sell_val": 0.17
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 14187,
+        "net_lot": -14187,
+        "buy_val": 0.0,
+        "sell_val": 0.15
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 10943,
+        "net_lot": -10943,
+        "buy_val": 0.0,
+        "sell_val": 0.12
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 8625,
+        "net_lot": -8625,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 8624,
+        "net_lot": -8624,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      }
+    ],
+    "dominant_buyer": {
+      "code": "GR",
+      "name": "Trimegah",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 21775,
+      "sell_lot": 0,
+      "net_lot": 21775,
+      "buy_val": 0.23,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 42.4,
+    "smart_buy_lot": 32962,
+    "retail_sell_lot": 13193,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:37.600792"
+  },
+  "sb_ESTI": {
+    "ticker": "ESTI",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 45549,
+        "sell_lot": 0,
+        "net_lot": 45549,
+        "buy_val": 0.94,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 28312,
+        "sell_lot": 0,
+        "net_lot": 28312,
+        "buy_val": 0.52,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 17245,
+        "sell_lot": 0,
+        "net_lot": 17245,
+        "buy_val": 0.34,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 6255,
+        "sell_lot": 0,
+        "net_lot": 6255,
+        "buy_val": 0.11,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 3618,
+        "sell_lot": 0,
+        "net_lot": 3618,
+        "buy_val": 0.06,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 114312,
+        "net_lot": -114312,
+        "buy_val": 0.0,
+        "sell_val": 2.19
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 13767,
+        "net_lot": -13767,
+        "buy_val": 0.0,
+        "sell_val": 0.28
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 3999,
+        "net_lot": -3999,
+        "buy_val": 0.0,
+        "sell_val": 0.08
+      },
+      {
+        "code": "CD",
+        "name": "CD",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1000,
+        "net_lot": -1000,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      },
+      {
+        "code": "FS",
+        "name": "FS",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 818,
+        "net_lot": -818,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      }
+    ],
+    "dominant_buyer": {
+      "code": "XL",
+      "name": "XL",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 45549,
+      "sell_lot": 0,
+      "net_lot": 45549,
+      "buy_val": 0.94,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 28.9,
+    "smart_buy_lot": 38819,
+    "retail_sell_lot": 114312,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:37.614439"
+  },
+  "sb_FWCT": {
+    "ticker": "FWCT",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 15818,
+        "sell_lot": 0,
+        "net_lot": 15818,
+        "buy_val": 0.14,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 6249,
+        "sell_lot": 0,
+        "net_lot": 6249,
+        "buy_val": 0.06,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 3368,
+        "sell_lot": 0,
+        "net_lot": 3368,
+        "buy_val": 0.07,
+        "sell_val": 0.0
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 3355,
+        "sell_lot": 0,
+        "net_lot": 3355,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AT",
+        "name": "AT",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 2924,
+        "sell_lot": 0,
+        "net_lot": 2924,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 13958,
+        "net_lot": -13958,
+        "buy_val": 0.0,
+        "sell_val": 0.15
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 11913,
+        "net_lot": -11913,
+        "buy_val": 0.0,
+        "sell_val": 0.11
+      },
+      {
+        "code": "AG",
+        "name": "AG",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 4500,
+        "net_lot": -4500,
+        "buy_val": 0.0,
+        "sell_val": 0.05
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 4104,
+        "net_lot": -4104,
+        "buy_val": 0.0,
+        "sell_val": 0.04
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 3033,
+        "net_lot": -3033,
+        "buy_val": 0.0,
+        "sell_val": 0.03
+      }
+    ],
+    "dominant_buyer": {
+      "code": "EP",
+      "name": "RHB Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "NEUTRAL",
+      "buy_lot": 15818,
+      "sell_lot": 0,
+      "net_lot": 15818,
+      "buy_val": 0.14,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 18.8,
+    "smart_buy_lot": 7957,
+    "retail_sell_lot": 14152,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:37.899622"
+  },
+  "sb_SILO": {
+    "ticker": "SILO",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 3952,
+        "sell_lot": 0,
+        "net_lot": 3952,
+        "buy_val": 0.86,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KI",
+        "name": "Ciptadana",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 734,
+        "sell_lot": 0,
+        "net_lot": 734,
+        "buy_val": 0.16,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 460,
+        "sell_lot": 0,
+        "net_lot": 460,
+        "buy_val": 0.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 300,
+        "sell_lot": 0,
+        "net_lot": 300,
+        "buy_val": 0.06,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 248,
+        "sell_lot": 0,
+        "net_lot": 248,
+        "buy_val": 0.06,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 2000,
+        "net_lot": -2000,
+        "buy_val": 0.0,
+        "sell_val": 0.43
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 1045,
+        "net_lot": -1045,
+        "buy_val": 0.0,
+        "sell_val": 0.23
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 950,
+        "net_lot": -950,
+        "buy_val": 0.0,
+        "sell_val": 0.21
+      },
+      {
+        "code": "IF",
+        "name": "Samuel Sekuritas",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 521,
+        "net_lot": -521,
+        "buy_val": 0.0,
+        "sell_val": 0.11
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 252,
+        "net_lot": -252,
+        "buy_val": 0.0,
+        "sell_val": 0.05
+      }
+    ],
+    "dominant_buyer": {
+      "code": "CC",
+      "name": "Mandiri Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 3952,
+      "sell_lot": 0,
+      "net_lot": 3952,
+      "buy_val": 0.86,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 76.1,
+    "smart_buy_lot": 4585,
+    "retail_sell_lot": 1096,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:38.080975"
+  },
+  "sb_MSKY": {
+    "ticker": "MSKY",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "YB",
+        "name": "YB",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 85261,
+        "sell_lot": 0,
+        "net_lot": 85261,
+        "buy_val": 0.57,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 65450,
+        "sell_lot": 0,
+        "net_lot": 65450,
+        "buy_val": 0.41,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AG",
+        "name": "AG",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 33979,
+        "sell_lot": 0,
+        "net_lot": 33979,
+        "buy_val": 0.23,
+        "sell_val": 0.0
+      },
+      {
+        "code": "AO",
+        "name": "AO",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 28970,
+        "sell_lot": 0,
+        "net_lot": 28970,
+        "buy_val": 0.19,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 26292,
+        "sell_lot": 0,
+        "net_lot": 26292,
+        "buy_val": 0.16,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 105449,
+        "net_lot": -105449,
+        "buy_val": 0.0,
+        "sell_val": 0.67
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 68954,
+        "net_lot": -68954,
+        "buy_val": 0.0,
+        "sell_val": 0.46
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 38365,
+        "net_lot": -38365,
+        "buy_val": 0.0,
+        "sell_val": 0.24
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 21959,
+        "net_lot": -21959,
+        "buy_val": 0.0,
+        "sell_val": 0.15
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 19143,
+        "net_lot": -19143,
+        "buy_val": 0.0,
+        "sell_val": 0.13
+      }
+    ],
+    "dominant_buyer": {
+      "code": "YB",
+      "name": "YB",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 85261,
+      "sell_lot": 0,
+      "net_lot": 85261,
+      "buy_val": 0.57,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 3.5,
+    "smart_buy_lot": 10111,
+    "retail_sell_lot": 3541,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:38.083985"
+  },
+  "sb_MLBI": {
+    "ticker": "MLBI",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 4335,
+        "sell_lot": 0,
+        "net_lot": 4335,
+        "buy_val": 2.94,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 290,
+        "sell_lot": 0,
+        "net_lot": 290,
+        "buy_val": 0.2,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 42,
+        "sell_lot": 0,
+        "net_lot": 42,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BK",
+        "name": "JP Morgan",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 39,
+        "sell_lot": 0,
+        "net_lot": 39,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 32,
+        "sell_lot": 0,
+        "net_lot": 32,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 2764,
+        "net_lot": -2764,
+        "buy_val": 0.0,
+        "sell_val": 1.88
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 708,
+        "net_lot": -708,
+        "buy_val": 0.0,
+        "sell_val": 0.48
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 408,
+        "net_lot": -408,
+        "buy_val": 0.0,
+        "sell_val": 0.28
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 355,
+        "net_lot": -355,
+        "buy_val": 0.0,
+        "sell_val": 0.23
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 219,
+        "net_lot": -219,
+        "buy_val": 0.0,
+        "sell_val": 0.15
+      }
+    ],
+    "dominant_buyer": {
+      "code": "CC",
+      "name": "Mandiri Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 4335,
+      "sell_lot": 0,
+      "net_lot": 4335,
+      "buy_val": 2.94,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 92.4,
+    "smart_buy_lot": 4440,
+    "retail_sell_lot": 2983,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:38.464872"
+  },
+  "sb_FAST": {
+    "ticker": "FAST",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 30514,
+        "sell_lot": 0,
+        "net_lot": 30514,
+        "buy_val": 1.13,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 15393,
+        "sell_lot": 0,
+        "net_lot": 15393,
+        "buy_val": 0.55,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 2601,
+        "sell_lot": 0,
+        "net_lot": 2601,
+        "buy_val": 0.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 2477,
+        "sell_lot": 0,
+        "net_lot": 2477,
+        "buy_val": 0.09,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 1894,
+        "sell_lot": 0,
+        "net_lot": 1894,
+        "buy_val": 0.08,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 33320,
+        "net_lot": -33320,
+        "buy_val": 0.0,
+        "sell_val": 1.22
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 9763,
+        "net_lot": -9763,
+        "buy_val": 0.0,
+        "sell_val": 0.36
+      },
+      {
+        "code": "AO",
+        "name": "AO",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3900,
+        "net_lot": -3900,
+        "buy_val": 0.0,
+        "sell_val": 0.14
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 2082,
+        "net_lot": -2082,
+        "buy_val": 0.0,
+        "sell_val": 0.08
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1866,
+        "net_lot": -1866,
+        "buy_val": 0.0,
+        "sell_val": 0.07
+      }
+    ],
+    "dominant_buyer": {
+      "code": "NI",
+      "name": "BNI Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 30514,
+      "sell_lot": 0,
+      "net_lot": 30514,
+      "buy_val": 1.13,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 62.1,
+    "smart_buy_lot": 34724,
+    "retail_sell_lot": 208,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:39.528012"
+  },
+  "sb_SMAR": {
+    "ticker": "SMAR",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 404,
+        "sell_lot": 0,
+        "net_lot": 404,
+        "buy_val": 0.24,
+        "sell_val": 0.0
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 364,
+        "sell_lot": 0,
+        "net_lot": 364,
+        "buy_val": 0.21,
+        "sell_val": 0.0
+      },
+      {
+        "code": "FS",
+        "name": "FS",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 197,
+        "sell_lot": 0,
+        "net_lot": 197,
+        "buy_val": 0.12,
+        "sell_val": 0.0
+      },
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 86,
+        "sell_lot": 0,
+        "net_lot": 86,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 70,
+        "sell_lot": 0,
+        "net_lot": 70,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 356,
+        "net_lot": -356,
+        "buy_val": 0.0,
+        "sell_val": 0.21
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 257,
+        "net_lot": -257,
+        "buy_val": 0.0,
+        "sell_val": 0.15
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 238,
+        "net_lot": -238,
+        "buy_val": 0.0,
+        "sell_val": 0.14
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 184,
+        "net_lot": -184,
+        "buy_val": 0.0,
+        "sell_val": 0.11
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 64,
+        "net_lot": -64,
+        "buy_val": 0.0,
+        "sell_val": 0.04
+      }
+    ],
+    "dominant_buyer": {
+      "code": "OD",
+      "name": "Danareksa",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 404,
+      "sell_lot": 0,
+      "net_lot": 404,
+      "buy_val": 0.24,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 73.9,
+    "smart_buy_lot": 889,
+    "retail_sell_lot": 310,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:39.529114"
+  },
+  "sb_INOV": {
+    "ticker": "INOV",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "BQ",
+        "name": "BQ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 23638,
+        "sell_lot": 0,
+        "net_lot": 23638,
+        "buy_val": 0.34,
+        "sell_val": 0.0
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 8483,
+        "sell_lot": 0,
+        "net_lot": 8483,
+        "buy_val": 0.12,
+        "sell_val": 0.0
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 6961,
+        "sell_lot": 0,
+        "net_lot": 6961,
+        "buy_val": 0.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 5812,
+        "sell_lot": 0,
+        "net_lot": 5812,
+        "buy_val": 0.08,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 5384,
+        "sell_lot": 0,
+        "net_lot": 5384,
+        "buy_val": 0.08,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 12602,
+        "net_lot": -12602,
+        "buy_val": 0.0,
+        "sell_val": 0.18
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 9714,
+        "net_lot": -9714,
+        "buy_val": 0.0,
+        "sell_val": 0.14
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 5476,
+        "net_lot": -5476,
+        "buy_val": 0.0,
+        "sell_val": 0.08
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3876,
+        "net_lot": -3876,
+        "buy_val": 0.0,
+        "sell_val": 0.06
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3188,
+        "net_lot": -3188,
+        "buy_val": 0.0,
+        "sell_val": 0.05
+      }
+    ],
+    "dominant_buyer": {
+      "code": "BQ",
+      "name": "BQ",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 23638,
+      "sell_lot": 0,
+      "net_lot": 23638,
+      "buy_val": 0.34,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 29.5,
+    "smart_buy_lot": 15444,
+    "retail_sell_lot": 18320,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:40.082372"
+  },
+  "sb_ERTX": {
+    "ticker": "ERTX",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 9239,
+        "sell_lot": 0,
+        "net_lot": 9239,
+        "buy_val": 0.17,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 3336,
+        "sell_lot": 0,
+        "net_lot": 3336,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 1523,
+        "sell_lot": 0,
+        "net_lot": 1523,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 964,
+        "sell_lot": 0,
+        "net_lot": 964,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      },
+      {
+        "code": "LG",
+        "name": "Bahana",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 900,
+        "sell_lot": 0,
+        "net_lot": 900,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 5571,
+        "net_lot": -5571,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 5559,
+        "net_lot": -5559,
+        "buy_val": 0.0,
+        "sell_val": 0.1
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1231,
+        "net_lot": -1231,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1222,
+        "net_lot": -1222,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1200,
+        "net_lot": -1200,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      }
+    ],
+    "dominant_buyer": {
+      "code": "YP",
+      "name": "Indo Premier (IPOT)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 9239,
+      "sell_lot": 0,
+      "net_lot": 9239,
+      "buy_val": 0.17,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 38.0,
+    "smart_buy_lot": 6723,
+    "retail_sell_lot": 66,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:41.401516"
+  },
+  "sb_UCID": {
+    "ticker": "UCID",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "DX",
+        "name": "Phillip Sekuritas",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 10239,
+        "sell_lot": 0,
+        "net_lot": 10239,
+        "buy_val": 0.42,
+        "sell_val": 0.0
+      },
+      {
+        "code": "TP",
+        "name": "Sinarmas Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 4759,
+        "sell_lot": 0,
+        "net_lot": 4759,
+        "buy_val": 0.2,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PG",
+        "name": "PG",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 3864,
+        "sell_lot": 0,
+        "net_lot": 3864,
+        "buy_val": 0.16,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 3636,
+        "sell_lot": 0,
+        "net_lot": 3636,
+        "buy_val": 0.15,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 2106,
+        "sell_lot": 0,
+        "net_lot": 2106,
+        "buy_val": 0.09,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 18270,
+        "net_lot": -18270,
+        "buy_val": 0.0,
+        "sell_val": 0.75
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 2417,
+        "net_lot": -2417,
+        "buy_val": 0.0,
+        "sell_val": 0.1
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 2308,
+        "net_lot": -2308,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 1330,
+        "net_lot": -1330,
+        "buy_val": 0.0,
+        "sell_val": 0.06
+      },
+      {
+        "code": "RF",
+        "name": "RF",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1000,
+        "net_lot": -1000,
+        "buy_val": 0.0,
+        "sell_val": 0.04
+      }
+    ],
+    "dominant_buyer": {
+      "code": "DX",
+      "name": "Phillip Sekuritas",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 10239,
+      "sell_lot": 0,
+      "net_lot": 10239,
+      "buy_val": 0.42,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 4.7,
+    "smart_buy_lot": 1265,
+    "retail_sell_lot": 3673,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:41.427917"
+  },
+  "sb_BEST": {
+    "ticker": "BEST",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 113361,
+        "sell_lot": 0,
+        "net_lot": 113361,
+        "buy_val": 1.27,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 68843,
+        "sell_lot": 0,
+        "net_lot": 68843,
+        "buy_val": 0.76,
+        "sell_val": 0.0
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 14162,
+        "sell_lot": 0,
+        "net_lot": 14162,
+        "buy_val": 0.16,
+        "sell_val": 0.0
+      },
+      {
+        "code": "BQ",
+        "name": "BQ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 8488,
+        "sell_lot": 0,
+        "net_lot": 8488,
+        "buy_val": 0.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 6905,
+        "sell_lot": 0,
+        "net_lot": 6905,
+        "buy_val": 0.08,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 62788,
+        "net_lot": -62788,
+        "buy_val": 0.0,
+        "sell_val": 0.71
+      },
+      {
+        "code": "YJ",
+        "name": "YJ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 50000,
+        "net_lot": -50000,
+        "buy_val": 0.0,
+        "sell_val": 0.55
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 41372,
+        "net_lot": -41372,
+        "buy_val": 0.0,
+        "sell_val": 0.46
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 33257,
+        "net_lot": -33257,
+        "buy_val": 0.0,
+        "sell_val": 0.37
+      },
+      {
+        "code": "PG",
+        "name": "PG",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 25280,
+        "net_lot": -25280,
+        "buy_val": 0.0,
+        "sell_val": 0.28
+      }
+    ],
+    "dominant_buyer": {
+      "code": "XL",
+      "name": "XL",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 113361,
+      "sell_lot": 0,
+      "net_lot": 113361,
+      "buy_val": 1.27,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 9.0,
+    "smart_buy_lot": 21064,
+    "retail_sell_lot": 104161,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:41.490627"
+  },
+  "sb_SGRO": {
+    "ticker": "SGRO",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "AI",
+        "name": "AI",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 1735,
+        "sell_lot": 0,
+        "net_lot": 1735,
+        "buy_val": 0.7,
+        "sell_val": 0.0
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 146,
+        "sell_lot": 0,
+        "net_lot": 146,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 94,
+        "sell_lot": 0,
+        "net_lot": 94,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 85,
+        "sell_lot": 0,
+        "net_lot": 85,
+        "buy_val": 0.03,
+        "sell_val": 0.0
+      },
+      {
+        "code": "HD",
+        "name": "HD",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 40,
+        "sell_lot": 0,
+        "net_lot": 40,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 532,
+        "net_lot": -532,
+        "buy_val": 0.0,
+        "sell_val": 0.21
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 368,
+        "net_lot": -368,
+        "buy_val": 0.0,
+        "sell_val": 0.15
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 263,
+        "net_lot": -263,
+        "buy_val": 0.0,
+        "sell_val": 0.1
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 242,
+        "net_lot": -242,
+        "buy_val": 0.0,
+        "sell_val": 0.09
+      },
+      {
+        "code": "YB",
+        "name": "YB",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 200,
+        "net_lot": -200,
+        "buy_val": 0.0,
+        "sell_val": 0.08
+      }
+    ],
+    "dominant_buyer": {
+      "code": "AI",
+      "name": "AI",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 1735,
+      "sell_lot": 0,
+      "net_lot": 1735,
+      "buy_val": 0.7,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 11.5,
+    "smart_buy_lot": 256,
+    "retail_sell_lot": 281,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:41.636849"
+  },
+  "sb_AWAN": {
+    "ticker": "AWAN",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "DU",
+        "name": "DU",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 62405,
+        "sell_lot": 0,
+        "net_lot": 62405,
+        "buy_val": 0.97,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 37232,
+        "sell_lot": 0,
+        "net_lot": 37232,
+        "buy_val": 0.58,
+        "sell_val": 0.0
+      },
+      {
+        "code": "IF",
+        "name": "Samuel Sekuritas",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 3553,
+        "sell_lot": 0,
+        "net_lot": 3553,
+        "buy_val": 0.06,
+        "sell_val": 0.0
+      },
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 1425,
+        "sell_lot": 0,
+        "net_lot": 1425,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 1086,
+        "sell_lot": 0,
+        "net_lot": 1086,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "LS",
+        "name": "LS",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 52772,
+        "net_lot": -52772,
+        "buy_val": 0.0,
+        "sell_val": 0.82
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 48519,
+        "net_lot": -48519,
+        "buy_val": 0.0,
+        "sell_val": 0.75
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1386,
+        "net_lot": -1386,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 826,
+        "net_lot": -826,
+        "buy_val": 0.0,
+        "sell_val": 0.01
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 602,
+        "net_lot": -602,
+        "buy_val": 0.0,
+        "sell_val": 0.01
+      }
+    ],
+    "dominant_buyer": {
+      "code": "DU",
+      "name": "DU",
+      "type": "UNKNOWN",
+      "signal": "NEUTRAL",
+      "buy_lot": 62405,
+      "sell_lot": 0,
+      "net_lot": 62405,
+      "buy_val": 0.97,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 2.4,
+    "smart_buy_lot": 2516,
+    "retail_sell_lot": 49495,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:42.344815"
+  },
+  "sb_UNIC": {
+    "ticker": "UNIC",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 430,
+        "sell_lot": 0,
+        "net_lot": 430,
+        "buy_val": 0.65,
+        "sell_val": 0.0
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 141,
+        "sell_lot": 0,
+        "net_lot": 141,
+        "buy_val": 0.22,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 127,
+        "sell_lot": 0,
+        "net_lot": 127,
+        "buy_val": 0.2,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 100,
+        "sell_lot": 0,
+        "net_lot": 100,
+        "buy_val": 0.15,
+        "sell_val": 0.0
+      },
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 75,
+        "sell_lot": 0,
+        "net_lot": 75,
+        "buy_val": 0.11,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "RB",
+        "name": "RB",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 508,
+        "net_lot": -508,
+        "buy_val": 0.0,
+        "sell_val": 0.77
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 118,
+        "net_lot": -118,
+        "buy_val": 0.0,
+        "sell_val": 0.18
+      },
+      {
+        "code": "DR",
+        "name": "OSO Sekuritas",
+        "type": "GORENGAN",
+        "signal": "CAUTION",
+        "buy_lot": 0,
+        "sell_lot": 72,
+        "net_lot": -72,
+        "buy_val": 0.0,
+        "sell_val": 0.11
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 47,
+        "net_lot": -47,
+        "buy_val": 0.0,
+        "sell_val": 0.07
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 47,
+        "net_lot": -47,
+        "buy_val": 0.0,
+        "sell_val": 0.07
+      }
+    ],
+    "dominant_buyer": {
+      "code": "NI",
+      "name": "BNI Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 430,
+      "sell_lot": 0,
+      "net_lot": 430,
+      "buy_val": 0.65,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 49.4,
+    "smart_buy_lot": 437,
+    "retail_sell_lot": 3,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:42.636642"
+  },
+  "sb_SDRA": {
+    "ticker": "SDRA",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "MG",
+        "name": "Semesta Indovest",
+        "type": "MARKET_MAKER",
+        "signal": "SMART",
+        "buy_lot": 9362,
+        "sell_lot": 0,
+        "net_lot": 9362,
+        "buy_val": 0.22,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 8133,
+        "sell_lot": 0,
+        "net_lot": 8133,
+        "buy_val": 0.19,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 4455,
+        "sell_lot": 0,
+        "net_lot": 4455,
+        "buy_val": 0.1,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 2888,
+        "sell_lot": 0,
+        "net_lot": 2888,
+        "buy_val": 0.07,
+        "sell_val": 0.0
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 2773,
+        "sell_lot": 0,
+        "net_lot": 2773,
+        "buy_val": 0.06,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "KI",
+        "name": "Ciptadana",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 16646,
+        "net_lot": -16646,
+        "buy_val": 0.0,
+        "sell_val": 0.37
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 4841,
+        "net_lot": -4841,
+        "buy_val": 0.0,
+        "sell_val": 0.12
+      },
+      {
+        "code": "AZ",
+        "name": "Sucorinvest",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 3623,
+        "net_lot": -3623,
+        "buy_val": 0.0,
+        "sell_val": 0.08
+      },
+      {
+        "code": "RF",
+        "name": "RF",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1800,
+        "net_lot": -1800,
+        "buy_val": 0.0,
+        "sell_val": 0.04
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 1020,
+        "net_lot": -1020,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      }
+    ],
+    "dominant_buyer": {
+      "code": "MG",
+      "name": "Semesta Indovest",
+      "type": "MARKET_MAKER",
+      "signal": "SMART",
+      "buy_lot": 9362,
+      "sell_lot": 0,
+      "net_lot": 9362,
+      "buy_val": 0.22,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 41.6,
+    "smart_buy_lot": 12772,
+    "retail_sell_lot": 20270,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:42.698482"
+  },
+  "sb_MERK": {
+    "ticker": "MERK",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 2289,
+        "sell_lot": 0,
+        "net_lot": 2289,
+        "buy_val": 0.87,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 341,
+        "sell_lot": 0,
+        "net_lot": 341,
+        "buy_val": 0.13,
+        "sell_val": 0.0
+      },
+      {
+        "code": "RF",
+        "name": "RF",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 303,
+        "sell_lot": 0,
+        "net_lot": 303,
+        "buy_val": 0.11,
+        "sell_val": 0.0
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 299,
+        "sell_lot": 0,
+        "net_lot": 299,
+        "buy_val": 0.11,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 100,
+        "sell_lot": 0,
+        "net_lot": 100,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1796,
+        "net_lot": -1796,
+        "buy_val": 0.0,
+        "sell_val": 0.68
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 1759,
+        "net_lot": -1759,
+        "buy_val": 0.0,
+        "sell_val": 0.67
+      },
+      {
+        "code": "AK",
+        "name": "UBS",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 15,
+        "net_lot": -15,
+        "buy_val": 0.0,
+        "sell_val": 0.01
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 3,
+        "net_lot": -3,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      },
+      {
+        "code": "IH",
+        "name": "IH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 0,
+        "net_lot": 0,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      }
+    ],
+    "dominant_buyer": {
+      "code": "CC",
+      "name": "Mandiri Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 2289,
+      "sell_lot": 0,
+      "net_lot": 2289,
+      "buy_val": 0.87,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 76.7,
+    "smart_buy_lot": 2740,
+    "retail_sell_lot": 1759,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:43.365938"
+  },
+  "sb_ADMF": {
+    "ticker": "ADMF",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 891,
+        "sell_lot": 0,
+        "net_lot": 891,
+        "buy_val": 0.78,
+        "sell_val": 0.0
+      },
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 234,
+        "sell_lot": 0,
+        "net_lot": 234,
+        "buy_val": 0.2,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 132,
+        "sell_lot": 0,
+        "net_lot": 132,
+        "buy_val": 0.11,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 78,
+        "sell_lot": 0,
+        "net_lot": 78,
+        "buy_val": 0.07,
+        "sell_val": 0.0
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 51,
+        "sell_lot": 0,
+        "net_lot": 51,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 485,
+        "net_lot": -485,
+        "buy_val": 0.0,
+        "sell_val": 0.42
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 408,
+        "net_lot": -408,
+        "buy_val": 0.0,
+        "sell_val": 0.36
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 165,
+        "net_lot": -165,
+        "buy_val": 0.0,
+        "sell_val": 0.14
+      },
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 150,
+        "net_lot": -150,
+        "buy_val": 0.0,
+        "sell_val": 0.13
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 66,
+        "net_lot": -66,
+        "buy_val": 0.0,
+        "sell_val": 0.06
+      }
+    ],
+    "dominant_buyer": {
+      "code": "NI",
+      "name": "BNI Sekuritas",
+      "type": "LOCAL_INST",
+      "signal": "SMART",
+      "buy_lot": 891,
+      "sell_lot": 0,
+      "net_lot": 891,
+      "buy_val": 0.78,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 63.5,
+    "smart_buy_lot": 942,
+    "retail_sell_lot": 723,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:43.820772"
+  },
+  "sb_AGRS": {
+    "ticker": "AGRS",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "XA",
+        "name": "Henan Putihrai",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 38155,
+        "sell_lot": 0,
+        "net_lot": 38155,
+        "buy_val": 0.24,
+        "sell_val": 0.0
+      },
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 21776,
+        "sell_lot": 0,
+        "net_lot": 21776,
+        "buy_val": 0.14,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 12375,
+        "sell_lot": 0,
+        "net_lot": 12375,
+        "buy_val": 0.08,
+        "sell_val": 0.0
+      },
+      {
+        "code": "YJ",
+        "name": "YJ",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 9800,
+        "sell_lot": 0,
+        "net_lot": 9800,
+        "buy_val": 0.06,
+        "sell_val": 0.0
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 7447,
+        "sell_lot": 0,
+        "net_lot": 7447,
+        "buy_val": 0.05,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "BR",
+        "name": "BR",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 131995,
+        "net_lot": -131995,
+        "buy_val": 0.0,
+        "sell_val": 0.82
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1208,
+        "net_lot": -1208,
+        "buy_val": 0.0,
+        "sell_val": 0.01
+      },
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 165,
+        "net_lot": -165,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 123,
+        "net_lot": -123,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      },
+      {
+        "code": "QA",
+        "name": "QA",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 84,
+        "net_lot": -84,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      }
+    ],
+    "dominant_buyer": {
+      "code": "XA",
+      "name": "Henan Putihrai",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 38155,
+      "sell_lot": 0,
+      "net_lot": 38155,
+      "buy_val": 0.24,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 20.5,
+    "smart_buy_lot": 27275,
+    "retail_sell_lot": 0,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:44.043113"
+  },
+  "sb_IMAS": {
+    "ticker": "IMAS",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "SQ",
+        "name": "BCA Sekuritas",
+        "type": "OWNER_PROXY",
+        "signal": "SMART",
+        "buy_lot": 7675,
+        "sell_lot": 0,
+        "net_lot": 7675,
+        "buy_val": 0.66,
+        "sell_val": 0.0
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 1245,
+        "sell_lot": 0,
+        "net_lot": 1245,
+        "buy_val": 0.11,
+        "sell_val": 0.0
+      },
+      {
+        "code": "ZP",
+        "name": "Kim Eng (Maybank)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 425,
+        "sell_lot": 0,
+        "net_lot": 425,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 73,
+        "sell_lot": 0,
+        "net_lot": 73,
+        "buy_val": 0.01,
+        "sell_val": 0.0
+      },
+      {
+        "code": "EP",
+        "name": "RHB Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "NEUTRAL",
+        "buy_lot": 42,
+        "sell_lot": 0,
+        "net_lot": 42,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 7187,
+        "net_lot": -7187,
+        "buy_val": 0.0,
+        "sell_val": 0.62
+      },
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 0,
+        "sell_lot": 1295,
+        "net_lot": -1295,
+        "buy_val": 0.0,
+        "sell_val": 0.11
+      },
+      {
+        "code": "XC",
+        "name": "XC",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 466,
+        "net_lot": -466,
+        "buy_val": 0.0,
+        "sell_val": 0.04
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 261,
+        "net_lot": -261,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      },
+      {
+        "code": "DH",
+        "name": "DH",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 256,
+        "net_lot": -256,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      }
+    ],
+    "dominant_buyer": {
+      "code": "SQ",
+      "name": "BCA Sekuritas",
+      "type": "OWNER_PROXY",
+      "signal": "SMART",
+      "buy_lot": 7675,
+      "sell_lot": 0,
+      "net_lot": 7675,
+      "buy_val": 0.66,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 93.4,
+    "smart_buy_lot": 8957,
+    "retail_sell_lot": 1295,
+    "bandar_signal": "ACCUMULATION",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:44.492359"
+  },
+  "sb_WOMF": {
+    "ticker": "WOMF",
+    "available": true,
+    "top_buyers": [
+      {
+        "code": "YP",
+        "name": "Indo Premier (IPOT)",
+        "type": "RETAIL",
+        "signal": "RETAIL",
+        "buy_lot": 5658,
+        "sell_lot": 0,
+        "net_lot": 5658,
+        "buy_val": 0.15,
+        "sell_val": 0.0
+      },
+      {
+        "code": "XL",
+        "name": "XL",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 1049,
+        "sell_lot": 0,
+        "net_lot": 1049,
+        "buy_val": 0.04,
+        "sell_val": 0.0
+      },
+      {
+        "code": "GR",
+        "name": "Trimegah",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 729,
+        "sell_lot": 0,
+        "net_lot": 729,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      },
+      {
+        "code": "PD",
+        "name": "Indo Mirae Asset",
+        "type": "MARKET_MAKER",
+        "signal": "NEUTRAL",
+        "buy_lot": 618,
+        "sell_lot": 0,
+        "net_lot": 618,
+        "buy_val": 0.02,
+        "sell_val": 0.0
+      },
+      {
+        "code": "OD",
+        "name": "Danareksa",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 147,
+        "sell_lot": 0,
+        "net_lot": 147,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      }
+    ],
+    "top_sellers": [
+      {
+        "code": "YU",
+        "name": "CLSA",
+        "type": "FOREIGN_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 5374,
+        "net_lot": -5374,
+        "buy_val": 0.0,
+        "sell_val": 0.15
+      },
+      {
+        "code": "NI",
+        "name": "BNI Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 1930,
+        "net_lot": -1930,
+        "buy_val": 0.0,
+        "sell_val": 0.06
+      },
+      {
+        "code": "CC",
+        "name": "Mandiri Sekuritas",
+        "type": "LOCAL_INST",
+        "signal": "SMART",
+        "buy_lot": 0,
+        "sell_lot": 810,
+        "net_lot": -810,
+        "buy_val": 0.0,
+        "sell_val": 0.02
+      },
+      {
+        "code": "KK",
+        "name": "KK",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 412,
+        "net_lot": -412,
+        "buy_val": 0.0,
+        "sell_val": 0.01
+      },
+      {
+        "code": "CP",
+        "name": "CP",
+        "type": "UNKNOWN",
+        "signal": "NEUTRAL",
+        "buy_lot": 0,
+        "sell_lot": 20,
+        "net_lot": -20,
+        "buy_val": 0.0,
+        "sell_val": 0.0
+      }
+    ],
+    "dominant_buyer": {
+      "code": "YP",
+      "name": "Indo Premier (IPOT)",
+      "type": "RETAIL",
+      "signal": "RETAIL",
+      "buy_lot": 5658,
+      "sell_lot": 0,
+      "net_lot": 5658,
+      "buy_val": 0.15,
+      "sell_val": 0.0
+    },
+    "smart_buy_pct": 12.4,
+    "smart_buy_lot": 1061,
+    "retail_sell_lot": 0,
+    "bandar_signal": "NEUTRAL",
+    "trade_date": "2026-07-31",
+    "source": "stockbit",
+    "_fetched": "2026-08-01T11:05:44.593671"
   }
 }

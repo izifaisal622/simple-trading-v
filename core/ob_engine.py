@@ -120,6 +120,10 @@ class EngineState:
     trailing_bottom: float
     internal_leg: int = 0   # BULLISH(1)/BEARISH(-1) — arah leg internal terkini
     swing_leg: int = 0      # BULLISH(1)/BEARISH(-1) — arah leg swing terkini
+    atr200: float = float("nan")  # v10.4.0: ADITIF — expose ATR yg sudah dihitung causal
+    # (rolling/ewm, lihat _compute_atr) sbg output, TANPA ubah komputasi yg
+    # sudah ada. Dipakai tahap 2 utk extension-move penalty (seberapa jauh
+    # harga sudah lari dari swing low asal leg, dinormalisasi ATR).
 
 
 class VidyaSmcEngine:
@@ -275,6 +279,7 @@ class VidyaSmcEngine:
                 ob_trigger_level=ob_trigger,
                 trailing_top=trailing_top, trailing_bottom=trailing_bottom,
                 internal_leg=leg_internal.leg, swing_leg=leg_swing.leg,
+                atr200=float(atr200.iloc[i]) if not np.isnan(atr200.iloc[i]) else float("nan"),
             ))
         return out
 
