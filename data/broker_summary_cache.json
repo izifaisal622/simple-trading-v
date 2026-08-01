@@ -1357,7 +1357,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:41.022374"
+    "_fetched": "2026-08-01T17:10:44.908688"
   },
   "sb_MAHA": {
     "ticker": "MAHA",
@@ -2853,7 +2853,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:31.869866"
+    "_fetched": "2026-08-01T17:10:40.236219"
   },
   "sb_SDMU": {
     "ticker": "SDMU",
@@ -3805,7 +3805,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:25.220406"
+    "_fetched": "2026-08-01T17:10:35.664200"
   },
   "sb_TINS": {
     "ticker": "TINS",
@@ -3941,7 +3941,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:25.221225"
+    "_fetched": "2026-08-01T17:10:35.742969"
   },
   "sb_PACK": {
     "ticker": "PACK",
@@ -4077,7 +4077,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:25.323394"
+    "_fetched": "2026-08-01T17:10:36.138233"
   },
   "sb_ERAA": {
     "ticker": "ERAA",
@@ -4213,7 +4213,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:25.331339"
+    "_fetched": "2026-08-01T17:10:35.738415"
   },
   "sb_IRSX": {
     "ticker": "IRSX",
@@ -4349,7 +4349,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:25.438382"
+    "_fetched": "2026-08-01T17:10:36.154080"
   },
   "sb_KOTA": {
     "ticker": "KOTA",
@@ -4485,7 +4485,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:25.465863"
+    "_fetched": "2026-08-01T17:10:35.956812"
   },
   "sb_DMAS": {
     "ticker": "DMAS",
@@ -4621,7 +4621,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:25.638088"
+    "_fetched": "2026-08-01T17:10:36.251825"
   },
   "sb_GPSO": {
     "ticker": "GPSO",
@@ -4757,7 +4757,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:25.666030"
+    "_fetched": "2026-08-01T17:10:36.234971"
   },
   "sb_SGER": {
     "ticker": "SGER",
@@ -4893,7 +4893,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:27.904134"
+    "_fetched": "2026-08-01T17:10:37.285291"
   },
   "sb_SIDO": {
     "ticker": "SIDO",
@@ -5029,7 +5029,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:28.166684"
+    "_fetched": "2026-08-01T17:10:37.856882"
   },
   "sb_MDIA": {
     "ticker": "MDIA",
@@ -5165,7 +5165,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:28.939070"
+    "_fetched": "2026-08-01T17:10:37.716914"
   },
   "sb_BWPT": {
     "ticker": "BWPT",
@@ -5301,7 +5301,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:28.960683"
+    "_fetched": "2026-08-01T17:10:38.265017"
   },
   "sb_SIMP": {
     "ticker": "SIMP",
@@ -5437,7 +5437,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:29.007587"
+    "_fetched": "2026-08-01T17:10:38.264144"
   },
   "sb_YELO": {
     "ticker": "YELO",
@@ -5573,7 +5573,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:29.240456"
+    "_fetched": "2026-08-01T17:10:38.547583"
   },
   "sb_JARR": {
     "ticker": "JARR",
@@ -5709,7 +5709,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:29.366874"
+    "_fetched": "2026-08-01T17:10:38.549410"
   },
   "sb_NISP": {
     "ticker": "NISP",
@@ -5845,7 +5845,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:30.055498"
+    "_fetched": "2026-08-01T17:10:38.546005"
   },
   "sb_MPMX": {
     "ticker": "MPMX",
@@ -5981,7 +5981,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:30.452743"
+    "_fetched": "2026-08-01T17:10:38.883649"
   },
   "sb_MBSS": {
     "ticker": "MBSS",
@@ -6117,7 +6117,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:30.712428"
+    "_fetched": "2026-08-01T17:10:39.309261"
   },
   "sb_SRSN": {
     "ticker": "SRSN",
@@ -6253,7 +6253,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:31.673540"
+    "_fetched": "2026-08-01T17:10:39.328959"
   },
   "sb_SMSM": {
     "ticker": "SMSM",
@@ -6389,7 +6389,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:31.871127"
+    "_fetched": "2026-08-01T17:10:40.316753"
   },
   "sb_SMDR": {
     "ticker": "SMDR",
@@ -6525,7 +6525,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:32.207230"
+    "_fetched": "2026-08-01T17:10:40.489971"
   },
   "sb_ULTJ": {
     "ticker": "ULTJ",
@@ -6661,7 +6661,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:32.296305"
+    "_fetched": "2026-08-01T17:10:40.399078"
   },
   "sb_BIRD": {
     "ticker": "BIRD",
@@ -6797,7 +6797,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:33.314024"
+    "_fetched": "2026-08-01T17:10:40.743667"
   },
   "sb_OPMS": {
     "ticker": "OPMS",
@@ -6933,7 +6933,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:33.478593"
+    "_fetched": "2026-08-01T17:10:40.747650"
   },
   "sb_TOTL": {
     "ticker": "TOTL",
@@ -7069,7 +7069,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:34.046280"
+    "_fetched": "2026-08-01T17:10:41.028332"
   },
   "sb_BINA": {
     "ticker": "BINA",
@@ -7172,7 +7172,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:34.203110"
+    "_fetched": "2026-08-01T17:10:41.052973"
   },
   "sb_CFIN": {
     "ticker": "CFIN",
@@ -7308,7 +7308,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:34.822217"
+    "_fetched": "2026-08-01T17:10:41.860195"
   },
   "sb_PANS": {
     "ticker": "PANS",
@@ -7444,7 +7444,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:35.708272"
+    "_fetched": "2026-08-01T17:10:42.197487"
   },
   "sb_KDTN": {
     "ticker": "KDTN",
@@ -7580,7 +7580,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:35.965129"
+    "_fetched": "2026-08-01T17:10:42.301611"
   },
   "sb_PSDN": {
     "ticker": "PSDN",
@@ -7716,7 +7716,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:37.022630"
+    "_fetched": "2026-08-01T17:10:42.740026"
   },
   "sb_WEHA": {
     "ticker": "WEHA",
@@ -7852,7 +7852,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:37.600792"
+    "_fetched": "2026-08-01T17:10:43.111715"
   },
   "sb_ESTI": {
     "ticker": "ESTI",
@@ -7988,7 +7988,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:37.614439"
+    "_fetched": "2026-08-01T17:10:43.033542"
   },
   "sb_FWCT": {
     "ticker": "FWCT",
@@ -8124,7 +8124,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:37.899622"
+    "_fetched": "2026-08-01T17:10:43.113070"
   },
   "sb_SILO": {
     "ticker": "SILO",
@@ -8260,7 +8260,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:38.080975"
+    "_fetched": "2026-08-01T17:10:43.420416"
   },
   "sb_MSKY": {
     "ticker": "MSKY",
@@ -8396,7 +8396,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:38.083985"
+    "_fetched": "2026-08-01T17:10:43.110969"
   },
   "sb_MLBI": {
     "ticker": "MLBI",
@@ -8532,7 +8532,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:38.464872"
+    "_fetched": "2026-08-01T17:10:43.830003"
   },
   "sb_FAST": {
     "ticker": "FAST",
@@ -8668,7 +8668,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:39.528012"
+    "_fetched": "2026-08-01T17:10:44.250695"
   },
   "sb_SMAR": {
     "ticker": "SMAR",
@@ -8804,7 +8804,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:39.529114"
+    "_fetched": "2026-08-01T17:10:43.858010"
   },
   "sb_INOV": {
     "ticker": "INOV",
@@ -8940,7 +8940,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:40.082372"
+    "_fetched": "2026-08-01T17:10:44.772465"
   },
   "sb_ERTX": {
     "ticker": "ERTX",
@@ -9076,7 +9076,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:41.401516"
+    "_fetched": "2026-08-01T17:10:45.267628"
   },
   "sb_UCID": {
     "ticker": "UCID",
@@ -9212,7 +9212,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:41.427917"
+    "_fetched": "2026-08-01T17:10:45.397206"
   },
   "sb_BEST": {
     "ticker": "BEST",
@@ -9348,7 +9348,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:41.490627"
+    "_fetched": "2026-08-01T17:10:45.525579"
   },
   "sb_SGRO": {
     "ticker": "SGRO",
@@ -9484,7 +9484,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:41.636849"
+    "_fetched": "2026-08-01T17:10:45.579493"
   },
   "sb_AWAN": {
     "ticker": "AWAN",
@@ -9620,7 +9620,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:42.344815"
+    "_fetched": "2026-08-01T17:10:45.575594"
   },
   "sb_UNIC": {
     "ticker": "UNIC",
@@ -9756,7 +9756,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:42.636642"
+    "_fetched": "2026-08-01T17:10:45.817027"
   },
   "sb_SDRA": {
     "ticker": "SDRA",
@@ -9892,7 +9892,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:42.698482"
+    "_fetched": "2026-08-01T17:10:46.258838"
   },
   "sb_MERK": {
     "ticker": "MERK",
@@ -10028,7 +10028,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:43.365938"
+    "_fetched": "2026-08-01T17:10:46.345574"
   },
   "sb_ADMF": {
     "ticker": "ADMF",
@@ -10164,7 +10164,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:43.820772"
+    "_fetched": "2026-08-01T17:10:46.855207"
   },
   "sb_AGRS": {
     "ticker": "AGRS",
@@ -10300,7 +10300,7 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:44.043113"
+    "_fetched": "2026-08-01T17:10:46.770393"
   },
   "sb_IMAS": {
     "ticker": "IMAS",
@@ -10436,7 +10436,7 @@
     "bandar_signal": "ACCUMULATION",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:44.492359"
+    "_fetched": "2026-08-01T17:10:47.128435"
   },
   "sb_WOMF": {
     "ticker": "WOMF",
@@ -10572,6 +10572,6 @@
     "bandar_signal": "NEUTRAL",
     "trade_date": "2026-07-31",
     "source": "stockbit",
-    "_fetched": "2026-08-01T11:05:44.593671"
+    "_fetched": "2026-08-01T17:10:47.159853"
   }
 }

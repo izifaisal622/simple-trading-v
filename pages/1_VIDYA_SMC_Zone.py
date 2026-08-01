@@ -18,6 +18,7 @@ begitu pivot internal digantikan pivot baru (mekanisme Pine asli, v10.1 fix).
 """
 import sys
 import streamlit as st
+import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
@@ -192,59 +193,36 @@ if filtered:
             continue
 
     if floor_rows:
-        # v10.4.0 FIX: entry_zone_label bawaan whale_scanner.py mengandung
-        # bahasa verdict trading ("Skip"/"Acceptable") yg dirancang utk
-        # filosofi AKUMULASI-DI-FLOOR (mean-reversion) — BERTENTANGAN dgn
-        # filosofi inti page 1 (breakout-retest, yg SENGAJA menunggu harga
-        # naik dulu sebelum retest, jadi harga WAJAR jauh dari floor absolut).
-        # User menunjukkan kasus nyata (RGAS: conviction 100% VIDYA+SMC tapi
-        # "Skip" dari floor whale) — dua sinyal saling bertentangan di kartu
-        # yg sama. Diganti label NETRAL (jarak fakta, tanpa rekomendasi
-        # trading) — verdict trading di halaman ini murni dari conviction_pct
-        # milik page 1 sendiri, bukan dicampur logika page 2.
-        zone_label_neutral = {
-            "AT_FLOOR": "Dekat floor", "NEAR_FLOOR": "Dekat floor",
-            "MID_RANGE": "Jarak sedang dari floor", "FAR_FROM_FLOOR": "Jauh dari floor",
-        }
-        table_rows = ""
-        for r, fm in floor_rows:
-            label = zone_label_neutral.get(fm["entry_zone"], "-")
-            table_rows += (
-                '<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
-                f'<td style="padding:0.5rem 0.8rem;font-family:Orbitron,monospace;'
-                f'font-weight:700">{r["ticker"]}</td>'
-                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
-                f'font-family:Share Tech Mono,monospace">Rp{r["close"]:,.0f}</td>'
-                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
-                f'font-family:Share Tech Mono,monospace">Rp{fm["floor_price"]:,.0f}</td>'
-                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
-                f'font-family:Share Tech Mono,monospace">Rp{fm["vwap_60d"]:,.0f}</td>'
-                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
-                f'font-family:Share Tech Mono,monospace">{fm["pct_above_floor"]:+.1f}%</td>'
-                f'<td style="padding:0.5rem 0.8rem;color:var(--text-muted)">{label}</td>'
-                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
-                f'font-family:Share Tech Mono,monospace">{r["conviction_pct"]}%</td>'
-                f'<td style="padding:0.5rem 0.8rem;text-align:right;'
-                f'font-family:Share Tech Mono,monospace">{fm["ff_vol"]:.1f}\u00d7</td>'
-                f'<td style="padding:0.5rem 0.8rem">{fm["sector"]}</td>'
-                '</tr>'
-            )
-        table_html = (
-            '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;'
-            'font-size:var(--text-sm)">'
-            '<thead><tr style="background:rgba(255,255,255,0.03);text-align:left">'
-            '<th style="padding:0.5rem 0.8rem">Ticker</th>'
-            '<th style="padding:0.5rem 0.8rem;text-align:right">Price</th>'
-            '<th style="padding:0.5rem 0.8rem;text-align:right">Floor</th>'
-            '<th style="padding:0.5rem 0.8rem;text-align:right">VWAP60</th>'
-            '<th style="padding:0.5rem 0.8rem;text-align:right">%\u2191Floor</th>'
-            '<th style="padding:0.5rem 0.8rem">Zone</th>'
-            '<th style="padding:0.5rem 0.8rem;text-align:right">Conv</th>'
-            '<th style="padding:0.5rem 0.8rem;text-align:right">FF-Vol\u00d7</th>'
-            '<th style="padding:0.5rem 0.8rem">Sector</th>'
-            '</tr></thead><tbody>' + table_rows + '</tbody></table></div>'
+        # v10.3.8: kembalikan entry_zone_label ASLI (dgn ikon ✅/❌/🎯/🟡 +
+        # bahasa "Skip"/"Acceptable") sesuai permintaan user — pertimbangan
+        # filosofis dari 10.3.6 (verdict floor-whale vs breakout-retest
+        # VIDYA+SMC bisa saling bertentangan, lihat RGAS) TETAP berlaku scr
+        # konsep, tapi user sudah paham konteks itu dan memilih tetap ingin
+        # lihat info floor apa adanya sbg referensi tambahan, bukan dihapus.
+        df_table = pd.DataFrame([
+            {
+                "Ticker": r["ticker"], "Price": r["close"], "Floor": fm["floor_price"],
+                "VWAP60": fm["vwap_60d"], "%↑Floor": fm["pct_above_floor"],
+                "Zone": fm["entry_zone_label"], "Conv": r["conviction_pct"],
+                "FF-Vol×": fm["ff_vol"], "Sector": fm["sector"],
+            }
+            for r, fm in floor_rows
+        ])
+        # v10.3.8 BARU: st.dataframe native sortable (klik header kolom utk
+        # urutkan) — ganti dari tabel HTML statis. Kolom numerik tetap
+        # bertipe angka asli (bukan string pre-formatted) supaya sort-nya
+        # numerik benar, formatting tampilan diatur via column_config.
+        st.dataframe(
+            df_table, hide_index=True, width="stretch",
+            column_config={
+                "Price": st.column_config.NumberColumn(format="Rp%d"),
+                "Floor": st.column_config.NumberColumn(format="Rp%d"),
+                "VWAP60": st.column_config.NumberColumn(format="Rp%d"),
+                "%↑Floor": st.column_config.NumberColumn(format="%.1f%%"),
+                "Conv": st.column_config.NumberColumn(format="%d%%"),
+                "FF-Vol×": st.column_config.NumberColumn(format="%.1f×"),
+            },
         )
-        st.markdown(table_html, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     sec_head("RINGKASAN ANALISIS")
@@ -261,7 +239,6 @@ if filtered:
         if _sel_r and _sel_fm:
             zona_str = ("Rp{:,.0f} - Rp{:,.0f}".format(_sel_r["zone_bottom"], _sel_r["zone_top"])
                        if _sel_r["zone_top"] else "-")
-            label = zone_label_neutral.get(_sel_fm["entry_zone"], "-")
             ext_pen = _sel_r.get("extension_penalty", 0) or 0
             ext_atr = _sel_r.get("extension_atr", 0) or 0
             ext_line = (
@@ -269,6 +246,29 @@ if filtered:
                 f'-{ext_pen} poin (harga {ext_atr:.1f}x ATR dari swing low awal)</span>'
                 if ext_pen > 0 else ""
             )
+            # v10.3.8 BARU: "in depth" — breakdown skor lengkap (BASE/RETEST/
+            # VIDYA/VOL/STRUCT/EXT) sama spt di kartu utama, + info bars_since_
+            # formed, ditambahkan ke Ringkasan Analisis (sebelumnya cuma
+            # ringkasan angka final, tak ada rincian per-komponen di sini).
+            def _mini_badge(label, val, color):
+                op = "1" if val > 0 else "0.35"
+                return (f'<span style="opacity:{op};border:1px solid {color};color:{color};'
+                        f'border-radius:3px;padding:2px 8px;font-size:var(--text-xs);'
+                        f'font-family:Share Tech Mono,monospace;margin-right:5px">'
+                        f'{label} {val}%</span>')
+            breakdown_html = (
+                _mini_badge("BASE", _sel_r["base_pct"], NEON_GREEN) +
+                _mini_badge("RETEST", _sel_r["retest_pct"], NEON_GREEN) +
+                _mini_badge("VIDYA", _sel_r["vidya_pct"], C_INFO) +
+                _mini_badge("VOL", _sel_r["volume_pct"], C_INFO) +
+                _mini_badge("STRUCT", _sel_r["structure_pct"], C_WARNING) +
+                (f'<span style="opacity:1;border:1px solid {C_DANGER};color:{C_DANGER};'
+                 f'border-radius:3px;padding:2px 8px;font-size:var(--text-xs);'
+                 f'font-family:Share Tech Mono,monospace;margin-right:5px">'
+                 f'\u26a0 EXT -{ext_pen}%</span>' if ext_pen > 0 else "")
+            )
+            bars_since = _sel_r.get("bars_since_formed")
+            bars_line = f" | {bars_since} hari sejak zona terbentuk" if bars_since is not None else ""
             detail_html = (
                 '<div style="background:var(--bg-card);border-left:4px solid var(--accent);'
                 'border-radius:var(--r-md);padding:1rem 1.2rem">'
@@ -282,12 +282,16 @@ if filtered:
                 '<div style="margin-top:0.6rem;font-family:Share Tech Mono,monospace;'
                 'font-size:var(--text-sm);line-height:1.8">'
                 f'Conviction: <b>{_sel_r["conviction_pct"]}%</b> | '
-                f'Zona retest: {zona_str} | Retest {_sel_r["retest_hold_days"]}/2 hari{ext_line}<br>'
+                f'Zona retest: {zona_str} | Retest {_sel_r["retest_hold_days"]}/2 hari{bars_line}{ext_line}<br>'
                 f'Floor: Rp{_sel_fm["floor_price"]:,.0f} | VWAP60: Rp{_sel_fm["vwap_60d"]:,.0f} | '
-                f'{label} ({_sel_fm["pct_above_floor"]:+.1f}%)<br>'
+                f'{_sel_fm["entry_zone_label"]} ({_sel_fm["pct_above_floor"]:+.1f}%)<br>'
                 f'Sector: {_sel_fm["sector"]} | FF-Vol: {_sel_fm["ff_vol"]:.1f}\u00d7'
+                '</div>'
+                '<div style="margin-top:0.8rem;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,0.08)">'
+                + breakdown_html +
                 '</div></div>'
             )
+
             st.markdown(detail_html, unsafe_allow_html=True)
         else:
             st.info("Data floor price ticker ini belum tersedia (kemungkinan riwayat harga kurang dari 21 hari).")
