@@ -41,7 +41,7 @@ from core.ob_engine import run_engine, BULLISH
 RETEST_CAP_DAYS = 2
 EXPIRY_BARS = 5  # hari bursa
 
-# v10.4.0 — EXTENSION-MOVE PENALTY (freeze discontinued sadar oleh user utk
+# v10.3.6 — EXTENSION-MOVE PENALTY (freeze discontinued sadar oleh user utk
 # bulan ini, per instruksi eksplisit "bangun sistem terkuat"). Motivasi:
 # formula skor SEBELUMNYA memperlakukan retest setelah naik 10% SAMA PERSIS
 # dgn retest setelah naik 200%. User menunjukkan kasus nyata (RGAS, retest
@@ -49,11 +49,26 @@ EXPIRY_BARS = 5  # hari bursa
 # masuk akal scr visual.
 #
 # extension_atr = (close - origin_low) / atr_saat_zona_terbentuk
-# Ambang BELUM divalidasi empiris thd data IDX nyata — heuristik awal,
-# mudah disesuaikan via konstanta ini stlh data zone_scans cukup utk evaluasi.
-EXTENSION_SAFE_ATR       = 3.0
+# origin_low = trailing_bottom (swing low level SWING/50-bar) SAAT zona
+# terbentuk — ini SENGAJA beda skala dgn zona itu sendiri (level internal/
+# 5-bar): origin perlu merepresentasikan "dari mana RALLY BESAR dimulai",
+# bukan cuma tepi zona retest lokal (sempat dicoba pakai zona.bottom sendiri,
+# TERBUKTI salah konsep — retest valid SELALU dekat zona.bottom by definisi,
+# jadi penalti jadi nyaris selalu 0, menghapus tujuan fitur ini).
+# v10.3.7 KALIBRASI ULANG — berbasis distribusi NYATA 334 zona produksi
+# (2026-08-01, lihat diagnose_extension_distribution.py): ambang lama 3.0
+# TERBUKTI menghukum 74% populasi (median populasi 4.49x SUDAH di atas
+# ambang "aman" 3.0 itu sendiri) — bukan menyaring outlier, tapi menghukum
+# perilaku NORMAL. Statistik: P10=1.54 P25=2.92 P50=4.49 P75=7.36 P90=12.07
+# max=38.57. Ambang baru 8.0 (~P75) — hanya kuartil paling ekstensif kena
+# penalti. Laju per-ATR diturunkan 8->5 spy gradasi lebih halus mengikuti
+# ekor distribusi panjang (RGAS dkk sampai 22-38x), tak langsung mentok cap.
+# CATATAN: kalibrasi ini dari SATU hari snapshot (334 zona), bukan baseline
+# statistik jangka panjang — kandidat kuat utk ditinjau ulang stlh beberapa
+# minggu data zone_scans terkumpul, sama spt semangat freeze yg lain.
+EXTENSION_SAFE_ATR       = 8.0
 EXTENSION_MAX_PENALTY    = 25
-EXTENSION_PENALTY_PER_ATR = 8
+EXTENSION_PENALTY_PER_ATR = 5
 
 STATE_WATCHING = "WATCHING"
 STATE_INVALIDATED = "INVALIDATED"
