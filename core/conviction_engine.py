@@ -100,11 +100,30 @@ class ConvictionState:
     # dari event vidya_flipped_up TERAKHIR (lihat EngineState di ob_engine.py)
     # ke bar ini. None kalau belum pernah ada flip sepanjang histori sampai
     # bar ini. MURNI INFORMATIF — belum dipakai di _score() sama sekali,
-    # skor conviction_pct/vidya_pct TIDAK berubah dari sebelumnya. Tujuan:
-    # ukur dulu distribusi nyatanya (via diagnostic terpisah) sebelum berani
-    # tentukan ambang "fresh flip" utk golden setup Fase 3 — sama spt alur
-    # kalibrasi extension_safe_atr di Fase 2 yg terbukti berhasil (tebakan
-    # awal 10.5 dari sample tipis vs angka final 9.5 dari sample luas).
+    # skor conviction_pct/vidya_pct TIDAK berubah dari sebelumnya.
+    zone_ordinal_since_flip: Optional[int] = None  # v10.5.2 ADITIF — zona
+    # KE BERAPA yg terbentuk sejak flip vidya_flipped_up TERAKHIR (1 = zona
+    # pertama setelah flip, 2 = zona kedua tanpa ada flip baru di antaranya,
+    # dst). None kalau zona ini terbentuk sebelum ada flip sama sekali di
+    # histori, atau kalau bar ini tidak sedang di dalam zona aktif mana pun.
+    # DIBEKUKAN saat zona terbentuk (persis pola origin_low/origin_atr di
+    # _ActiveZone) — tidak berubah lagi sepanjang umur zona itu.
+    #
+    # LATAR BELAKANG (v10.5.1 -> v10.5.2, koreksi arah): validasi awal
+    # bars_since_vidya_flip (v10.5.0/10.5.1) mengurutkan dari angka TERKECIL
+    # sbg kandidat "golden setup" -- user cross-check manual ke TradingView
+    # (BBCA, flip 12 Jun 2026 -> OB terbentuk 1 Jul -> entry 2 Jul, jarak
+    # ~30 bar 4h) dan itu duduk di sekitar MEDIAN (35) distribusi, BUKAN di
+    # ekor angka kecil (0-2) yg saya tampilkan sbg "contoh terdekat".
+    # bars_since_vidya_flip=0 artinya flip & retest terjadi di bar YANG SAMA
+    # (V-turn instan) -- kasus ekstrem, bukan representasi pola user (flip
+    # dulu, harga masih lanjut turun bikin koreksi/OB, baru retest belakangan).
+    # zone_ordinal_since_flip=1 lebih dekat scr struktural ke pola user:
+    # "zona PERTAMA yg terbentuk & di-retest sejak flip terakhir", TERLEPAS
+    # dari berapa lama jaraknya scr bar (bisa 10 bar, bisa 50 bar, tergantung
+    # dalamnya koreksi) -- beda dari bars_since_vidya_flip yg ukur DURASI,
+    # ordinal ini ukur URUTAN. MASIH BELUM dipakai di _score() -- perlu
+    # cross-check visual ulang dulu sblm jadi dasar bobot skor apa pun.
     note: str = ""
 
 
@@ -120,6 +139,7 @@ class _ActiveZone:
     last_struct_ok: bool = False
     origin_low: float = float("nan")   # v10.4.0 — trailing_bottom SAAT zona terbentuk (dibekukan)
     origin_atr: float = float("nan")   # v10.4.0 — atr200 SAAT zona terbentuk (dibekukan)
+    zone_ordinal_since_flip: Optional[int] = None  # v10.5.2 — dibekukan SAAT zona terbentuk
 
 
 
@@ -185,6 +205,8 @@ def run_conviction(df: pd.DataFrame,
     active: Optional[_ActiveZone] = None
     last_seen_pivot_bar = -1  # utk deteksi "pivot internal baru" (zona kandidat baru)
     last_flip_bar: Optional[int] = None  # v10.5.0 ADITIF — bar_index event vidya_flipped_up terakhir
+    ordinal_flip_ref: Optional[int] = None  # v10.5.2 ADITIF — last_flip_bar SAAT ordinal counter terakhir dipakai
+    ordinal_counter: int = 0  # v10.5.2 ADITIF — zona ke berapa sejak ordinal_flip_ref
 
     for i, es in enumerate(engine_states):
         close = es.close
@@ -245,10 +267,22 @@ def run_conviction(df: pd.DataFrame,
                 # Pivot internal BARU (bar_index berubah) DAN kandidat zona ada
                 # → bekukan sebagai zona aktif. Zona TIDAK ikut bergeser lagi
                 # setelah titik ini (aturan keras user).
+                # v10.5.2 ADITIF — hitung ordinal zona sejak flip terakhir, dibekukan
+                if last_flip_bar is None:
+                    zone_ordinal = None
+                elif last_flip_bar == ordinal_flip_ref:
+                    ordinal_counter += 1
+                    zone_ordinal = ordinal_counter
+                else:
+                    ordinal_flip_ref = last_flip_bar
+                    ordinal_counter = 1
+                    zone_ordinal = ordinal_counter
+
                 active = _ActiveZone(
                     top=es.ob_candidate_top, bottom=es.ob_candidate_bottom,
                     formed_bar_index=i, pivot_bar_index=es.internal_high.bar_index,
                     origin_low=es.trailing_bottom, origin_atr=es.atr200,
+                    zone_ordinal_since_flip=zone_ordinal,
                 )
                 last_seen_pivot_bar = es.internal_high.bar_index
                 status = STATE_WATCHING
@@ -268,6 +302,7 @@ def run_conviction(df: pd.DataFrame,
                 vidya_pct=vidya_pct, volume_pct=vol_pct, structure_pct=struct_pct,
                 extension_penalty=ext_pen, extension_atr=ext_atr,
                 bars_since_vidya_flip=bars_since_flip,
+                zone_ordinal_since_flip=active.zone_ordinal_since_flip,
                 note=note,
             ))
         else:

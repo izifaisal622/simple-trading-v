@@ -1,28 +1,37 @@
 """
-diagnose_golden_setup.py — Fase 3 tahap 1: ukur DISTRIBUSI NYATA
-bars_since_vidya_flip pada momen "retest pertama kali terkonfirmasi"
-(retest_hold_days baru saja jadi 1 di sebuah zona WATCHING), di 40 ticker
-IDX_WATCHLIST, cadence 4h.
+diagnose_golden_setup.py — Fase 3 tahap 1: cari proxy data utk "golden
+setup" (VIDYA belok hijau -> koreksi turun membentuk OB zone -> retest ->
+reversal candle -> entry), di 40 ticker IDX_WATCHLIST, cadence 4h.
 
-KENAPA INI PERLU (jangan skip): mekanisme vidya_flipped_up/bars_since_
-vidya_flip yang baru ditambahkan (v10.5.0) MURNI ADITIF — belum mengubah
-skor apa pun. Sebelum berani menentukan ambang "fresh flip" utk golden
-setup (mis. bars_since_vidya_flip <= X dianggap "segar", kasih bonus skor
-vidya_pct lebih tinggi drpd VIDYA yg sudah hijau lama), kita WAJIB lihat
-dulu bagaimana sebaran angka ini di data nyata — persis alur yg sama yg
-dipakai Fase 2 utk extension_safe_atr (tebakan awal dari sample kecil
-sering meleset, lihat histori 10.5 -> 9.5).
+RIWAYAT PENDEKATAN (v10.5.0/10.5.1 -> v10.5.2, KOREKSI ARAH):
+Versi awal mengukur bars_since_vidya_flip (jarak bar mentah dari flip
+terakhir) di titik retest pertama, lalu mengurutkan dari angka TERKECIL
+sbg kandidat "paling golden". User cross-check manual ke TradingView
+(BBCA: flip 12 Jun 2026 -> OB terbentuk 1 Jul -> entry 2 Jul, jarak ~30
+bar 4h) -- hasilnya duduk di sekitar MEDIAN (35) distribusi waktu itu,
+BUKAN di ekor angka kecil (0-2) yg ditampilkan sbg "8 kasus terdekat".
+bars_since_vidya_flip=0 artinya flip & retest terjadi di BAR YANG SAMA
+(V-turn instan) -- kasus ekstrem, bukan representasi pola user.
 
-MOMEN YANG DIUKUR: retest pertama kali terkonfirmasi per zona (retest_hold_
-days 0->1 di status WATCHING) — ini titik paling relevan dgn "golden setup"
-favorit user: VIDYA baru belok hijau, lalu pullback, lalu (di titik retest
-pertama ini) mulai kelihatan reversal-nya beneran atau tidak. Kalau di titik
-ini bars_since_vidya_flip kecil (VIDYA baru saja belok), itu closer ke pola
-chart yg user maksud drpd VIDYA yg sudah hijau puluhan bar sebelum retest.
+KOREKSI: yg membedakan pola user bukan DURASI (berapa bar), tapi URUTAN
+-- apakah zona OB ini zona PERTAMA yg terbentuk & di-retest sejak flip
+vidya terakhir (zone_ordinal_since_flip == 1), terlepas dari berapa lama
+jaraknya scr bar (bisa 10 bar kalau koreksi dangkal, bisa 50 bar kalau
+koreksi dalam). Field ini baru ditambah v10.5.2 di conviction_engine.py
+(ConvictionState.zone_ordinal_since_flip), MURNI ADITIF, _score() belum
+disentuh sama sekali.
+
+YANG DIUKUR DI SINI:
+  1. Distribusi bars_since_vidya_flip KHUSUS pada zona ordinal==1 (bukan
+     campur semua ordinal spt versi sebelumnya) -- ini nunjukin berapa
+     lama tipikal "siklus koreksi pertama" stlh flip berlangsung.
+  2. Contoh konkret ordinal==1 disebar dari MIN sampai MAX (bukan cuma
+     yg terkecil) -- supaya cross-check visual user lihat rentang penuh,
+     bukan cuma ekor ekstrem yg terbukti menyesatkan di v10.5.1.
 
 Jalankan dari folder repo: python diagnose_golden_setup.py
 Read-only, tidak menyentuh cache/DB produksi. Sample = IDX_WATCHLIST (40
-ticker, sama dgn Fase 2) — konsisten dgn metodologi kalibrasi sebelumnya.
+ticker) — konsisten dgn metodologi Fase 2.
 """
 import sys
 sys.path.insert(0, ".")
@@ -55,8 +64,11 @@ def diagnose_one(ticker: str, idx: int = 0, total: int = 0) -> dict:
 
     # Deteksi momen "retest pertama kali terkonfirmasi": retest_hold_days
     # baru jadi 1 (dari 0) di status WATCHING, dalam zona yg SAMA
-    # (formed_bar_index sama dgn bar sebelumnya di zona tsb).
-    first_retest_events = []  # list of bars_since_vidya_flip (None dibuang di sini, dihitung terpisah)
+    # (formed_bar_index sama dgn bar sebelumnya di zona tsb). Dari situ
+    # filter KHUSUS zone_ordinal_since_flip == 1.
+    ordinal1_bars_since_flip = []  # v10.5.2 — cuma dari zona ordinal==1
+    ordinal1_detail = []
+    ordinal_dist = {}  # v10.5.2 — sanity check: sebaran ordinal scr umum (1,2,3,...)
     none_count = 0
     prev_formed = None
     prev_retest_days = None
@@ -65,24 +77,33 @@ def diagnose_one(ticker: str, idx: int = 0, total: int = 0) -> dict:
             is_new_zone_context = (s.formed_bar_index != prev_formed)
             baseline_retest = 0 if is_new_zone_context else prev_retest_days
             if baseline_retest == 0 and s.retest_hold_days == 1:
-                if s.bars_since_vidya_flip is None:
-                    none_count += 1
-                else:
-                    first_retest_events.append(s.bars_since_vidya_flip)
+                ordinal_dist[s.zone_ordinal_since_flip] = ordinal_dist.get(s.zone_ordinal_since_flip, 0) + 1
+                if s.zone_ordinal_since_flip == 1:
+                    if s.bars_since_vidya_flip is None:
+                        none_count += 1
+                    else:
+                        ordinal1_bars_since_flip.append(s.bars_since_vidya_flip)
+                        ordinal1_detail.append({
+                            "ticker": ticker, "date": s.date,
+                            "bars_since_flip": s.bars_since_vidya_flip,
+                            "zone_top": s.zone_top, "zone_bottom": s.zone_bottom,
+                            "close": s.close,
+                        })
             prev_formed = s.formed_bar_index
             prev_retest_days = s.retest_hold_days
         else:
             prev_formed = None
             prev_retest_days = None
 
-    print(f"OK bar={n_bars} retest_events={len(first_retest_events)}+{none_count}none")
+    print(f"OK bar={n_bars} ordinal1_events={len(ordinal1_bars_since_flip)}")
     return {"ticker": ticker, "ok": True, "n_bars": n_bars,
-            "events": first_retest_events, "none_count": none_count}
+            "ordinal1_events": ordinal1_bars_since_flip, "none_count": none_count,
+            "ordinal1_detail": ordinal1_detail, "ordinal_dist": ordinal_dist}
 
 
 def main():
-    print("Fase 3 tahap 1 — distribusi bars_since_vidya_flip di momen retest pertama")
-    print(f"Sample: {len(SAMPLE_TICKERS)} ticker (IDX_WATCHLIST, sama dgn Fase 2)\n")
+    print("Fase 3 tahap 1 (v10.5.2) — proxy zone_ordinal_since_flip==1 utk golden setup")
+    print(f"Sample: {len(SAMPLE_TICKERS)} ticker (IDX_WATCHLIST)\n")
 
     total = len(SAMPLE_TICKERS)
     results = [diagnose_one(t, i + 1, total) for i, t in enumerate(SAMPLE_TICKERS)]
@@ -93,17 +114,25 @@ def main():
 
     all_events = []
     all_none = 0
+    all_detail = []
+    combined_ordinal_dist = {}
     for r in ok:
-        all_events.extend(r.get("events", []))
+        all_events.extend(r.get("ordinal1_events", []))
         all_none += r.get("none_count", 0)
+        all_detail.extend(r.get("ordinal1_detail", []))
+        for k, v in r.get("ordinal_dist", {}).items():
+            combined_ordinal_dist[k] = combined_ordinal_dist.get(k, 0) + v
 
-    total_moments = len(all_events) + all_none
-    print(f"Total momen 'retest pertama terkonfirmasi': {total_moments}")
-    print(f"  - Dgn bars_since_vidya_flip TERUKUR (ada flip di histori sblmnya): {len(all_events)}")
-    print(f"  - None (belum pernah ada event vidya_flipped_up di histori sblm retest ini): {all_none}")
+    print("Sebaran zone_ordinal_since_flip scr umum (semua retest pertama, semua ordinal):")
+    for k in sorted(combined_ordinal_dist.keys(), key=lambda x: (x is None, x)):
+        label = "None (blm ada flip di histori)" if k is None else f"ordinal={k}"
+        print(f"  {label:35s}: {combined_ordinal_dist[k]}")
 
-    if len(all_events) < 10:
-        print("\n  [PERHATIAN] Data terlalu sedikit utk kesimpulan statistik solid.")
+    total_ordinal1 = len(all_events) + all_none
+    print(f"\nTotal momen retest-pertama DI zona ordinal==1: {total_ordinal1}")
+    print(f"  - Dgn bars_since_vidya_flip TERUKUR: {len(all_events)}")
+    print(f"  - None (zona ordinal==1 tapi blm pernah ada flip di histori -- seharusnya jarang/nol,")
+    print(f"    cek kalau angka ini besar berarti ada bug logika ordinal): {all_none}")
 
     if all_events:
         vals = sorted(all_events)
@@ -111,28 +140,43 @@ def main():
         def pct(p):
             i = min(int(n * p / 100), n - 1)
             return vals[i]
-        print(f"\n{'='*70}\nDISTRIBUSI bars_since_vidya_flip (n={n})\n{'='*70}")
+        print(f"\n{'='*70}\nDISTRIBUSI bars_since_vidya_flip KHUSUS ordinal==1 (n={n})\n{'='*70}")
         print(f"  Min    : {vals[0]}")
         print(f"  P25    : {pct(25)}")
         print(f"  Median : {pct(50)}")
         print(f"  P75    : {pct(75)}")
         print(f"  P90    : {pct(90)}")
         print(f"  Max    : {vals[-1]}")
-        print("\n  Interpretasi kasar: kalau median/P75 kecil (mis. <10 bar 4h = <~1.7 hari")
-        print("  bursa @ 2 bar/hari), itu artinya kebanyakan retest MEMANG terjadi tak lama")
-        print("  setelah VIDYA belok hijau -- pola 'golden setup' relatif umum, bukan langka.")
-        print("  Kalau sebarannya lebar (P75 jauh dari median), ada dua populasi campur:")
-        print("  retest cepat (fresh flip) vs retest telat (VIDYA sudah hijau lama) -- baru di")
-        print("  situ ambang pemisah 'fresh' vs 'established' bisa diusulkan dgn dasar data,")
-        print("  bukan tebakan.")
+        print("\n  Ini jarak bar tipikal 'siklus koreksi pertama' (flip -> retest pertama)")
+        print("  KHUSUS pada zona pertama sejak flip -- beda dari versi v10.5.1 yg nyampur")
+        print("  semua ordinal jadi satu distribusi lebar (P25=11..P90=134).")
     else:
-        print("\n  Tidak ada data point bars_since_vidya_flip terukur di sample ini.")
+        print("\n  Tidak ada data point terukur di sample ini.")
 
-    print("\nLangkah lanjut: kirim hasil ini ke Claude. JANGAN tentukan ambang 'fresh flip'")
-    print("dari sample kecil (pelajaran extension_safe_atr Fase 2: 5 ticker -> 10.5 meleset,")
-    print("40 ticker -> 9.5 valid). Kalau distribusi di atas cukup n (>=~30-50 titik) dan")
-    print("masuk akal, Claude akan usulkan ambang & formula bonus skor -- tetap opsional/")
-    print("backward-compatible thd jalur daily produksi.")
+    if all_detail:
+        print(f"\n{'='*70}\nCONTOH KONKRET — ordinal==1, disebar MIN s/d MAX (v10.5.2)\n{'='*70}")
+        print("Beda dari v10.5.1 (yg cuma nunjukin angka TERKECIL, ternyata menyesatkan):")
+        print("kali ini contoh disebar dari ujung ke ujung biar Anda lihat rentang penuh")
+        print("pola 'zona pertama sejak flip', bukan cuma kasus ekstrem V-turn instan.\n")
+        sorted_detail = sorted(all_detail, key=lambda d: d["bars_since_flip"])
+        n = len(sorted_detail)
+        # ambil 8 titik tersebar merata di percentile 0,14,28,...,100
+        picks = []
+        seen_idx = set()
+        for p in range(0, 101, 14):
+            idx = min(int(n * p / 100), n - 1)
+            if idx not in seen_idx:
+                seen_idx.add(idx)
+                picks.append(sorted_detail[idx])
+        for d in picks[:8]:
+            print(f"  {d['ticker']:6s}  {str(d['date'])[:16]:16s}  "
+                  f"bars_since_flip={d['bars_since_flip']:>4}  "
+                  f"zona={d['zone_bottom']:.2f}-{d['zone_top']:.2f}  close={d['close']:.2f}")
+
+    print("\nLangkah lanjut: kirim hasil ini ke Claude — terutama cross-check visual Anda")
+    print("thd 8 contoh di atas (bukan cuma percaya angka statistiknya). Kalau ordinal==1")
+    print("terbukti match pola golden setup Anda scr visual, baru Claude usulkan formula")
+    print("bonus skor (opsional, backward-compatible thd jalur daily produksi).")
 
 
 if __name__ == "__main__":
