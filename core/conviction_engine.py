@@ -96,6 +96,15 @@ class ConvictionState:
     structure_pct: int = 0
     extension_penalty: int = 0        # v10.4.0 BARU
     extension_atr: float = 0.0        # v10.4.0 BARU
+    bars_since_vidya_flip: Optional[int] = None  # v10.5.0 ADITIF — jarak bar
+    # dari event vidya_flipped_up TERAKHIR (lihat EngineState di ob_engine.py)
+    # ke bar ini. None kalau belum pernah ada flip sepanjang histori sampai
+    # bar ini. MURNI INFORMATIF — belum dipakai di _score() sama sekali,
+    # skor conviction_pct/vidya_pct TIDAK berubah dari sebelumnya. Tujuan:
+    # ukur dulu distribusi nyatanya (via diagnostic terpisah) sebelum berani
+    # tentukan ambang "fresh flip" utk golden setup Fase 3 — sama spt alur
+    # kalibrasi extension_safe_atr di Fase 2 yg terbukti berhasil (tebakan
+    # awal 10.5 dari sample tipis vs angka final 9.5 dari sample luas).
     note: str = ""
 
 
@@ -175,12 +184,18 @@ def run_conviction(df: pd.DataFrame,
     out = []
     active: Optional[_ActiveZone] = None
     last_seen_pivot_bar = -1  # utk deteksi "pivot internal baru" (zona kandidat baru)
+    last_flip_bar: Optional[int] = None  # v10.5.0 ADITIF — bar_index event vidya_flipped_up terakhir
 
     for i, es in enumerate(engine_states):
         close = es.close
         low_i = float(df["Low"].iloc[i])
         status = STATE_IDLE
         note = ""
+
+        # v10.5.0 ADITIF — update penanda flip TERAKHIR, hitung jaraknya ke bar ini
+        if getattr(es, "vidya_flipped_up", False):
+            last_flip_bar = i
+        bars_since_flip = (i - last_flip_bar) if last_flip_bar is not None else None
 
         # ── 1) Kalau ada zona aktif, evaluasi dulu ──
         if active is not None:
@@ -252,12 +267,13 @@ def run_conviction(df: pd.DataFrame,
                 conviction_pct=total, base_pct=base, retest_pct=retest,
                 vidya_pct=vidya_pct, volume_pct=vol_pct, structure_pct=struct_pct,
                 extension_penalty=ext_pen, extension_atr=ext_atr,
+                bars_since_vidya_flip=bars_since_flip,
                 note=note,
             ))
         else:
             out.append(ConvictionState(
                 bar_index=i, date=es.date, close=close, status=status,
-                conviction_pct=0, note=note,
+                conviction_pct=0, bars_since_vidya_flip=bars_since_flip, note=note,
             ))
 
     return out

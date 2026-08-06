@@ -124,6 +124,13 @@ class EngineState:
     # (rolling/ewm, lihat _compute_atr) sbg output, TANPA ubah komputasi yg
     # sudah ada. Dipakai tahap 2 utk extension-move penalty (seberapa jauh
     # harga sudah lari dari swing low asal leg, dinormalisasi ATR).
+    vidya_flipped_up: bool = False  # v10.5.0: ADITIF — True HANYA di bar
+    # crossover is_trend_up False/None->True (event, bukan state). is_trend_up
+    # sendiri sudah ada sejak awal tapi cuma expose STATE ("VIDYA lagi hijau
+    # atau tidak"), bukan EVENT ("baru saja belok hijau di bar ini"). Dipakai
+    # Fase 3 utk beda kan "golden setup" (flip segar dekat retest) vs "sudah
+    # hijau lama, retest cuma pullback rutin di tren mapan") — TANPA ubah
+    # deteksi crossover yg sudah ada, cuma nambah observasi di titik yg sama.
 
 
 class VidyaSmcEngine:
@@ -183,10 +190,12 @@ class VidyaSmcEngine:
             c = float(close.iloc[i])
 
             # ── VIDYA crossover/crossunder (causal: cuma current vs prev) ──
+            vidya_flipped_up = False  # v10.5.0: reset tiap bar, cuma True di bar event-nya sendiri
             if i > 0 and not np.isnan(upper_band.iloc[i]) and not np.isnan(upper_band.iloc[i - 1]):
                 prev_c = float(close.iloc[i - 1])
                 if prev_c <= upper_band.iloc[i - 1] and c > upper_band.iloc[i]:
                     is_trend_up = True
+                    vidya_flipped_up = True
                 if prev_c >= lower_band.iloc[i - 1] and c < lower_band.iloc[i]:
                     is_trend_up = False
 
@@ -271,6 +280,7 @@ class VidyaSmcEngine:
             out.append(EngineState(
                 bar_index=i, date=df.index[i], close=c,
                 is_trend_up=is_trend_up, delta_volume_pct=delta_pct,
+                vidya_flipped_up=vidya_flipped_up,
                 internal_high=_PivotState(**vars(internal_high)),
                 internal_low=_PivotState(**vars(internal_low)),
                 swing_high=_PivotState(**vars(swing_high)),
