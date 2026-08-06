@@ -114,9 +114,22 @@ class _ActiveZone:
 
 
 
-def _score(zone: _ActiveZone, current_close: float) -> tuple:
+def _score(zone: _ActiveZone, current_close: float,
+           extension_safe_atr: float = EXTENSION_SAFE_ATR,
+           extension_penalty_per_atr: float = EXTENSION_PENALTY_PER_ATR) -> tuple:
     """Hitung breakdown skor. Return (total, base, retest, vidya, vol, struct,
-    extension_penalty, extension_atr)."""
+    extension_penalty, extension_atr).
+
+    v10.4.2 BARU: extension_safe_atr & extension_penalty_per_atr kini PARAMETER
+    opsional (default = konstanta modul EXTENSION_SAFE_ATR/EXTENSION_PENALTY_
+    PER_ATR, sama persis dgn sebelumnya — ZERO perubahan perilaku utk semua
+    caller lama/jalur daily produksi). Alasan: studi distribusi extension_atr
+    di cadence 4h (5 ticker sample, 2026-08-06) menunjukkan P75=10.65x vs P75
+    daily=7.36x yg jadi dasar kalibrasi 8.0 — ambang 8.0 menangkap 42% data
+    4h (niat desain aslinya ~25%, lihat 10.3.7). Constraint eksplisit user:
+    JANGAN ubah 8.0 di jalur daily (produksi, data historis zone_scans sudah
+    dikalibrasi thd itu) — jalur 4h lewatkan nilai sendiri (~10.5, MASIH
+    PROVISIONAL, cuma dari 5 ticker vs 334 zona utk kalibrasi daily)."""
     base = 20
     retest_days_capped = min(zone.retest_hold_days, RETEST_CAP_DAYS)
     retest = 20 * retest_days_capped
@@ -140,16 +153,23 @@ def _score(zone: _ActiveZone, current_close: float) -> tuple:
     extension_penalty = 0
     if zone.origin_atr and zone.origin_atr > 0 and not (zone.origin_atr != zone.origin_atr):
         extension_atr = (current_close - zone.origin_low) / zone.origin_atr
-        excess = max(0.0, extension_atr - EXTENSION_SAFE_ATR)
-        extension_penalty = min(EXTENSION_MAX_PENALTY, round(excess * EXTENSION_PENALTY_PER_ATR))
+        excess = max(0.0, extension_atr - extension_safe_atr)
+        extension_penalty = min(EXTENSION_MAX_PENALTY, round(excess * extension_penalty_per_atr))
 
     total = max(0, min(100, base + retest + vidya_pct + volume_pct + struct_pct - extension_penalty))
     return total, base, retest, vidya_pct, volume_pct, struct_pct, extension_penalty, round(extension_atr, 2)
 
 
-def run_conviction(df: pd.DataFrame, **engine_kwargs) -> list:
+def run_conviction(df: pd.DataFrame,
+                   extension_safe_atr: float = EXTENSION_SAFE_ATR,
+                   extension_penalty_per_atr: float = EXTENSION_PENALTY_PER_ATR,
+                   **engine_kwargs) -> list:
     """Walk-forward penuh: ob_engine tahap 1 -> state machine conviction.
-    Return list[ConvictionState], satu per bar. df wajib kolom OHLCV standar."""
+    Return list[ConvictionState], satu per bar. df wajib kolom OHLCV standar.
+
+    v10.4.2: extension_safe_atr/extension_penalty_per_atr diteruskan ke
+    _score() — default TIDAK berubah dari sebelumnya (backward compatible
+    penuh utk jalur daily). Lihat docstring _score() utk alasan lengkap."""
     engine_states = run_engine(df, **engine_kwargs)
 
     out = []
@@ -222,7 +242,8 @@ def run_conviction(df: pd.DataFrame, **engine_kwargs) -> list:
 
         # ── 3) Hitung skor kalau ada zona aktif ──
         if active is not None:
-            total, base, retest, vidya_pct, vol_pct, struct_pct, ext_pen, ext_atr = _score(active, close)
+            total, base, retest, vidya_pct, vol_pct, struct_pct, ext_pen, ext_atr = _score(
+                active, close, extension_safe_atr, extension_penalty_per_atr)
             out.append(ConvictionState(
                 bar_index=i, date=es.date, close=close, status=status,
                 zone_top=active.top, zone_bottom=active.bottom,
