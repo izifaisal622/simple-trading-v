@@ -43,5 +43,50 @@
     "top_holders": [],
     "source": "yfinance",
     "_fetched": "2026-07-07T16:23:02.717092"
+  },
+  "yf_BFIN": {
+    "ticker": "BFIN",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-08-05T16:05:17.266745"
+  },
+  "yf_KOTA": {
+    "ticker": "KOTA",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-08-05T16:05:17.329135"
+  },
+  "yf_PACK": {
+    "ticker": "PACK",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-08-05T16:05:17.406810"
+  },
+  "yf_MYOR": {
+    "ticker": "MYOR",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-08-05T16:05:17.425127"
+  },
+  "yf_CMRY": {
+    "ticker": "CMRY",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-08-05T16:05:17.494754"
   }
 }

@@ -39,6 +39,20 @@ st.markdown(get_page_css("dashboard"), unsafe_allow_html=True)
 from core.data_feed import get_ihsg_regime
 from agents.zone_scanner import ZoneScanner
 
+
+def _bars_since_segment(val, label="hari sejak terbentuk", prefix=" | "):
+    """v10.3.9 FIX: satu sumber kebenaran utk render bars_since_formed.
+    Sebelum ini, kartu utama pakai `val or 0` (None jadi terbaca "0 hari" --
+    tertukar dgn zona yg BENAR baru terbentuk hari ini) sementara panel
+    detail (Ringkasan Analisis) sudah benar sembunyikan segmen kalau None.
+    Root cause: dua jalur render terpisah tanpa helper bersama -> drift.
+    None (data lama sblm migrasi kolom zone_scans) HARUS beda tampilan dr
+    0 (data valid, memang baru terbentuk hari ini)."""
+    if val is None:
+        return ""
+    return f"{prefix}{val} {label}"
+
+
 regime_data = get_ihsg_regime()
 
 with st.sidebar:
@@ -268,7 +282,7 @@ if filtered:
                  f'\u26a0 EXT -{ext_pen}%</span>' if ext_pen > 0 else "")
             )
             bars_since = _sel_r.get("bars_since_formed")
-            bars_line = f" | {bars_since} hari sejak zona terbentuk" if bars_since is not None else ""
+            bars_line = _bars_since_segment(bars_since, label="hari sejak zona terbentuk")
             detail_html = (
                 '<div style="background:var(--bg-card);border-left:4px solid var(--accent);'
                 'border-radius:var(--r-md);padding:1rem 1.2rem">'
@@ -363,7 +377,7 @@ else:
                 'color:var(--text-muted);margin:0.4rem 0">'
                 'Close Rp' + '{:,.0f}'.format(r['close']) + ' | Zona ' + zona_str +
                 ' | Retest ' + str(r['retest_hold_days']) + '/2 hari' +
-                ' | ' + str(r['bars_since_formed'] or 0) + ' hari sejak terbentuk ' + pk_tag +
+                _bars_since_segment(r.get('bars_since_formed')) + ' ' + pk_tag +
                 '</div>'
                 '<div style="margin-top:0.5rem">' + badges + '</div>'
                 '</div>'

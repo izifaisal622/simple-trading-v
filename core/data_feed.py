@@ -594,6 +594,154 @@ def check_universe_health(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# INTRADAY 4H (FASE 1 — v10.4.x) — Golden Setup VIDYA red→green
+# ─────────────────────────────────────────────────────────────────────────────
+# Yahoo/yfinance TIDAK punya interval native "4h" (interval valid: 1m/2m/5m/
+# 15m/30m/60m/90m/1h/1d/5d/1wk/1mo/3mo). Jalur ini fetch 60m mentah lalu
+# resample ke 2 bucket/hari bursa — BUKAN resample kalender naif pandas
+# .resample('4h') yang bisa memotong bar melintasi jeda istirahat tergantung
+# titik anchor.
+#
+# Dasar sesi IDX (SK Direksi BEI No. II-A Kep-00003/BEI/04-2025, berlaku per
+# 15 Des 2025):
+#   Senin–Kamis: Sesi I 09:00:00–12:00:00 | Sesi II 13:30:00–15:49:59
+#   Jumat:       Sesi I 09:00:00–11:30:00 | Sesi II 14:00:00–15:49:59
+#   Istirahat:   12:00–13:30 (Sen–Kam) | 11:30–14:00 (Jumat)
+#
+# Cutoff tunggal 13:00:00 WIB dipakai utk memisah bucket AM/PM SEMUA hari
+# (termasuk Jumat yang jadwalnya beda) — sengaja, karena 13:00 SELALU jatuh
+# di tengah jeda istirahat baik Senin-Kamis (12:00-13:30) maupun Jumat
+# (11:30-14:00), jadi tidak pernah ada tick trading di titik potong itu utk
+# hari apa pun. Ini menghindari cabang logika per-hari yang rawan bug.
+#
+# STATUS FASE 1: fungsi resample diuji thd data SINTETIS (test_resample_4h.py,
+# 15/15 assertion lolos, cakup Kamis/Jumat) DAN divalidasi thd data yfinance
+# REAL oleh user via diagnose_4h_resample.py (2026-08-06, 5 ticker: BBCA/
+# TLKM/INTP/CLEO/GOTO) — 5/5 fetch sukses, 0 NaN, distribusi bucket bersih
+# (714/717 hari dapat 2 bucket penuh). Cross-check independen: close CLEO
+# hasil resample (~Rp390) COCOK dgn harga di kartu Follow Whale (page 2,
+# Rp392) yg dihasilkan pipeline data SAMA SEKALI TERPISAH (whale_scanner,
+# daily) — dua jalur data independen sepakat, indikasi kuat resample benar.
+# Item TERBUKA (tidak menghalangi Fase 2, tapi belum ditutup tuntas):
+#   (a) validasi VISUAL manual thd chart 4h TradingView user — angka masuk
+#       akal TIDAK otomatis berarti pola candle per-bucket cocok visual;
+#       ini butuh mata user sendiri, sengaja tak diklaim selesai di sini.
+#   (b) 3 dari 717 hari (BBCA sample) cuma dapat 1 bucket, bukan 2 — tanggal
+#       persisnya BELUM diidentifikasi (kandidat: sesi dipersingkat/libur
+#       setengah-hari). diagnose_4h_resample.py sekarang print tanggalnya
+#       eksplisit (v10.4.1) supaya bisa dicek manual thd kalender libur BEI.
+#   (c) 3-4 dari 1431 bucket (per ticker) volume=0 — tanggal jg di-print
+#       eksplisit sekarang, belum diinvestigasi apakah data hilang atau
+#       memang suspend/halt.
+#   (d) GOTO flat di Rp50 sepanjang sample — KEMUNGKINAN wajar (harga
+#       minimum/"gocap" IDX, dikenal umum di saham kecil), TIDAK diverifikasi
+#       independen krn sandbox pengembang tak py akses data pasar. TIDAK
+#       diperlakukan sbg bug, tapi jg tak diklaim confirmed-normal.
+#
+# BELUM dikerjakan sengaja (di luar scope Fase 1, lihat catatan versi):
+#   - Belum terhubung ke pipeline cache incremental (_FRESH_DAYS dkk) —
+#     itu didesain utk granularitas HARI via _is_cache_stale_trading yang
+#     cuma cek TANGGAL, bukan jam. Kalau fetch_4h() disambungkan ke situ
+#     tanpa rework, cache bisa dianggap "fresh" walau bucket sore belum
+#     ke-fetch (tanggal sama, jam beda). fetch_4h() SENGAJA full re-fetch
+#     tiap panggilan (mahal tapi benar) sampai staleness session-aware
+#     dibangun di fase lanjutan.
+#   - Belum ada fallback Stooq (Stooq cuma sediakan data daily/weekly, nol
+#     endpoint intraday) — kalau yfinance gagal, fetch_4h() return None
+#     apa adanya, TIDAK diam-diam jatuh ke sumber granularitas lain.
+#   - Belum dipasang sebagai DataFeed(timeframe="4h") generik (class-level)
+#     — dibuat method eksplisit fetch_4h() supaya nol risiko regresi ke
+#     jalur daily/weekly yang sudah produksi di page 1/2.
+
+# v10.4.1 KOREKSI: dokumentasi yfinance/pihak ketiga menyatakan batas 730
+# hari utk interval 60m/1h — TAPI data real (2026-08-06, 5 ticker IDX)
+# terbukti mengembalikan rentang 1108 hari (~3 tahun), jauh melebihi angka
+# itu. Kesimpulan JUJUR: batas 730 hari BUKAN hard limit universal yg bisa
+# diandalkan (mungkin beda per-exchange, atau dokumentasi pihak ketiga usang)
+# — konstanta di bawah dipertahankan sbg PEMBATAS PERMINTAAN kita sendiri
+# (supaya period string terkontrol & konsisten), BUKAN krn diyakini sbg
+# batas keras Yahoo. Kalau nanti terbukti bisa minta lebih jauh dgn aman,
+# angka ini boleh dinaikkan — belum diuji seberapa jauh sebenarnya bisa.
+_MAX_INTRADAY_60M_DAYS = 729
+
+
+def _fetch_60m_raw(ticker: str, days: int = _MAX_INTRADAY_60M_DAYS) -> Optional[pd.DataFrame]:
+    """Fetch bar 60m mentah — fondasi resample 4h. 3x retry+backoff (pola sama
+    dgn _fetch_with_backup), TAPI nol fallback Stooq (lihat catatan modul)."""
+    import time
+    period_str = f"{min(days, _MAX_INTRADAY_60M_DAYS)}d"
+    for attempt in range(3):
+        try:
+            df = yf.download(ticker, period=period_str, interval="60m",
+                             progress=False, auto_adjust=True)
+            if df is not None and len(df) >= 20:
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = df.columns.get_level_values(0)
+                return df
+        except Exception as exc:
+            logger.debug(f"[DataFeed] {ticker} 60m fetch attempt {attempt+1}: {exc}")
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+    logger.warning(f"[DataFeed] {ticker} 60m fetch gagal 3x — tidak ada fallback utk intraday")
+    return None
+
+
+def _resample_60m_to_4h(df_60m: Optional[pd.DataFrame]) -> Optional[pd.DataFrame]:
+    """Agregasi bar 60m -> 2 bucket/hari bursa (AM/PM, cutoff 13:00 WIB).
+    Lihat catatan modul di atas utk alasan desain. Return None kalau input
+    kosong/tak valid — caller wajib cek eksplisit, bukan diasumsikan sukses."""
+    import pytz
+    if df_60m is None or len(df_60m) == 0:
+        return None
+
+    df = df_60m.copy()
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+
+    idx = df.index
+    if idx.tz is None:
+        idx = idx.tz_localize("UTC")
+    wib = pytz.timezone("Asia/Jakarta")
+    df.index = idx.tz_convert(wib)
+
+    # v10.4.x FIX (ditemukan saat uji sintetis): g.apply(lambda x: x.index[0])
+    # lalu .values MENGUBAH Timestamp tz-aware jadi datetime64 UTC naive —
+    # 09:00 WIB jadi tersimpan sbg 02:00 (konversi UTC diam2, BUKAN strip tz
+    # apa adanya). Fix: bawa timestamp sbg KOLOM biasa (ikut agg "first"),
+    # baru strip tz eksplisit di akhir via .tz_localize(None) — itu
+    # mempertahankan wall-clock WIB, konsisten dgn _get_last_bar_date() yg
+    # jg strip tzinfo (bukan konversi UTC) saat baca tanggal bar harian.
+    df = df.rename_axis("_ts").reset_index()
+    df["_gdate"]   = df["_ts"].dt.date
+    df["_gbucket"] = (df["_ts"].dt.hour >= 13).astype(int)  # 0=AM (<13:00), 1=PM (>=13:00)
+
+    agg = {"_ts": "first", "Open": "first", "High": "max", "Low": "min",
+           "Close": "last", "Volume": "sum"}
+    out = df.groupby(["_gdate", "_gbucket"], sort=True).agg(agg)
+    out = out.sort_values("_ts").set_index("_ts")
+    out.index = out.index.tz_localize(None)
+    out.index.name = "Date"
+    return out
+
+
+def fetch_4h(ticker: str, days: int = _MAX_INTRADAY_60M_DAYS) -> Optional[pd.DataFrame]:
+    """Jalur data 4h (2 bar/hari bursa) — FASE 1, lihat catatan modul.
+    Fungsi standalone (bukan method DataFeed) sengaja, spy pemanggilan
+    eksplisit & tidak tersambung diam-diam ke pipeline cache/dispatch
+    timeframe yang ada."""
+    if not ticker.endswith(".JK"):
+        ticker += ".JK"
+    raw = _fetch_60m_raw(ticker, days=days)
+    if raw is None:
+        return None
+    resampled = _resample_60m_to_4h(raw)
+    if resampled is None or len(resampled) < 20:
+        logger.warning(f"[DataFeed] {ticker} 4h resample hasil <20 bar — kemungkinan data 60m tak cukup")
+        return None
+    return resampled
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # DATA FEED CLASS
 # ─────────────────────────────────────────────────────────────────────────────
 
