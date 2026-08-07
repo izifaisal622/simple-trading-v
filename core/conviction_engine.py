@@ -124,6 +124,18 @@ class ConvictionState:
     # dalamnya koreksi) -- beda dari bars_since_vidya_flip yg ukur DURASI,
     # ordinal ini ukur URUTAN. MASIH BELUM dipakai di _score() -- perlu
     # cross-check visual ulang dulu sblm jadi dasar bobot skor apa pun.
+    is_golden_setup: bool = False  # v10.8.0 ADITIF — flag eksplisit utk UI
+    # (Fase 4). True HANYA kalau status==WATCHING DAN zone_ordinal_since_
+    # flip==1 (zona pertama sejak flip vidya terakhir). Dipisah dari angka
+    # conviction_pct SENGAJA — hasil diagnose_golden_bonus_impact.py (40
+    # ticker) menunjukkan bonus +5 poin (vidya_pct 15->20 via golden_setup_
+    # bonus) gampang tenggelam di antara conviction_pct 75-93 yg sudah
+    # tinggi, TIDAK cukup menonjol sbg sinyal visual berdiri sendiri kalau
+    # cuma mengandalkan pergeseran angka. UI (Page 1) disarankan pakai flag
+    # ini utk badge terpisah, BUKAN cuma baca conviction_pct. Field ini
+    # TIDAK bergantung pada golden_setup_bonus parameter (selalu dihitung,
+    # murni informatif) — beda dari vidya_pct yg cuma naik kalau parameter
+    # itu eksplisit True.
     note: str = ""
 
 
@@ -323,6 +335,7 @@ def run_conviction(df: pd.DataFrame,
                 extension_penalty=ext_pen, extension_atr=ext_atr,
                 bars_since_vidya_flip=bars_since_flip,
                 zone_ordinal_since_flip=active.zone_ordinal_since_flip,
+                is_golden_setup=(status == STATE_WATCHING and active.zone_ordinal_since_flip == 1),
                 note=note,
             ))
         else:

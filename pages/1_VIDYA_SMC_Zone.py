@@ -38,6 +38,7 @@ st.markdown(get_page_css("dashboard"), unsafe_allow_html=True)
 
 from core.data_feed import get_ihsg_regime
 from agents.zone_scanner import ZoneScanner
+from agents.golden_setup_scanner import GoldenSetupScanner4H
 
 
 def _bars_since_segment(val, label="hari sejak terbentuk", prefix=" | "):
@@ -387,3 +388,133 @@ else:
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.caption("Retest-only path: breakout tanpa pullback akan selalu bernilai conviction "
           "rendah dalam skema ini -- trade-off yang disengaja demi menyaring false breakout.")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# GOLDEN SETUP 4H (BETA) — Fase 4-3, v10.9.0
+#
+# SENGAJA section TERPISAH dari scan daily di atas — TIDAK menyentuh
+# st.session_state["zone_results"]/["zone_ctx"], TIDAK menyentuh
+# ZoneScanner/logs/scan_history.db sama sekali. Scope: 40 ticker
+# IDX_WATCHLIST saja (BUKAN full universe) — fetch_4h() belum py caching/
+# batching, full-universe blm pernah diuji skalanya (lihat docstring
+# agents/golden_setup_scanner.py). Hasil scan session-only, TIDAK
+# tersimpan ke DB (skema zone_scans blm py kolom utk field baru).
+#
+# Basis: VIDYA/trend Heikin Ashi (use_ha_trend=True, terbukti smooth thd
+# harga real candlestick, lihat changelog v10.6.0), golden_setup_bonus
+# (vidya_pct 15->20 saat zone_ordinal_since_flip==1, dikalibrasi 2 basis
+# data konvergen — real n=656 & HA n=516, distribusi HAMPIR identik).
+# ═══════════════════════════════════════════════════════════════════════
+st.markdown("<br>", unsafe_allow_html=True)
+sec_head("GOLDEN SETUP 4H (BETA)")
+st.caption("Scan terpisah, khusus 40 ticker watchlist likuid — VIDYA baru belok hijau "
+          "(basis Heikin Ashi) + zona retest pertama sejak flip. Belum tersimpan ke "
+          "riwayat DB, hasil per-sesi browser saja.")
+
+g_run_btn = st.button("SCAN GOLDEN SETUP 4H", type="secondary")
+
+if g_run_btn:
+    with st.spinner("Scanning 40 ticker watchlist (4H, basis Heikin Ashi)... ~1-2 menit"):
+        g_scanner = GoldenSetupScanner4H()
+        g_results, g_ctx = g_scanner.scan()
+        st.session_state["golden4h_results"] = g_results
+        st.session_state["golden4h_ctx"] = g_ctx
+
+g_results = st.session_state.get("golden4h_results", [])
+g_ctx = st.session_state.get("golden4h_ctx", {})
+
+if not g_results and not g_ctx:
+    render_empty_state("★", "BELUM ADA HASIL SCAN GOLDEN SETUP",
+                       "Klik SCAN GOLDEN SETUP 4H utk memulai.", "")
+else:
+    gc1, gc2, gc3, gc4 = st.columns(4)
+    gc1.metric("UNIVERSE", g_ctx.get("total_universe", 0))
+    gc2.metric("DIANALISIS", g_ctx.get("analyzed", 0))
+    gc3.metric("WATCHING", g_ctx.get("watching_count", 0))
+    gc4.metric("★ GOLDEN SETUP", g_ctx.get("golden_count", 0))
+    if g_ctx.get("skipped_short_history") or g_ctx.get("crashed"):
+        st.caption(f"Skip data pendek: {g_ctx.get('skipped_short_history',0)} | "
+                  f"Crash: {g_ctx.get('crashed',0)}")
+
+    if not g_results:
+        render_empty_state("◎", "TIDAK ADA ZONA WATCHING SAAT INI",
+                           "Coba scan lagi nanti — kondisi pasar berubah tiap 4 jam.", "")
+    else:
+        # v10.9.0 FIX: helper badge di sini SENGAJA self-contained (definisi
+        # sendiri, TIDAK reuse _badge/_penalty_badge dari section daily di
+        # atas) -- fungsi2 itu cuma terdefinisi kalau `filtered` (hasil scan
+        # daily) tidak kosong, krn didefinisikan di dalam cabang else-nya.
+        # Kalau user buka halaman ini SEBELUM pernah scan daily / filter
+        # conviction daily kosongkan hasil, _badge/_penalty_badge TIDAK
+        # exist -- panggil dari section terpisah ini bakal NameError.
+        # Section Golden Setup 4H harus berdiri sendiri, tidak boleh
+        # bergantung nasib pada state section lain.
+        def _golden_badge():
+            return ('<span style="opacity:1;border:1px solid ' + C_WARNING +
+                   ';color:' + C_WARNING + ';border-radius:3px;padding:1px 8px;'
+                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                   'margin-right:4px;font-weight:900">★ GOLDEN SETUP</span>')
+
+        def _g_badge(label, val, active_color):
+            col = active_color if val > 0 else LABEL_COLOR
+            opacity = "1" if val > 0 else "0.35"
+            return ('<span style="opacity:' + opacity + ';border:1px solid ' + col +
+                   ';color:' + col + ';border-radius:3px;padding:1px 6px;' +
+                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;' +
+                   'margin-right:4px">' + label + ' ' + str(val) + '%</span>')
+
+        def _g_penalty_badge(val):
+            if val <= 0:
+                return ""
+            return ('<span style="opacity:1;border:1px solid ' + C_DANGER +
+                   ';color:' + C_DANGER + ';border-radius:3px;padding:1px 6px;' +
+                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;' +
+                   'margin-right:4px" title="Extended move — harga sudah jauh dari swing low awal">'
+                   '\u26a0 EXT -' + str(val) + '%</span>')
+
+        g_cols = st.columns(2)
+        for g_idx, gr in enumerate(g_results):
+            g_col = g_cols[g_idx % 2]
+            with g_col:
+                g_cc = C_WARNING if gr["is_golden_setup"] else (
+                    NEON_GREEN if gr["conviction_pct"] >= 75 else
+                    (C_WARNING if gr["conviction_pct"] >= 40 else LABEL_COLOR)
+                )
+                g_zona_str = ("Rp{:,.0f} - Rp{:,.0f}".format(gr["zone_bottom"], gr["zone_top"])
+                             if gr["zone_top"] else "-")
+                g_badges = (
+                    (_golden_badge() if gr["is_golden_setup"] else "") +
+                    _g_badge("BASE", gr["base_pct"], NEON_GREEN) +
+                    _g_badge("RETEST", gr["retest_pct"], NEON_GREEN) +
+                    _g_badge("VIDYA", gr["vidya_pct"], C_INFO) +
+                    _g_badge("VOL", gr["volume_pct"], C_INFO) +
+                    _g_badge("STRUCT", gr["structure_pct"], C_WARNING) +
+                    _g_penalty_badge(gr.get("extension_penalty", 0) or 0)
+                )
+                g_flip_ago = gr.get("bars_since_vidya_flip")
+                g_flip_line = (f" | {g_flip_ago} bar sejak flip VIDYA"
+                              if g_flip_ago is not None else "")
+                g_card_html = (
+                    '<div style="background:var(--bg-card);border:1px solid ' + g_cc + '55;'
+                    'border-left:4px solid ' + g_cc + ';border-radius:var(--r-md);'
+                    'padding:1rem 1.2rem;margin-bottom:0.8rem">'
+                    '<div style="display:flex;justify-content:space-between;align-items:center">'
+                    '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);'
+                    'font-weight:800;color:#E2E8F0">' + gr['ticker'] + '</span>'
+                    '<span style="font-family:Orbitron,monospace;font-size:var(--text-xl);'
+                    'font-weight:900;color:' + g_cc + '">' + str(gr['conviction_pct']) + '%</span>'
+                    '</div>'
+                    '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
+                    'color:var(--text-muted);margin:0.4rem 0">'
+                    'Close Rp' + '{:,.0f}'.format(gr['close']) + ' | Zona ' + g_zona_str +
+                    ' | Retest ' + str(gr['retest_hold_days']) + '/2 bar' + g_flip_line +
+                    '</div>'
+                    '<div style="margin-top:0.5rem">' + g_badges + '</div>'
+                    '</div>'
+                )
+                st.markdown(g_card_html, unsafe_allow_html=True)
+
+    st.caption("Golden Setup = zona retest PERTAMA sejak VIDYA belok hijau (basis Heikin "
+              "Ashi) — proxy pola 'flip -> koreksi -> reversal' favorit. Bukan jaminan "
+              "profit, tetap validasi manual sebelum entry.")
