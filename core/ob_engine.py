@@ -50,6 +50,43 @@ def _compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, length: int 
     return tr.ewm(alpha=1.0 / length, adjust=False, min_periods=length).mean()
 
 
+def _compute_heikin_ashi(df: pd.DataFrame) -> pd.DataFrame:
+    """v10.6.0 ADITIF — derive OHLC Heikin Ashi dari OHLC REAL. Rekursif
+    (HA_Open bar i butuh HA_Open & HA_Close bar i-1) — walk-forward loop,
+    causal by construction (bar i cuma pakai data 0..i, sama spt _vidya_calc).
+
+    LATAR BELAKANG: user membaca chart pribadinya via tampilan Heikin Ashi
+    (candle di-average, garis VIDYA jadi mulus/tidak flicker). Dibuktikan
+    scr empiris (toggle chart TradingView Candlestick vs HA, indikator
+    VIDYA+SMC yg sama): garis VIDYA MEMANG flicker kalau dihitung dari
+    harga real candlestick biasa (candle 12/15/25 Jun 2026 -- tiga event
+    crossover terpisah dlm ~2 minggu), TAPI smooth/1x transisi bersih kalau
+    dihitung dari HA. Fungsi ini dipakai HANYA utk basis VIDYA/band trend
+    (lihat use_ha_trend di VidyaSmcEngine) -- retest, invalidasi, ATR200
+    extension-penalty, swing/internal leg pivot TETAP di harga real (hard
+    rule lama: entry/exit tidak boleh divalidasi thd harga sintetis yg
+    tidak bisa ditransaksikan)."""
+    o = df["Open"].to_numpy(dtype=float)
+    h = df["High"].to_numpy(dtype=float)
+    l = df["Low"].to_numpy(dtype=float)
+    c = df["Close"].to_numpy(dtype=float)
+    n = len(df)
+
+    ha_close = (o + h + l + c) / 4.0
+    ha_open = np.empty(n)
+    for i in range(n):
+        if i == 0:
+            ha_open[i] = (o[i] + c[i]) / 2.0
+        else:
+            ha_open[i] = (ha_open[i - 1] + ha_close[i - 1]) / 2.0
+    ha_high = np.maximum(h, np.maximum(ha_open, ha_close))
+    ha_low = np.minimum(l, np.minimum(ha_open, ha_close))
+
+    return pd.DataFrame({
+        "Open": ha_open, "High": ha_high, "Low": ha_low, "Close": ha_close,
+    }, index=df.index)
+
+
 def _vidya_calc(src: pd.Series, length: int, momentum: int) -> pd.Series:
     """Port vidya_calc — CMO-weighted adaptive EMA, lalu SMA(15) smoothing.
     Rekursif (bergantung nilai VIDYA bar sebelumnya) — walk-forward loop,
@@ -140,7 +177,7 @@ class VidyaSmcEngine:
     def __init__(self, vidya_length: int = 10, vidya_momentum: int = 20,
                  band_distance: float = 2.0, internal_size: int = 5,
                  swing_size: int = 50, atr_length: int = 200,
-                 vol_filter_mult: float = 2.0):
+                 vol_filter_mult: float = 2.0, use_ha_trend: bool = False):
         self.vidya_length = vidya_length
         self.vidya_momentum = vidya_momentum
         self.band_distance = band_distance
@@ -148,16 +185,36 @@ class VidyaSmcEngine:
         self.swing_size = swing_size
         self.atr_length = atr_length
         self.vol_filter_mult = vol_filter_mult
+        self.use_ha_trend = use_ha_trend  # v10.6.0 ADITIF — default False = ZERO
+        # perubahan perilaku thd semua caller lama/jalur daily produksi. True:
+        # VIDYA & band-ATR (yg nentuin is_trend_up/vidya_flipped_up) dihitung
+        # dari Heikin Ashi (lihat _compute_heikin_ashi). Swing/internal leg
+        # pivot, OB candidate zone, atr200 (extension-penalty), delta volume
+        # TETAP dari harga REAL, tidak terpengaruh flag ini sama sekali.
 
     def run(self, df: pd.DataFrame) -> list:
         """df wajib kolom: Open, High, Low, Close, Volume — index tanggal urut naik."""
         n = len(df)
         high = df["High"]; low = df["Low"]; close = df["Close"]; vol = df["Volume"]
 
-        atr200 = _compute_atr(high, low, close, self.atr_length)
-        vidya_val = _vidya_calc(close, self.vidya_length, self.vidya_momentum)
-        upper_band = vidya_val + atr200 * self.band_distance
-        lower_band = vidya_val - atr200 * self.band_distance
+        atr200 = _compute_atr(high, low, close, self.atr_length)  # TETAP real,
+        # dipakai vol_measure/parsed_high-low (OB candidate) & EngineState.atr200
+        # (extension-penalty Fase 2) -- use_ha_trend TIDAK menyentuh nilai ini.
+
+        if self.use_ha_trend:
+            # v10.6.0 ADITIF — VIDYA & band-ATR dari basis Heikin Ashi, supaya
+            # is_trend_up/vidya_flipped_up smooth spt yg dibaca user di chart
+            # HA-nya (dibuktikan flicker di real candle, lihat changelog).
+            ha_df = _compute_heikin_ashi(df)
+            trend_close = ha_df["Close"]
+            atr_band = _compute_atr(ha_df["High"], ha_df["Low"], ha_df["Close"], self.atr_length)
+        else:
+            trend_close = close
+            atr_band = atr200  # perilaku LAMA persis — band pakai atr200 real
+
+        vidya_val = _vidya_calc(trend_close, self.vidya_length, self.vidya_momentum)
+        upper_band = vidya_val + atr_band * self.band_distance
+        lower_band = vidya_val - atr_band * self.band_distance
 
         # Volatility-filtered parsedHigh/parsedLow (dipakai kandidat OB)
         vol_measure = atr200
@@ -187,16 +244,20 @@ class VidyaSmcEngine:
 
         out = []
         for i in range(n):
-            c = float(close.iloc[i])
+            c = float(close.iloc[i])  # real close -- EngineState.close, volume delta, dll TETAP ini
 
             # ── VIDYA crossover/crossunder (causal: cuma current vs prev) ──
+            # v10.6.0: trend_close = HA close kalau use_ha_trend=True, else = c (real,
+            # perilaku lama persis). Perbandingan crossover pakai trend_close, BUKAN c,
+            # supaya smoothing HA konsisten (harga & band sama-sama basis HA saat aktif).
+            tc = float(trend_close.iloc[i])
             vidya_flipped_up = False  # v10.5.0: reset tiap bar, cuma True di bar event-nya sendiri
             if i > 0 and not np.isnan(upper_band.iloc[i]) and not np.isnan(upper_band.iloc[i - 1]):
-                prev_c = float(close.iloc[i - 1])
-                if prev_c <= upper_band.iloc[i - 1] and c > upper_band.iloc[i]:
+                prev_tc = float(trend_close.iloc[i - 1])
+                if prev_tc <= upper_band.iloc[i - 1] and tc > upper_band.iloc[i]:
                     is_trend_up = True
                     vidya_flipped_up = True
-                if prev_c >= lower_band.iloc[i - 1] and c < lower_band.iloc[i]:
+                if prev_tc >= lower_band.iloc[i - 1] and tc < lower_band.iloc[i]:
                     is_trend_up = False
 
             # ── Volume delta — reset saat trend berubah (persis Pine) ──

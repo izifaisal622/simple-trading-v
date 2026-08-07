@@ -10,6 +10,11 @@ proxy zone_ordinal_since_flip==1 + bars_since_vidya_flip BENAR menangkap
 pola ini, harus kelihatan jelas persis di rentang tanggal ini -- bukan cuma
 "masuk akal" scr statistik agregat 40 ticker.
 
+v10.6.0: sekarang pakai use_ha_trend=True -- VIDYA/band dihitung dari
+Heikin Ashi (terbukti smooth, tidak flicker, lihat validasi toggle chart
+Candlestick vs HA di TradingView). Retest, invalidasi, ATR200 extension-
+penalty TETAP di harga real -- tidak terpengaruh flag ini.
+
 Jalankan dari folder repo: python debug_bbca_case.py
 Read-only, tidak menyentuh cache/DB produksi.
 """
@@ -33,7 +38,7 @@ def main():
 
     print(f"Total bar: {len(df)}, rentang {df.index[0]} s/d {df.index[-1]}\n")
 
-    states = run_conviction(df, extension_safe_atr=9.5)
+    states = run_conviction(df, extension_safe_atr=9.5, use_ha_trend=True)  # v10.6.0
 
     print(f"{'='*100}")
     print(f"SEMUA bar {TICKER} antara {DATE_START} dan {DATE_END}")
