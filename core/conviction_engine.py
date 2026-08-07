@@ -145,7 +145,8 @@ class _ActiveZone:
 
 def _score(zone: _ActiveZone, current_close: float,
            extension_safe_atr: float = EXTENSION_SAFE_ATR,
-           extension_penalty_per_atr: float = EXTENSION_PENALTY_PER_ATR) -> tuple:
+           extension_penalty_per_atr: float = EXTENSION_PENALTY_PER_ATR,
+           golden_setup_bonus: bool = False) -> tuple:
     """Hitung breakdown skor. Return (total, base, retest, vidya, vol, struct,
     extension_penalty, extension_atr).
 
@@ -158,14 +159,29 @@ def _score(zone: _ActiveZone, current_close: float,
     4h (niat desain aslinya ~25%, lihat 10.3.7). Constraint eksplisit user:
     JANGAN ubah 8.0 di jalur daily (produksi, data historis zone_scans sudah
     dikalibrasi thd itu) — jalur 4h lewatkan nilai sendiri (~10.5, MASIH
-    PROVISIONAL, cuma dari 5 ticker vs 334 zona utk kalibrasi daily)."""
+    PROVISIONAL, cuma dari 5 ticker vs 334 zona utk kalibrasi daily).
+
+    v10.7.0 BARU: golden_setup_bonus:bool=False (default False = ZERO
+    perubahan perilaku utk semua caller lama). True: vidya_pct dinaikkan
+    jadi 20 (dari 15) KHUSUS kalau zone.zone_ordinal_since_flip == 1 --
+    "zona pertama sejak flip vidya terakhir", proxy golden setup user
+    (VIDYA baru belok hijau -> koreksi -> retest), dikalibrasi dari 656
+    momen (basis harga real) + 516 momen (basis HA) di 40 ticker
+    IDX_WATCHLIST -- dua basis berbeda konvergen ke distribusi HAMPIR
+    IDENTIK (P25=5-6, median=8, P75=11, P90=16) -- confidence tinggi zona
+    ordinal==1 adalah populasi struktural berbeda dari ordinal>1 (retest
+    rutin di tren yg sudah mapan). Zona ordinal>1 atau None (blm ada flip
+    di histori) TETAP vidya_pct=15, PERSIS spt sebelumnya."""
     base = 20
     retest_days_capped = min(zone.retest_hold_days, RETEST_CAP_DAYS)
     retest = 20 * retest_days_capped
 
     vidya_pct = 0
     if zone.retest_hold_days > 0 and zone.last_vidya_up is True:
-        vidya_pct = 15
+        if golden_setup_bonus and zone.zone_ordinal_since_flip == 1:
+            vidya_pct = 20  # golden setup — zona pertama sejak flip
+        else:
+            vidya_pct = 15  # baseline, PERSIS skor lama
 
     volume_pct = 0
     if zone.retest_hold_days > 0:
@@ -192,13 +208,17 @@ def _score(zone: _ActiveZone, current_close: float,
 def run_conviction(df: pd.DataFrame,
                    extension_safe_atr: float = EXTENSION_SAFE_ATR,
                    extension_penalty_per_atr: float = EXTENSION_PENALTY_PER_ATR,
+                   golden_setup_bonus: bool = False,
                    **engine_kwargs) -> list:
     """Walk-forward penuh: ob_engine tahap 1 -> state machine conviction.
     Return list[ConvictionState], satu per bar. df wajib kolom OHLCV standar.
 
     v10.4.2: extension_safe_atr/extension_penalty_per_atr diteruskan ke
     _score() — default TIDAK berubah dari sebelumnya (backward compatible
-    penuh utk jalur daily). Lihat docstring _score() utk alasan lengkap."""
+    penuh utk jalur daily). Lihat docstring _score() utk alasan lengkap.
+
+    v10.7.0: golden_setup_bonus diteruskan ke _score() — default False,
+    ZERO perubahan perilaku. Lihat docstring _score() utk kalibrasinya."""
     engine_states = run_engine(df, **engine_kwargs)
 
     out = []
@@ -292,7 +312,7 @@ def run_conviction(df: pd.DataFrame,
         # ── 3) Hitung skor kalau ada zona aktif ──
         if active is not None:
             total, base, retest, vidya_pct, vol_pct, struct_pct, ext_pen, ext_atr = _score(
-                active, close, extension_safe_atr, extension_penalty_per_atr)
+                active, close, extension_safe_atr, extension_penalty_per_atr, golden_setup_bonus)
             out.append(ConvictionState(
                 bar_index=i, date=es.date, close=close, status=status,
                 zone_top=active.top, zone_bottom=active.bottom,
