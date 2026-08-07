@@ -32,6 +32,12 @@ YANG DIUKUR DI SINI:
 Jalankan dari folder repo: python diagnose_golden_setup.py
 Read-only, tidak menyentuh cache/DB produksi. Sample = IDX_WATCHLIST (40
 ticker) — konsisten dgn metodologi Fase 2.
+v10.6.1: sekarang pakai use_ha_trend=True -- VIDYA/band (penentu
+vidya_flipped_up/zone_ordinal_since_flip) dihitung dari Heikin Ashi,
+terbukti mengurangi flicker dibanding basis harga real (lihat validasi
+BBCA v10.5.3->10.6.0). Retest, invalidasi, ATR200 extension-penalty
+TETAP di harga real -- angka ordinal/bars_since_flip di run SEBELUM ini
+(basis real) TIDAK BISA dibandingkan apple-to-apple dgn run SETELAH ini.
 """
 import sys
 sys.path.insert(0, ".")
@@ -57,7 +63,7 @@ def diagnose_one(ticker: str, idx: int = 0, total: int = 0) -> dict:
         return {"ticker": ticker, "ok": False, "reason": "insufficient_bars"}
 
     try:
-        states = run_conviction(df, extension_safe_atr=9.5)  # v10.4.5: ambang tervalidasi
+        states = run_conviction(df, extension_safe_atr=9.5, use_ha_trend=True)  # v10.6.1: VIDYA basis HA
     except Exception as exc:
         print(f"[CRASH] {exc}")
         return {"ticker": ticker, "ok": False, "reason": "crash"}
