@@ -522,7 +522,7 @@ else:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# BOS / CHoCH / EQL BIRU BARU TERBENTUK (BETA) — Fase 4-5, v10.9.2
+# BOS / CHoCH / EQL BIRU BARU TERBENTUK (BETA) — Fase 4-5, v10.9.3
 #
 # KOREKSI v10.9.2 dari v10.9.1: v10.9.1 salah paham syaratnya AND (ketiga
 # event WAJIB muncul bareng) — user klarifikasi yang benar OR, CUKUP SALAH
@@ -531,15 +531,26 @@ else:
 # permintaan user, section itu DIHAPUS TOTAL, ini satu-satunya section
 # BOS/CHoCH/EQL yang tersisa di halaman ini.
 #
+# v10.9.3 — dua penambahan atas permintaan user:
+#   1. Hasil scan TERAKHIR sekarang di-load otomatis begitu page dibuka
+#      (pola sama persis dgn _load_latest_from_db() ZONA AKTIF di atas) —
+#      TIDAK perlu klik SCAN dulu tiap kunjungan. Butuh minimal 1x scan
+#      pernah dijalankan (sama spt ZONA AKTIF) — kalau belum pernah sama
+#      sekali, tetap tampil "BELUM ADA HASIL SCAN".
+#   2. Filter (jendela freshness 1-5 hari, jenis event BOS/CHoCH/EQL) +
+#      sort arah (terbaru/terlama dulu) di atas grid kartu — filter jalan
+#      di data yang SUDAH di-scan (tidak re-scan ke universe), murni
+#      Python-side di rerun Streamlit.
+#
 # Scan full universe (pola fetch_batch sama spt ZoneScanner, TERBUKTI aman
 # utk skala penuh — BUKAN fetch_4h() spt Golden Setup 4H yg sengaja
 # dibatasi 40 ticker). BOS/CHoCH: scope manapun (internal ATAU swing)
 # dihitung. Logic deteksi ada di agents/structure_scanner.py
 # (StructureFreshScanner) + core/structure_signals.py — SENGAJA independen:
 # TIDAK menyentuh session_state zone_results/zone_ctx/golden4h_*, TIDAK
-# menyentuh ZoneScanner/GoldenSetupScanner4H/DB sama sekali. Hasil
-# session-only (belum ke DB, sama alasannya dgn Golden Setup 4H — skema
-# zone_scans blm py kolom baru).
+# menyentuh ZoneScanner/GoldenSetupScanner4H sama sekali. Persist ke tabel
+# BARU structure_scans (agents/scan_logger.py) — TERPISAH dari zone_scans,
+# nol resiko ke skema/tabel produksi lain.
 # ═══════════════════════════════════════════════════════════════════════
 st.markdown("<br>", unsafe_allow_html=True)
 sec_head("BOS / CHoCH / EQL BIRU BARU TERBENTUK (BETA)")
@@ -547,6 +558,45 @@ st.caption("Scan full universe — cari saham yang SALAH SATU dari Internal/Swin
           "CHoCH bullish, atau Equal Low (EQL) biru baru terbentuk dalam 5 hari bursa "
           "terakhir. Kartu menampilkan event mana saja yang match (bisa 1, 2, atau "
           "ketiganya sekaligus).")
+
+
+def _load_latest_structure_from_db():
+    """v10.9.3: page dibuka -> tampilkan hasil scan TERAKHIR dari
+    structure_scans (bukan re-scan otomatis -- scan penuh makan ~4-6
+    menit, memaksa itu tiap buka halaman bukan UX yang baik). Tombol SCAN
+    tetap tersedia utk data terbaru. Pola sama persis dgn
+    _load_latest_from_db() (ZONA AKTIF) di atas. Fail-safe: return
+    (None, None) kalau DB/tabel belum ada (instalasi baru/belum pernah
+    scan) atau kosong."""
+    try:
+        import sqlite3
+        import json as _json
+        conn = sqlite3.connect("logs/scan_history.db")
+        latest_date = conn.execute(
+            "SELECT MAX(scan_date) FROM structure_scans"
+        ).fetchone()[0]
+        if not latest_date:
+            conn.close()
+            return None, None
+
+        rows = conn.execute(
+            "SELECT raw_json FROM structure_scans WHERE scan_date = ?", (latest_date,)
+        ).fetchall()
+        results = [_json.loads(r[0]) for r in rows]
+
+        ctx_row = conn.execute(
+            "SELECT v FROM meta WHERE k='structure_scan_ctx'"
+        ).fetchone()
+        conn.close()
+
+        results.sort(key=lambda r: r["freshness"])
+        ctx = _json.loads(ctx_row[0]) if ctx_row else {
+            "scan_date": latest_date, "match_count": len(results),
+        }
+        return results, ctx
+    except Exception:
+        return None, None
+
 
 t_run_btn = st.button("SCAN STRUKTUR BARU (FULL UNIVERSE)", type="secondary")
 
@@ -556,6 +606,14 @@ if t_run_btn:
         t_results, t_ctx = t_scanner.scan()
         st.session_state["structure_fresh_results"] = t_results
         st.session_state["structure_fresh_ctx"] = t_ctx
+
+# v10.9.3: kalau belum pernah klik SCAN sesi ini, muat hasil scan terakhir
+# dari DB dulu (bukan biarkan kosong "belum ada hasil scan").
+if "structure_fresh_results" not in st.session_state:
+    _db_t_results, _db_t_ctx = _load_latest_structure_from_db()
+    if _db_t_results is not None:
+        st.session_state["structure_fresh_results"] = _db_t_results
+        st.session_state["structure_fresh_ctx"] = _db_t_ctx
 
 t_results = st.session_state.get("structure_fresh_results", [])
 t_ctx = st.session_state.get("structure_fresh_ctx", {})
@@ -577,63 +635,99 @@ else:
         render_empty_state("◎", "TIDAK ADA TICKER DENGAN EVENT BARU TERBENTUK",
                            "Coba scan lagi nanti — kondisi struktur berubah tiap hari bursa.", "")
     else:
-        # Self-contained (prinsip sama spt catatan v10.9.0 di section Golden
-        # Setup 4H): helper badge di sini definisi sendiri, TIDAK reuse
-        # _badge/_g_badge dari section lain — section ini harus tetap bisa
-        # render biarpun section2 lain di atas belum pernah di-scan/kosong.
-        def _t_freshness_color(days):
-            if days <= 1:
-                return NEON_GREEN
-            if days <= 3:
-                return C_INFO
-            return C_WARNING
+        # --- Filter + sort (v10.9.3) — murni Python-side, tidak re-scan ---
+        fc1, fc2, fc3 = st.columns([2, 2, 1])
+        with fc1:
+            t_day_range = st.slider(
+                "Terbentuk berapa hari lalu", 1, 5, (1, 5), key="t_day_range",
+                help="1 = hari ini, 5 = paling lama dalam window scan (5 hari bursa).",
+            )
+        with fc2:
+            t_kind_filter = st.multiselect(
+                "Jenis event", ["BOS", "CHoCH", "EQL"],
+                default=["BOS", "CHoCH", "EQL"], key="t_kind_filter",
+            )
+        with fc3:
+            t_sort_dir = st.selectbox(
+                "Urutkan", ["Terbaru dulu", "Terlama dulu"], key="t_sort_dir",
+            )
 
-        def _t_event_badge(label, date_str, scope, days_ago, color):
-            if date_str is None:
-                return ""  # event ini tidak match — jangan tampilkan badge-nya
-            scope_tag = f" ({scope})" if scope else ""
-            return ('<span style="opacity:1;border:1px solid ' + color + ';color:' + color +
-                   ';border-radius:3px;padding:2px 8px;font-size:var(--text-2xs);'
-                   'font-family:Share Tech Mono,monospace;margin-right:5px;margin-bottom:4px;'
-                   'display:inline-block">' + label + scope_tag + ' · ' + date_str +
-                   ' · ' + str(days_ago) + 'h lalu</span>')
+        _kind_display_to_internal = {"BOS": "BOS", "CHoCH": "CHOCH", "EQL": "EQL"}
+        _selected_kinds = {_kind_display_to_internal[k] for k in t_kind_filter}
+        _day_lo, _day_hi = t_day_range[0] - 1, t_day_range[1] - 1  # 1-5 (tampilan) -> 0-4 (freshness asli)
 
-        _bias_label_t = {1: "BULLISH", -1: "BEARISH", None: "-"}
+        t_filtered = [
+            r for r in t_results
+            if _day_lo <= r["freshness"] <= _day_hi
+            and set(r.get("match_kinds", [])) & _selected_kinds
+        ]
+        t_filtered.sort(key=lambda r: r["freshness"], reverse=(t_sort_dir == "Terlama dulu"))
 
-        t_cols = st.columns(2)
-        for t_idx, t_r in enumerate(t_results):
-            t_col = t_cols[t_idx % 2]
-            with t_col:
-                fc = _t_freshness_color(t_r["freshness"])
-                fresh_label = "HARI INI" if t_r["freshness"] == 0 else f"{t_r['freshness']}h lalu"
-                badges_t = (
-                    _t_event_badge("BOS", t_r["bos_date"], t_r["bos_scope"],
-                                  t_r["bos_days_ago"], NEON_GREEN) +
-                    _t_event_badge("CHoCH", t_r["choch_date"], t_r["choch_scope"],
-                                  t_r["choch_days_ago"], C_WARNING) +
-                    _t_event_badge("EQL", t_r["eql_date"], "",
-                                  t_r["eql_days_ago"], C_INFO)
-                )
-                t_card_html = (
-                    '<div style="background:var(--bg-card);border:1px solid ' + fc + '55;'
-                    'border-left:4px solid ' + fc + ';border-radius:var(--r-md);'
-                    'padding:1rem 1.2rem;margin-bottom:0.8rem">'
-                    '<div style="display:flex;justify-content:space-between;align-items:center">'
-                    '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);'
-                    'font-weight:800;color:#E2E8F0">' + t_r['ticker'] + '</span>'
-                    '<span style="font-family:Orbitron,monospace;font-size:var(--text-md);'
-                    'font-weight:900;color:' + fc + '">' + fresh_label + '</span>'
-                    '</div>'
-                    '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
-                    'color:var(--text-muted);margin:0.4rem 0">'
-                    'Close Rp' + '{:,.0f}'.format(t_r['close']) +
-                    ' | Bias Internal: ' + _bias_label_t[t_r['internal_bias']] +
-                    ' | Bias Swing: ' + _bias_label_t[t_r['swing_bias']] +
-                    '</div>'
-                    '<div style="margin-top:0.5rem">' + badges_t + '</div>'
-                    '</div>'
-                )
-                st.markdown(t_card_html, unsafe_allow_html=True)
+        if not t_kind_filter:
+            st.info("Pilih minimal 1 jenis event di filter di atas.")
+        elif not t_filtered:
+            render_empty_state("◎", "TIDAK ADA HASIL SESUAI FILTER",
+                               "Coba longgarkan rentang hari atau tambah jenis event.", "")
+        else:
+            st.caption(f"Menampilkan {len(t_filtered)} dari {len(t_results)} match.")
+
+            # Self-contained (prinsip sama spt catatan v10.9.0 di section Golden
+            # Setup 4H): helper badge di sini definisi sendiri, TIDAK reuse
+            # _badge/_g_badge dari section lain — section ini harus tetap bisa
+            # render biarpun section2 lain di atas belum pernah di-scan/kosong.
+            def _t_freshness_color(days):
+                if days <= 1:
+                    return NEON_GREEN
+                if days <= 3:
+                    return C_INFO
+                return C_WARNING
+
+            def _t_event_badge(label, date_str, scope, days_ago, color):
+                if date_str is None:
+                    return ""  # event ini tidak match — jangan tampilkan badge-nya
+                scope_tag = f" ({scope})" if scope else ""
+                return ('<span style="opacity:1;border:1px solid ' + color + ';color:' + color +
+                       ';border-radius:3px;padding:2px 8px;font-size:var(--text-2xs);'
+                       'font-family:Share Tech Mono,monospace;margin-right:5px;margin-bottom:4px;'
+                       'display:inline-block">' + label + scope_tag + ' · ' + date_str +
+                       ' · ' + str(days_ago) + 'h lalu</span>')
+
+            _bias_label_t = {1: "BULLISH", -1: "BEARISH", None: "-"}
+
+            t_cols = st.columns(2)
+            for t_idx, t_r in enumerate(t_filtered):
+                t_col = t_cols[t_idx % 2]
+                with t_col:
+                    fc = _t_freshness_color(t_r["freshness"])
+                    fresh_label = "HARI INI" if t_r["freshness"] == 0 else f"{t_r['freshness']}h lalu"
+                    badges_t = (
+                        _t_event_badge("BOS", t_r["bos_date"], t_r["bos_scope"],
+                                      t_r["bos_days_ago"], NEON_GREEN) +
+                        _t_event_badge("CHoCH", t_r["choch_date"], t_r["choch_scope"],
+                                      t_r["choch_days_ago"], C_WARNING) +
+                        _t_event_badge("EQL", t_r["eql_date"], "",
+                                      t_r["eql_days_ago"], C_INFO)
+                    )
+                    t_card_html = (
+                        '<div style="background:var(--bg-card);border:1px solid ' + fc + '55;'
+                        'border-left:4px solid ' + fc + ';border-radius:var(--r-md);'
+                        'padding:1rem 1.2rem;margin-bottom:0.8rem">'
+                        '<div style="display:flex;justify-content:space-between;align-items:center">'
+                        '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);'
+                        'font-weight:800;color:#E2E8F0">' + t_r['ticker'] + '</span>'
+                        '<span style="font-family:Orbitron,monospace;font-size:var(--text-md);'
+                        'font-weight:900;color:' + fc + '">' + fresh_label + '</span>'
+                        '</div>'
+                        '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
+                        'color:var(--text-muted);margin:0.4rem 0">'
+                        'Close Rp' + '{:,.0f}'.format(t_r['close']) +
+                        ' | Bias Internal: ' + _bias_label_t[t_r['internal_bias']] +
+                        ' | Bias Swing: ' + _bias_label_t[t_r['swing_bias']] +
+                        '</div>'
+                        '<div style="margin-top:0.5rem">' + badges_t + '</div>'
+                        '</div>'
+                    )
+                    st.markdown(t_card_html, unsafe_allow_html=True)
 
 st.markdown("<br><br>", unsafe_allow_html=True)
 

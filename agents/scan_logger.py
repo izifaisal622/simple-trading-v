@@ -481,6 +481,83 @@ def log_zone_results(results: list, ctx: dict) -> int:
         return 0
 
 
+def _ensure_structure_table(conn: sqlite3.Connection) -> None:
+    """v10.9.3 — persist hasil StructureFreshScanner (BOS/CHoCH/EQL biru)
+    supaya page 1 bisa tampilkan hasil scan TERAKHIR begitu dibuka, tanpa
+    user harus klik SCAN lagi tiap kunjungan (pola sama spt zone_scans).
+    Skema SENGAJA ramping: kolom queryable minimal (ticker/scan_date/
+    freshness/match_kinds), sisanya (tanggal & scope tiap event, level,
+    bias) disimpan di raw_json -- field baru nanti tinggal ikut raw_json,
+    TIDAK perlu ALTER TABLE tiap kali struktur row berubah."""
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS structure_scans (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker        TEXT NOT NULL,
+        scan_date     TEXT NOT NULL,
+        scan_ts       TEXT NOT NULL,
+        close_price   REAL,
+        freshness     INTEGER,
+        match_kinds   TEXT,                        -- comma-joined, mis. "BOS,EQL"
+        raw_json      TEXT,
+        created_at    TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(ticker, scan_date)
+    );
+    """)
+
+
+def log_structure_results(results: list, ctx: dict) -> int:
+    """Dipanggil di akhir StructureFreshScanner.scan(). Hanya ticker yang
+    MATCH (>=1 event) yang disimpan -- beda dari log_zone_results yang
+    simpan semua ticker termasuk IDLE, di sini "no_match" bukan sinyal yang
+    berguna utk diaudit. ctx (total_universe/analyzed/dst) disimpan
+    terpisah di tabel meta (k/v generik yang sudah ada, key
+    'structure_scan_ctx') karena bukan per-ticker."""
+    if not results:
+        return 0
+    now = datetime.now()
+    scan_date = now.strftime("%Y-%m-%d")
+    scan_ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    rows = []
+    for r in results:
+        try:
+            _tkr = str(r.get("ticker", "")).strip().upper().replace(".JK", "")
+            if not _tkr:
+                continue
+            rows.append((
+                _tkr, scan_date, scan_ts,
+                float(r.get("close", 0) or 0),
+                int(r.get("freshness", 0) or 0),
+                ",".join(r.get("match_kinds", [])),
+                json.dumps(r, default=str, ensure_ascii=False),
+            ))
+        except Exception as exc:
+            logger.warning(f"[ScanLogger] structure skip {r.get('ticker','?')}: {exc}")
+    if not rows:
+        return 0
+    try:
+        conn = _get_conn()
+        _ensure_structure_table(conn)
+        # meta cuma dibuat lazy di _throttle_ok() -- pastikan ada dulu di sini
+        # jg (idempotent), jangan asumsikan sudah pernah dibuat proses lain.
+        conn.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)")
+        conn.executemany("""
+            INSERT OR REPLACE INTO structure_scans
+            (ticker, scan_date, scan_ts, close_price, freshness, match_kinds, raw_json)
+            VALUES (?,?,?,?,?,?,?)
+        """, rows)
+        conn.execute(
+            "INSERT OR REPLACE INTO meta (k,v) VALUES ('structure_scan_ctx',?)",
+            (json.dumps({**ctx, "scan_date": scan_date}, default=str, ensure_ascii=False),)
+        )
+        conn.commit()
+        conn.close()
+        logger.info(f"[ScanLogger] {len(rows)} structure rows tersimpan ({scan_date})")
+        return len(rows)
+    except Exception as exc:
+        logger.error(f"[ScanLogger] structure gagal simpan: {exc}")
+        return 0
+
+
 def _backfill_table(conn, table: str, max_rows: int, pd, yf) -> int:
     """Worker generik backfill satu tabel (whale_scans / ema_scans). Entry basis: open H+1.
     v9.9.9: yf.download di-CHUNK 200 ticker/batch — batch tunggal besar (mis.

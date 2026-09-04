@@ -1,6 +1,6 @@
 """
 agents/structure_scanner.py — Scan full universe cari ticker yang BARU
-membentuk SALAH SATU event bullish: BOS, CHoCH, atau EQL biru (v10.9.2).
+membentuk SALAH SATU event bullish: BOS, CHoCH, atau EQL biru (v10.9.3).
 
 KENAPA FILE TERPISAH, BUKAN EXTEND ZoneScanner/GoldenSetupScanner4H: sama
 prinsipnya dgn agents/golden_setup_scanner.py — nol risiko ke jalur
@@ -24,9 +24,12 @@ yang benar CUKUP SALAH SATU/OR):
     SEMUA yang match ditampilkan di kartu yang sama (bukan cuma 1) —
     field yang tidak match tetap None, di-skip pas render kartu.
 
-Hasil session-only (Streamlit session_state), TIDAK ditulis ke DB — sama
-alasannya dgn Golden Setup 4H: field baru ini di luar skema zone_scans
-saat ini, migrasi skema (kalau diperlukan) pekerjaan terpisah.
+v10.9.3: hasil MATCH (bukan no_match/skip/crash) sekarang DIPERSIST ke
+agents/scan_logger.py (tabel baru structure_scans + meta['structure_scan_ctx'],
+skema TERPISAH dari zone_scans, nol resiko ke tabel produksi lain) supaya
+page 1 bisa muat hasil scan TERAKHIR begitu dibuka tanpa user klik SCAN
+lagi (user eksplisit minta ini). Logging dibungkus try/except sama spt
+zone_scanner.py -- gagal simpan TIDAK BOLEH menggagalkan scan itu sendiri.
 """
 
 import logging
@@ -157,4 +160,11 @@ class StructureFreshScanner:
         }
         logger.info(f"[StructureFresh] Done: {len(results)} match | "
                     f"{skipped} skip | {crashed} crash | {analyzed} dianalisis")
+
+        try:
+            from agents.scan_logger import log_structure_results
+            log_structure_results(results, ctx)
+        except Exception as exc:
+            logger.error(f"[StructureFresh] log gagal: {exc}")
+
         return results, ctx
