@@ -518,3 +518,74 @@ else:
     st.caption("Golden Setup = zona retest PERTAMA sejak VIDYA belok hijau (basis Heikin "
               "Ashi) — proxy pola 'flip -> koreksi -> reversal' favorit. Bukan jaminan "
               "profit, tetap validasi manual sebelum entry.")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# STRUKTUR BULLISH — BOS / CHoCH / EQL BIRU (ADITIF, v10.9.1)
+#
+# Port bagian Pine "VIDYA+SMC [Combined]" yang SENGAJA belum diikutkan ke
+# core/ob_engine.py Fase 1 (lihat catatan "TIDAK diport" di docstring modul
+# itu): Internal + Swing Bullish BOS/CHoCH, dan Equal Low (EQL). Logic-nya
+# ada di core/structure_signals.py — file BARU, TIDAK mengubah satu baris
+# pun di ob_engine.py/conviction_engine.py/zone_scanner.py. Section ini
+# SENGAJA independen: tidak menyentuh session_state zone_results/zone_ctx/
+# golden4h_*, tidak menyentuh ZoneScanner/GoldenSetupScanner4H/DB sama
+# sekali. Hanya sisi bullish/biru sesuai kebutuhan — bearish/kuning (BOS/
+# CHoCH bearish, EQH) sengaja tidak diimplementasikan.
+# ═══════════════════════════════════════════════════════════════════════
+st.markdown("<br>", unsafe_allow_html=True)
+sec_head("STRUKTUR BULLISH — BOS / CHoCH / EQL BIRU")
+st.caption("Internal (leg 5-bar) & Swing (leg 50-bar) Break of Structure + Change of "
+          "Character bullish, plus Equal Low — port langsung dari indikator Pine "
+          "VIDYA+SMC kamu (skema warna: biru = bullish).")
+
+from core.structure_signals import compute_bullish_structure
+from core.data_feed import DataFeed  # re-import eksplisit -- JANGAN andalkan
+# import lokal di dalam blok `if filtered:` di atas, itu tidak jalan kalau
+# filtered kosong (section ini harus berdiri sendiri, sama prinsipnya dgn
+# catatan self-contained di section Golden Setup 4H).
+
+_struct_ticker = st.text_input(
+    "Ticker (tanpa .JK)", value="", placeholder="mis. BBCA",
+    key="struct_signal_ticker",
+).strip().upper()
+
+if _struct_ticker:
+    with st.spinner(f"Menghitung struktur {_struct_ticker}..."):
+        _sfeed = DataFeed(timeframe="1d", period="2y")
+        _sdf = _sfeed.fetch(_struct_ticker)
+        _sig = compute_bullish_structure(_sdf, ticker=_struct_ticker) if _sdf is not None else None
+
+    if _sig is None:
+        st.warning(f"Data {_struct_ticker} tidak cukup (butuh histori harian lebih panjang, "
+                   "atau ticker tidak ditemukan).")
+    else:
+        _bias_label = {1: "BULLISH", -1: "BEARISH", None: "-"}
+        _sc1, _sc2, _sc3 = st.columns(3)
+        _sc1.metric("INTERNAL BIAS", _bias_label[_sig.internal_trend_bias])
+        _sc2.metric("SWING BIAS", _bias_label[_sig.swing_trend_bias])
+        _sc3.metric("TOTAL EVENT BIRU", len(_sig.events))
+
+        _recent = list(reversed(_sig.events[-15:]))
+        if not _recent:
+            st.info("Belum ada BOS/CHoCH/EQL biru terdeteksi dalam histori yang di-fetch.")
+        else:
+            _kind_color = {"BOS": NEON_GREEN, "CHOCH": C_WARNING, "EQL": C_INFO}
+            _rows_html = ""
+            for _ev in _recent:
+                _col = _kind_color.get(_ev.kind, C_INFO)
+                _scope_tag = f" ({_ev.scope})" if _ev.scope else ""
+                _date_str = _ev.date.strftime("%Y-%m-%d") if hasattr(_ev.date, "strftime") else str(_ev.date)
+                _rows_html += (
+                    '<div style="display:flex;justify-content:space-between;padding:4px 0;'
+                    'border-bottom:1px solid rgba(255,255,255,0.06);font-family:Share Tech Mono,'
+                    'monospace;font-size:var(--text-sm)">'
+                    f'<span>{_date_str}</span>'
+                    f'<span style="color:{_col};font-weight:700">{_ev.kind}{_scope_tag}</span>'
+                    f'<span>Rp{_ev.level:,.0f}</span>'
+                    '</div>'
+                )
+            st.markdown(_rows_html, unsafe_allow_html=True)
+        st.caption("BOS = lanjutan tren bullish yang sudah berjalan | CHoCH = pembalikan arah "
+                  "(bias sebelumnya bearish) | EQL = low baru \"sama\" (dlm toleransi ATR) dgn "
+                  "low pivot sebelumnya. Warna biru semua -- sesuai skema custom di indikator Pine kamu.")

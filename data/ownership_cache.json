@@ -88,5 +88,32 @@
     "top_holders": [],
     "source": "yfinance",
     "_fetched": "2026-08-05T16:05:17.494754"
+  },
+  "yf_COCO": {
+    "ticker": "COCO",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-01T13:32:00.992401"
+  },
+  "yf_IRSX": {
+    "ticker": "IRSX",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-01T13:32:00.996538"
+  },
+  "yf_PTBA": {
+    "ticker": "PTBA",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-01T13:32:01.031698"
   }
 }
