@@ -39,7 +39,7 @@ st.markdown(get_page_css("dashboard"), unsafe_allow_html=True)
 from core.data_feed import get_ihsg_regime
 from agents.zone_scanner import ZoneScanner
 from agents.golden_setup_scanner import GoldenSetupScanner4H
-from agents.structure_scanner import StructureTrioScanner
+from agents.structure_scanner import StructureFreshScanner
 
 
 def _bars_since_segment(val, label="hari sejak terbentuk", prefix=" | "):
@@ -522,55 +522,59 @@ else:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TRIO BOS + CHoCH + EQL BARU TERBENTUK (BETA) — Fase 4-5, v10.9.1
+# BOS / CHoCH / EQL BIRU BARU TERBENTUK (BETA) — Fase 4-5, v10.9.2
 #
-# Beda dari section "STRUKTUR BULLISH" single-ticker di bawah: ini SCAN
-# full universe (pola fetch_batch sama spt ZoneScanner, TERBUKTI aman utk
-# skala penuh — BUKAN fetch_4h() spt Golden Setup 4H yg sengaja dibatasi
-# 40 ticker). Cari ticker yang ketiga event bullish/biru (BOS, CHoCH, EQL)
-# SAMA-SAMA baru terbentuk dalam 5 hari bursa terakhir (tak harus di bar
-# yg sama persis) — disepakati eksplisit dgn user. BOS/CHoCH: salah satu
-# scope (internal ATAU swing) cukup, tak wajib dua-duanya. Logic deteksi
-# ada di agents/structure_scanner.py (StructureTrioScanner) + core/
-# structure_signals.py — SENGAJA independen: TIDAK menyentuh session_state
-# zone_results/zone_ctx/golden4h_*, TIDAK menyentuh ZoneScanner/
-# GoldenSetupScanner4H/DB sama sekali. Hasil session-only (belum ke DB,
-# sama alasannya dgn Golden Setup 4H — skema zone_scans blm py kolom baru).
+# KOREKSI v10.9.2 dari v10.9.1: v10.9.1 salah paham syaratnya AND (ketiga
+# event WAJIB muncul bareng) — user klarifikasi yang benar OR, CUKUP SALAH
+# SATU dari {BOS, CHoCH, EQL} yang baru terbentuk. v10.9.1 juga masih ada
+# section "CEK 1 TICKER" (single-ticker checker) di bawahnya — atas
+# permintaan user, section itu DIHAPUS TOTAL, ini satu-satunya section
+# BOS/CHoCH/EQL yang tersisa di halaman ini.
+#
+# Scan full universe (pola fetch_batch sama spt ZoneScanner, TERBUKTI aman
+# utk skala penuh — BUKAN fetch_4h() spt Golden Setup 4H yg sengaja
+# dibatasi 40 ticker). BOS/CHoCH: scope manapun (internal ATAU swing)
+# dihitung. Logic deteksi ada di agents/structure_scanner.py
+# (StructureFreshScanner) + core/structure_signals.py — SENGAJA independen:
+# TIDAK menyentuh session_state zone_results/zone_ctx/golden4h_*, TIDAK
+# menyentuh ZoneScanner/GoldenSetupScanner4H/DB sama sekali. Hasil
+# session-only (belum ke DB, sama alasannya dgn Golden Setup 4H — skema
+# zone_scans blm py kolom baru).
 # ═══════════════════════════════════════════════════════════════════════
 st.markdown("<br>", unsafe_allow_html=True)
-sec_head("TRIO BOS + CHoCH + EQL BARU TERBENTUK (BETA)")
-st.caption("Scan full universe — cari saham yang Internal/Swing BOS, CHoCH bullish, "
-          "DAN Equal Low (EQL) biru SAMA-SAMA baru terbentuk dalam 5 hari bursa "
-          "terakhir. Beda dari section di bawah (cek 1 ticker manual) — ini nyisir "
-          "seluruh universe sekaligus.")
+sec_head("BOS / CHoCH / EQL BIRU BARU TERBENTUK (BETA)")
+st.caption("Scan full universe — cari saham yang SALAH SATU dari Internal/Swing BOS, "
+          "CHoCH bullish, atau Equal Low (EQL) biru baru terbentuk dalam 5 hari bursa "
+          "terakhir. Kartu menampilkan event mana saja yang match (bisa 1, 2, atau "
+          "ketiganya sekaligus).")
 
-t_run_btn = st.button("SCAN TRIO STRUKTUR (FULL UNIVERSE)", type="secondary")
+t_run_btn = st.button("SCAN STRUKTUR BARU (FULL UNIVERSE)", type="secondary")
 
 if t_run_btn:
     with st.spinner("Scanning full universe (~4-6 menit, unduh 2 tahun data harian)..."):
-        t_scanner = StructureTrioScanner()
+        t_scanner = StructureFreshScanner()
         t_results, t_ctx = t_scanner.scan()
-        st.session_state["structure_trio_results"] = t_results
-        st.session_state["structure_trio_ctx"] = t_ctx
+        st.session_state["structure_fresh_results"] = t_results
+        st.session_state["structure_fresh_ctx"] = t_ctx
 
-t_results = st.session_state.get("structure_trio_results", [])
-t_ctx = st.session_state.get("structure_trio_ctx", {})
+t_results = st.session_state.get("structure_fresh_results", [])
+t_ctx = st.session_state.get("structure_fresh_ctx", {})
 
 if not t_results and not t_ctx:
-    render_empty_state("⚡", "BELUM ADA HASIL SCAN TRIO",
-                       "Klik SCAN TRIO STRUKTUR (FULL UNIVERSE) utk memulai.", "")
+    render_empty_state("⚡", "BELUM ADA HASIL SCAN",
+                       "Klik SCAN STRUKTUR BARU (FULL UNIVERSE) utk memulai.", "")
 else:
     tc1, tc2, tc3, tc4 = st.columns(4)
     tc1.metric("UNIVERSE", t_ctx.get("total_universe", 0))
     tc2.metric("DIANALISIS", t_ctx.get("analyzed", 0))
-    tc3.metric("MATCH TRIO", t_ctx.get("match_count", 0))
+    tc3.metric("MATCH", t_ctx.get("match_count", 0))
     if t_ctx.get("skipped_short_history") or t_ctx.get("crashed"):
         st.caption(f"Skip data pendek: {t_ctx.get('skipped_short_history',0)} | "
                   f"Crash: {t_ctx.get('crashed',0)}")
     tc4.caption(f"Update: {t_ctx.get('scan_date', '-')}")
 
     if not t_results:
-        render_empty_state("◎", "TIDAK ADA TICKER DENGAN TRIO BARU TERBENTUK",
+        render_empty_state("◎", "TIDAK ADA TICKER DENGAN EVENT BARU TERBENTUK",
                            "Coba scan lagi nanti — kondisi struktur berubah tiap hari bursa.", "")
     else:
         # Self-contained (prinsip sama spt catatan v10.9.0 di section Golden
@@ -585,6 +589,8 @@ else:
             return C_WARNING
 
         def _t_event_badge(label, date_str, scope, days_ago, color):
+            if date_str is None:
+                return ""  # event ini tidak match — jangan tampilkan badge-nya
             scope_tag = f" ({scope})" if scope else ""
             return ('<span style="opacity:1;border:1px solid ' + color + ';color:' + color +
                    ';border-radius:3px;padding:2px 8px;font-size:var(--text-2xs);'
@@ -631,79 +637,3 @@ else:
 
 st.markdown("<br><br>", unsafe_allow_html=True)
 
-
-# ═══════════════════════════════════════════════════════════════════════
-# STRUKTUR BULLISH — BOS / CHoCH / EQL BIRU (ADITIF, v10.9.0)
-#
-# Port bagian Pine "VIDYA+SMC [Combined]" yang SENGAJA belum diikutkan ke
-# core/ob_engine.py Fase 1 (lihat catatan "TIDAK diport" di docstring modul
-# itu): Internal + Swing Bullish BOS/CHoCH, dan Equal Low (EQL). Logic-nya
-# ada di core/structure_signals.py — file BARU, TIDAK mengubah satu baris
-# pun di ob_engine.py/conviction_engine.py/zone_scanner.py. Section ini
-# SENGAJA independen: tidak menyentuh session_state zone_results/zone_ctx/
-# golden4h_*, tidak menyentuh ZoneScanner/GoldenSetupScanner4H/DB sama
-# sekali. Hanya sisi bullish/biru sesuai kebutuhan — bearish/kuning (BOS/
-# CHoCH bearish, EQH) sengaja tidak diimplementasikan.
-#
-# CATATAN v10.9.1: komentar section ini SEBELUMNYA salah label "v10.9.1"
-# padahal version.json top-level masih 10.9.0 saat itu (drift dokumentasi,
-# ditemukan saat cek status repo). Diperbaiki jadi v10.9.0 (versi
-# sebenarnya saat section ini ditambahkan) — v10.9.1 yang benar dipakai
-# section TRIO SCAN baru di atas.
-# ═══════════════════════════════════════════════════════════════════════
-st.markdown("<br>", unsafe_allow_html=True)
-sec_head("CEK 1 TICKER — BOS / CHoCH / EQL BIRU")
-st.caption("Internal (leg 5-bar) & Swing (leg 50-bar) Break of Structure + Change of "
-          "Character bullish, plus Equal Low — port langsung dari indikator Pine "
-          "VIDYA+SMC kamu (skema warna: biru = bullish).")
-
-from core.structure_signals import compute_bullish_structure
-from core.data_feed import DataFeed  # re-import eksplisit -- JANGAN andalkan
-# import lokal di dalam blok `if filtered:` di atas, itu tidak jalan kalau
-# filtered kosong (section ini harus berdiri sendiri, sama prinsipnya dgn
-# catatan self-contained di section Golden Setup 4H).
-
-_struct_ticker = st.text_input(
-    "Ticker (tanpa .JK)", value="", placeholder="mis. BBCA",
-    key="struct_signal_ticker",
-).strip().upper()
-
-if _struct_ticker:
-    with st.spinner(f"Menghitung struktur {_struct_ticker}..."):
-        _sfeed = DataFeed(timeframe="1d", period="2y")
-        _sdf = _sfeed.fetch(_struct_ticker)
-        _sig = compute_bullish_structure(_sdf, ticker=_struct_ticker) if _sdf is not None else None
-
-    if _sig is None:
-        st.warning(f"Data {_struct_ticker} tidak cukup (butuh histori harian lebih panjang, "
-                   "atau ticker tidak ditemukan).")
-    else:
-        _bias_label = {1: "BULLISH", -1: "BEARISH", None: "-"}
-        _sc1, _sc2, _sc3 = st.columns(3)
-        _sc1.metric("INTERNAL BIAS", _bias_label[_sig.internal_trend_bias])
-        _sc2.metric("SWING BIAS", _bias_label[_sig.swing_trend_bias])
-        _sc3.metric("TOTAL EVENT BIRU", len(_sig.events))
-
-        _recent = list(reversed(_sig.events[-15:]))
-        if not _recent:
-            st.info("Belum ada BOS/CHoCH/EQL biru terdeteksi dalam histori yang di-fetch.")
-        else:
-            _kind_color = {"BOS": NEON_GREEN, "CHOCH": C_WARNING, "EQL": C_INFO}
-            _rows_html = ""
-            for _ev in _recent:
-                _col = _kind_color.get(_ev.kind, C_INFO)
-                _scope_tag = f" ({_ev.scope})" if _ev.scope else ""
-                _date_str = _ev.date.strftime("%Y-%m-%d") if hasattr(_ev.date, "strftime") else str(_ev.date)
-                _rows_html += (
-                    '<div style="display:flex;justify-content:space-between;padding:4px 0;'
-                    'border-bottom:1px solid rgba(255,255,255,0.06);font-family:Share Tech Mono,'
-                    'monospace;font-size:var(--text-sm)">'
-                    f'<span>{_date_str}</span>'
-                    f'<span style="color:{_col};font-weight:700">{_ev.kind}{_scope_tag}</span>'
-                    f'<span>Rp{_ev.level:,.0f}</span>'
-                    '</div>'
-                )
-            st.markdown(_rows_html, unsafe_allow_html=True)
-        st.caption("BOS = lanjutan tren bullish yang sudah berjalan | CHoCH = pembalikan arah "
-                  "(bias sebelumnya bearish) | EQL = low baru \"sama\" (dlm toleransi ATR) dgn "
-                  "low pivot sebelumnya. Warna biru semua -- sesuai skema custom di indikator Pine kamu.")
