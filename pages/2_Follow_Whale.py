@@ -133,6 +133,29 @@ ctx           = last.get("whale_context", {})
 regime        = last.get("regime", {})
 scan_date     = last.get("date","—")[:10] if last.get("date") else "—"
 
+# v10.9.9: cache Momentum & Early Watch dari logs/daily_results.json — pola
+# SAMA PERSIS dgn whale_results di atas, supaya hasil scan orchestrator.py
+# (CLI, --mode all/momentum/early_watch) SUDAH KELIHATAN begitu dashboard
+# dibuka, tidak perlu klik SCAN manual dulu. MomentumMatch/EarlyWatchState
+# BUKAN dict spt whale_results -- WAJIB lewat momentum_match_from_dict()/
+# early_watch_state_from_dict() (agents/momentum_scanner.py & .../early_watch_
+# scanner.py) buat rekonstruksi dari JSON. Dibungkus try/except: kalau file
+# rusak/skema lama/korup, jangan sampai GAGALKAN seluruh page load, cukup
+# anggap belum ada cache (fallback ke empty-state spt sebelumnya).
+try:
+    from agents.momentum_scanner import momentum_match_from_dict as _mm_from_dict
+    momentum_cached_results = [_mm_from_dict(d) for d in last.get("momentum_results", [])]
+except Exception:
+    momentum_cached_results = []
+momentum_cached_ctx = last.get("momentum_context", {})
+
+try:
+    from agents.early_watch_scanner import early_watch_state_from_dict as _ew_from_dict
+    early_watch_cached_results = [_ew_from_dict(d) for d in last.get("early_watch_results", [])]
+except Exception:
+    early_watch_cached_results = []
+early_watch_cached_ctx = last.get("early_watch_context", {})
+
 cycle       = ctx.get("cycle",    regime.get("cycle","—"))
 ihsg        = ctx.get("ihsg",     regime.get("ihsg", 0))
 mom_4w      = ctx.get("mom_4w",   regime.get("mom_4w", 0))
@@ -1711,11 +1734,17 @@ border-radius:var(--r-sm);padding:0.5rem 0.65rem">
 # full_universe=True) — SAMA dengan default StructureFreshScanner Page 1.
 # fetch_4h() TIDAK punya caching (beda dari DataFeed.fetch_batch()) — scan
 # full universe (~560 ticker) diuji live 2026-09-07: ~5-6 menit, 0 crash,
-# lihat changelog v10.9.5. Hasil SESSION-ONLY (belum ke DB) — pola sama
-# dengan Golden Setup 4H generasi pertama (v10.9.0) sebelum dapat
-# persistence di iterasi berikutnya; migrasi ke DB (mirip
-# agents/scan_logger.py structure_scans) bisa menyusul kalau diperlukan,
-# BUKAN scope Fase 2 ini.
+# lihat changelog v10.9.5.
+#
+# PERSISTENSI (v10.9.9, MENGGANTI catatan "SESSION-ONLY" versi sebelumnya):
+# hasil scan SEKARANG dibaca dari logs/daily_results.json di awal script
+# (var momentum_cached_results/momentum_cached_ctx, lihat blok "Load data"
+# di atas) SEBELUM section ini — jadi kalau orchestrator.py (CLI, --mode
+# all/momentum) sudah pernah jalan, dashboard SUDAH punya hasil begitu
+# dibuka, tanpa klik SCAN manual. session_state di bawah cuma override
+# in-session (scan manual lewat tombol) DAN diinisialisasi dari cache file
+# ini kalau session baru belum pernah override -- st.session_state TIDAK
+# lagi satu-satunya sumber data spt versi 10.9.6-10.9.8.
 # ═══════════════════════════════════════════════════════════════════════
 st.markdown("<br>", unsafe_allow_html=True)
 sec_head("◆ MOMENTUM (BETA)")
@@ -1723,16 +1752,34 @@ st.caption("VIDYA baru belok hijau (dari merah) + konfirmasi struktur BOS/CHoCH 
           "(4H) — union, cukup salah satu. EQL sebelum konfirmasi = tag HIGH CONVICTION "
           "opsional, bukan syarat wajib. Full universe, fetch tanpa cache — scan ~5-6 menit.")
 
+if "momentum_results" not in st.session_state:
+    st.session_state["momentum_results"] = momentum_cached_results
+    st.session_state["momentum_ctx"] = momentum_cached_ctx
+
 m_run_btn = st.button("⟳ SCAN MOMENTUM", type="secondary", key="btn_momentum_scan")
 
 if m_run_btn:
     with st.spinner("◈ Scan Momentum — fetch 4H full universe (tanpa cache, ~5-6 menit)..."):
         try:
-            from agents.momentum_scanner import MomentumScanner4H
+            from agents.momentum_scanner import MomentumScanner4H, momentum_match_to_dict
             m_scanner = MomentumScanner4H()
             m_results, m_ctx = m_scanner.scan()
             st.session_state["momentum_results"] = m_results
             st.session_state["momentum_ctx"] = m_ctx
+
+            # Persist ke logs/daily_results.json (read-merge-write, pola SAMA
+            # dgn whale_results) supaya scan manual ini JUGA jadi cache utk
+            # page-load berikutnya, tidak cuma sesi ini.
+            m_existing = {}
+            if RESULTS_FILE.exists():
+                try: m_existing = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
+                except Exception: pass
+            m_existing.update({
+                "momentum_date":    datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "momentum_results": [momentum_match_to_dict(m) for m in m_results],
+                "momentum_context": m_ctx,
+            })
+            RESULTS_FILE.write_text(json.dumps(m_existing, indent=2, default=str), encoding="utf-8")
         except Exception as e:
             st.error(f"ERROR: {e}")
             import traceback; st.code(traceback.format_exc())
@@ -1742,7 +1789,8 @@ m_ctx = st.session_state.get("momentum_ctx", {})
 
 if not m_results and not m_ctx:
     render_empty_state("▲", "BELUM ADA HASIL SCAN MOMENTUM",
-                       "Klik SCAN MOMENTUM untuk memulai (~5-6 menit, full universe).", "")
+                       "Klik SCAN MOMENTUM (~5-6 menit), atau jalankan orchestrator.py "
+                       "--mode all/momentum di CLI supaya hasil sudah ada tiap dashboard dibuka.", "")
 else:
     mc1, mc2, mc3, mc4, mc5 = st.columns(5)
     mc1.metric("UNIVERSE", m_ctx.get("total_universe", 0))
@@ -1851,17 +1899,37 @@ st.caption("⚠ EXPERIMENTAL, BELUM tervalidasi seperti Momentum di atas. Cuma 2
           "band luar VIDYA masih MERAH + garis Momentum (centerline) baru cross HIJAU dalam "
           "5 bar terakhir. Choppy atau bersih TIDAK disaring di sini — validasi manual dari "
           "chart. COCH/BOS/EQL di kartu di bawah CUMA tag informasi, bukan syarat kelulusan.")
+st.caption("Hasil dimuat otomatis dari scan terakhir (orchestrator.py --mode all/early_watch) "
+          "begitu dashboard dibuka — SCAN EARLY WATCH di bawah cuma untuk refresh manual.")
+
+if "early_watch_results" not in st.session_state:
+    st.session_state["early_watch_results"] = early_watch_cached_results
+    st.session_state["early_watch_ctx"] = early_watch_cached_ctx
 
 ew_run_btn = st.button("⟳ SCAN EARLY WATCH", type="secondary", key="btn_early_watch_scan")
 
 if ew_run_btn:
     with st.spinner("◈ Scan Early Watch — fetch 4H full universe (tanpa cache, ~5-6 menit)..."):
         try:
-            from agents.early_watch_scanner import EarlyWatchScanner4H
+            from agents.early_watch_scanner import EarlyWatchScanner4H, early_watch_state_to_dict
             ew_scanner = EarlyWatchScanner4H()
             ew_results, ew_ctx = ew_scanner.scan()
             st.session_state["early_watch_results"] = ew_results
             st.session_state["early_watch_ctx"] = ew_ctx
+
+            # Persist ke logs/daily_results.json (read-merge-write, pola SAMA
+            # dgn whale_results/momentum_results) supaya scan manual ini JUGA
+            # jadi cache utk page-load berikutnya, tidak cuma sesi ini.
+            ew_existing = {}
+            if RESULTS_FILE.exists():
+                try: ew_existing = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
+                except Exception: pass
+            ew_existing.update({
+                "early_watch_date":    datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "early_watch_results": [early_watch_state_to_dict(e) for e in ew_results],
+                "early_watch_context": ew_ctx,
+            })
+            RESULTS_FILE.write_text(json.dumps(ew_existing, indent=2, default=str), encoding="utf-8")
         except Exception as e:
             st.error(f"ERROR: {e}")
             import traceback; st.code(traceback.format_exc())
@@ -1871,7 +1939,8 @@ ew_ctx = st.session_state.get("early_watch_ctx", {})
 
 if not ew_results and not ew_ctx:
     render_empty_state("▲", "BELUM ADA HASIL SCAN EARLY WATCH",
-                       "Klik SCAN EARLY WATCH untuk memulai (~5-6 menit, full universe).", "")
+                       "Klik SCAN EARLY WATCH (~5-6 menit), atau jalankan orchestrator.py "
+                       "--mode all/early_watch di CLI supaya hasil sudah ada tiap dashboard dibuka.", "")
 else:
     ew1, ew2, ew3, ew4 = st.columns(4)
     ew1.metric("UNIVERSE", ew_ctx.get("total_universe", 0))

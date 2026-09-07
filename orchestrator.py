@@ -141,6 +141,72 @@ def run_whale_scan(cfg, regime):
     return results
 
 
+def run_momentum_scan(cfg):
+    """MODULE 04 — Momentum Scanner 4H (BETA), v10.9.9. Sama pola persis dgn
+    run_whale_scan(): scan lalu read-merge-write ke logs/daily_results.json
+    (key momentum_results/momentum_context/momentum_date) supaya dashboard
+    (pages/2_Follow_Whale.py) baca cache ini di page-load -- TIDAK perlu klik
+    SCAN MOMENTUM manual tiap kali dashboard dibuka. MomentumMatch BUKAN dict
+    spt whale_results, jadi WAJIB lewat momentum_match_to_dict() dulu (lihat
+    CATATAN PERSISTENSI di agents/momentum_scanner.py) -- TIDAK BOLEH
+    json.dumps(results) mentah, akan gagal/rusak."""
+    print("\n" + "═"*60)
+    print("  MODULE 04 — MOMENTUM SCANNER (4H, BETA)")
+    print("═"*60)
+    from agents.momentum_scanner import MomentumScanner4H, momentum_match_to_dict
+
+    scanner = MomentumScanner4H()
+    results, ctx = scanner.scan()
+
+    results_file = LOGS_DIR / "daily_results.json"
+    existing = {}
+    if results_file.exists():
+        try: existing = json.loads(results_file.read_text(encoding="utf-8"))
+        except Exception: pass
+    existing.update({
+        "momentum_date":    datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "momentum_results": [momentum_match_to_dict(m) for m in results],
+        "momentum_context": ctx,
+    })
+    results_file.write_text(json.dumps(existing, indent=2, default=str), encoding="utf-8")
+
+    print(f"\n[Momentum] Done: {len(results)} match "
+          f"({ctx.get('high_conviction_count',0)} high conviction) | "
+          f"{ctx.get('fetch_failed',0)} fetch gagal | {ctx.get('crashed',0)} crash")
+    return results
+
+
+def run_early_watch_scan(cfg):
+    """MODULE 05 — Early Watch Scanner 4H (EXPERIMENTAL), v10.9.9. Pola SAMA
+    persis dgn run_momentum_scan() di atas. EarlyWatchState BUKAN dict, WAJIB
+    lewat early_watch_state_to_dict() dulu (CATATAN PERSISTENSI di
+    agents/early_watch_scanner.py)."""
+    print("\n" + "═"*60)
+    print("  MODULE 05 — EARLY WATCH SCANNER (4H, EXPERIMENTAL)")
+    print("═"*60)
+    from agents.early_watch_scanner import EarlyWatchScanner4H, early_watch_state_to_dict
+
+    scanner = EarlyWatchScanner4H()
+    results, ctx = scanner.scan()
+
+    results_file = LOGS_DIR / "daily_results.json"
+    existing = {}
+    if results_file.exists():
+        try: existing = json.loads(results_file.read_text(encoding="utf-8"))
+        except Exception: pass
+    existing.update({
+        "early_watch_date":    datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "early_watch_results": [early_watch_state_to_dict(e) for e in results],
+        "early_watch_context": ctx,
+    })
+    results_file.write_text(json.dumps(existing, indent=2, default=str), encoding="utf-8")
+
+    print(f"\n[EarlyWatch] Done: {len(results)} state "
+          f"({ctx.get('with_confirmation_count',0)} ada tag BOS/CHoCH) | "
+          f"{ctx.get('fetch_failed',0)} fetch gagal | {ctx.get('crashed',0)} crash")
+    return results
+
+
 def run_learning(cfg):
     # Wire paper journal data to learning agent if available
     try:
@@ -337,7 +403,7 @@ def main():
     parser = argparse.ArgumentParser(description="Simple Trading V9 Orchestrator")
     parser.add_argument("--clear-cache", action="store_true", help="Hapus disk cache data sebelum scan")
     parser.add_argument("--mode",
-                        choices=["ema","whale","flow","director","learning","weekly","all","stats","study"],
+                        choices=["ema","whale","momentum","early_watch","flow","director","learning","weekly","all","stats","study"],
                         default="all", help="Which module to run")
     parser.add_argument("--ticker",    help="Single ticker deep-dive analysis (e.g. BBCA)")
     parser.add_argument("--no-llm",    action="store_true",
@@ -448,6 +514,27 @@ def main():
     if mode in ("all", "whale", "ema"):
         run_msci(cfg, regime)
 
+    # v10.9.9: Momentum & Early Watch (4H) — DISENGAJA masuk "all" (jadi
+    # bagian run harian biasa, keputusan eksplisit user 2026-09-07), BUKAN
+    # mode terpisah yg dijadwalkan sendiri. Konsekuensi: run "all"/"weekly"
+    # jadi ~10-12 menit LEBIH LAMA (2x fetch_4h() tanpa cache, ~5-6 menit
+    # masing-masing, SEQUENTIAL bukan paralel dgn modul lain). "momentum" &
+    # "early_watch" tetap tersedia sbg --mode terpisah utk run/test manual
+    # satu modul saja tanpa nunggu pipeline penuh. Dibungkus try/except spt
+    # run_director (v9.9.0) -- scanner 4H ini lebih baru/kurang teruji drpd
+    # EMA/Whale, jangan sampai crash di sini gagalkan modul SESUDAHNYA.
+    if mode in ("all", "momentum"):
+        try:
+            run_momentum_scan(cfg)
+        except Exception as _me:
+            print(f"[Momentum] CRASH (pipeline lanjut): {_me}")
+
+    if mode in ("all", "early_watch"):
+        try:
+            run_early_watch_scan(cfg)
+        except Exception as _ee:
+            print(f"[EarlyWatch] CRASH (pipeline lanjut): {_ee}")
+
     if mode in ("all", "learning"):
         run_learning(cfg)
 
@@ -464,6 +551,14 @@ def main():
         run_ema_scan(cfg, regime)
         run_whale_scan(cfg, regime)
         run_msci(cfg, regime)
+        try:
+            run_momentum_scan(cfg)
+        except Exception as _me:
+            print(f"[Momentum] CRASH (pipeline lanjut): {_me}")
+        try:
+            run_early_watch_scan(cfg)
+        except Exception as _ee:
+            print(f"[EarlyWatch] CRASH (pipeline lanjut): {_ee}")
         run_learning(cfg)
         run_director(cfg, full=True)
 

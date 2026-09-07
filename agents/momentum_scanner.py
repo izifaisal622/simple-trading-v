@@ -84,7 +84,7 @@ import pandas as pd
 
 from core.data_feed import fetch_4h, get_catalyst_universe
 from core.ob_engine import run_engine
-from core.structure_signals import compute_bullish_structure
+from core.structure_signals import compute_bullish_structure, StructureEvent
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +128,54 @@ class MomentumMatch:
         """Confirmation dgn bar_index PALING BESAR (paling baru) — dipakai kalau
         caller cuma butuh satu titik acuan, mis. utk anchor tanggal di UI."""
         return max(self.confirmations, key=lambda c: c.bar_index)
+
+
+# ── Persistensi (v10.9.9) — MomentumMatch BUKAN dict, jadi TIDAK bisa
+# langsung json.dumps() ke logs/daily_results.json spt whale_results (list of
+# dict). Dua fungsi di bawah konversi 2 arah supaya orchestrator.py bisa nulis
+# hasil scan CLI ke file (dashboard baca di page-load, TANPA perlu klik scan
+# manual — pola sama persis dgn whale_results/daily_results.json yg sudah ada).
+# StructureEvent (confirmations) di-reimport dari core/structure_signals.py
+# saat rekonstruksi -- field-nya PERSIS sama, TIDAK reimplementasi apa pun. ──
+
+def momentum_match_to_dict(m: "MomentumMatch") -> dict:
+    """MomentumMatch -> dict JSON-safe (date jadi ISO string)."""
+    return {
+        "ticker": m.ticker,
+        "flip_date": m.flip_date.isoformat() if hasattr(m.flip_date, "isoformat") else str(m.flip_date),
+        "flip_bar_index": m.flip_bar_index,
+        "confirmations": [
+            {"bar_index": c.bar_index,
+             "date": c.date.isoformat() if hasattr(c.date, "isoformat") else str(c.date),
+             "kind": c.kind, "scope": c.scope, "level": c.level, "close": c.close}
+            for c in m.confirmations
+        ],
+        "bars_between": m.bars_between,
+        "high_conviction": m.high_conviction,
+        "eql_date": (m.eql_date.isoformat() if hasattr(m.eql_date, "isoformat") else m.eql_date)
+                    if m.eql_date is not None else None,
+        "delta_volume_pct": m.delta_volume_pct,
+    }
+
+
+def momentum_match_from_dict(d: dict) -> "MomentumMatch":
+    """dict (hasil momentum_match_to_dict, dibaca dari logs/daily_results.json)
+    -> MomentumMatch. confirmations direkonstruksi sbg StructureEvent asli."""
+    confirmations = [
+        StructureEvent(bar_index=c["bar_index"], date=pd.Timestamp(c["date"]),
+                        kind=c["kind"], scope=c["scope"], level=c["level"], close=c["close"])
+        for c in d.get("confirmations", [])
+    ]
+    return MomentumMatch(
+        ticker=d["ticker"],
+        flip_date=pd.Timestamp(d["flip_date"]),
+        flip_bar_index=d["flip_bar_index"],
+        confirmations=confirmations,
+        bars_between=d["bars_between"],
+        high_conviction=d.get("high_conviction", False),
+        eql_date=pd.Timestamp(d["eql_date"]) if d.get("eql_date") else None,
+        delta_volume_pct=d.get("delta_volume_pct"),
+    )
 
 
 def find_all_momentum_events(

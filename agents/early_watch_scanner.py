@@ -81,7 +81,7 @@ import pandas as pd
 
 from core.data_feed import fetch_4h, get_catalyst_universe
 from core.ob_engine import run_engine, _vidya_calc
-from core.structure_signals import compute_bullish_structure
+from core.structure_signals import compute_bullish_structure, StructureEvent
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +118,51 @@ class EarlyWatchState:
     @property
     def has_confirmation(self) -> bool:
         return bool(self.confirmations)
+
+
+# ── Persistensi (v10.9.9) — pola & alasan SAMA PERSIS dgn momentum_scanner.py
+# (lihat komentar di sana): EarlyWatchState BUKAN dict, dua fungsi ini
+# konversi 2 arah supaya orchestrator.py bisa nulis hasil scan CLI ke
+# logs/daily_results.json dan dashboard baca di page-load tanpa klik manual. ──
+
+def early_watch_state_to_dict(ev: "EarlyWatchState") -> dict:
+    """EarlyWatchState -> dict JSON-safe (date jadi ISO string)."""
+    return {
+        "ticker": ev.ticker,
+        "cross_date": ev.cross_date.isoformat() if hasattr(ev.cross_date, "isoformat") else str(ev.cross_date),
+        "cross_bar": ev.cross_bar,
+        "bars_since_cross": ev.bars_since_cross,
+        "close": ev.close,
+        "vidya_val": ev.vidya_val,
+        "confirmations": [
+            {"bar_index": c.bar_index,
+             "date": c.date.isoformat() if hasattr(c.date, "isoformat") else str(c.date),
+             "kind": c.kind, "scope": c.scope, "level": c.level, "close": c.close}
+            for c in ev.confirmations
+        ],
+        "eql_date": (ev.eql_date.isoformat() if hasattr(ev.eql_date, "isoformat") else ev.eql_date)
+                    if ev.eql_date is not None else None,
+    }
+
+
+def early_watch_state_from_dict(d: dict) -> "EarlyWatchState":
+    """dict (hasil early_watch_state_to_dict, dibaca dari logs/daily_results.json)
+    -> EarlyWatchState. confirmations direkonstruksi sbg StructureEvent asli."""
+    confirmations = [
+        StructureEvent(bar_index=c["bar_index"], date=pd.Timestamp(c["date"]),
+                        kind=c["kind"], scope=c["scope"], level=c["level"], close=c["close"])
+        for c in d.get("confirmations", [])
+    ]
+    return EarlyWatchState(
+        ticker=d["ticker"],
+        cross_date=pd.Timestamp(d["cross_date"]),
+        cross_bar=d["cross_bar"],
+        bars_since_cross=d["bars_since_cross"],
+        close=d["close"],
+        vidya_val=d["vidya_val"],
+        confirmations=confirmations,
+        eql_date=pd.Timestamp(d["eql_date"]) if d.get("eql_date") else None,
+    )
 
 
 def find_early_watch_state(
