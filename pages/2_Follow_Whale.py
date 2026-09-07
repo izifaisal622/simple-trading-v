@@ -304,7 +304,7 @@ margin-bottom:0.4rem">
     st.markdown(headers_html + rows_html, unsafe_allow_html=True)
 
 
-sec_head("◆ SCAN CONTROLS")
+sec_head("◆ FOLLOW WHALE")
 c1,c3,c4,c5 = st.columns([1.6,1,1.3,1])
 with c1: run_scan      = st.button("⟳ RUN ADAPTIVE SCAN", type="primary", width="stretch")
 with c3: top_n         = st.number_input("TOP N", 10, 100, 30, 10)
@@ -1689,6 +1689,136 @@ border-radius:var(--r-sm);padding:0.5rem 0.65rem">
         _broker_defense_row(w) +
         '</div>'
     )
+
+# ═══════════════════════════════════════════════════════════════════════
+# MOMENTUM (BETA) — Fase 2 UI wiring, v10.9.6
+#
+# SENGAJA berdiri sendiri, TIDAK di dalam blok `if whale_results:` di bawah
+# dan TIDAK menyentuh session_state whale_*/momentum apa pun milik section
+# lain — kalau di-nest di sana, section ini baru muncul SETELAH user klik
+# RUN ADAPTIVE SCAN whale (~5-6 menit), padahal MomentumScanner4H scanner
+# independen yang tidak butuh hasil Whale scan sama sekali. Pola sama
+# persis dengan GOLDEN SETUP 4H & BOS/CHoCH/EQL BETA di
+# pages/1_VIDYA_SMC_Zone.py (keduanya juga sengaja independen) — ada bug
+# NameError nyata di changelog v10.9.0 gara-gara helper section baru
+# ke-nest di dalam cabang `if` section lain, jadi prinsip ini bukan basa-basi.
+#
+# Definisi match: agents/momentum_scanner.py — VIDYA flip (merah->hijau)
+# WAJIB + konfirmasi struktur BOS ATAU CHoCH (scope apapun, union) dalam
+# 5 bar (4H) WAJIB, EQL sebelumnya cuma tag opsional high_conviction.
+# Sudah divalidasi 3/3 study case real (BUMI/SINI/UANG) sebelum wiring UI
+# ini — lihat changelog v10.9.4. Universe default get_catalyst_universe(
+# full_universe=True) — SAMA dengan default StructureFreshScanner Page 1.
+# fetch_4h() TIDAK punya caching (beda dari DataFeed.fetch_batch()) — scan
+# full universe (~560 ticker) diuji live 2026-09-07: ~5-6 menit, 0 crash,
+# lihat changelog v10.9.5. Hasil SESSION-ONLY (belum ke DB) — pola sama
+# dengan Golden Setup 4H generasi pertama (v10.9.0) sebelum dapat
+# persistence di iterasi berikutnya; migrasi ke DB (mirip
+# agents/scan_logger.py structure_scans) bisa menyusul kalau diperlukan,
+# BUKAN scope Fase 2 ini.
+# ═══════════════════════════════════════════════════════════════════════
+st.markdown("<br>", unsafe_allow_html=True)
+sec_head("◆ MOMENTUM (BETA)")
+st.caption("VIDYA baru belok hijau (dari merah) + konfirmasi struktur BOS/CHoCH dalam 5 bar "
+          "(4H) — union, cukup salah satu. EQL sebelum konfirmasi = tag HIGH CONVICTION "
+          "opsional, bukan syarat wajib. Full universe, fetch tanpa cache — scan ~5-6 menit.")
+
+m_run_btn = st.button("⟳ SCAN MOMENTUM", type="secondary", key="btn_momentum_scan")
+
+if m_run_btn:
+    with st.spinner("◈ Scan Momentum — fetch 4H full universe (tanpa cache, ~5-6 menit)..."):
+        try:
+            from agents.momentum_scanner import MomentumScanner4H
+            m_scanner = MomentumScanner4H()
+            m_results, m_ctx = m_scanner.scan()
+            st.session_state["momentum_results"] = m_results
+            st.session_state["momentum_ctx"] = m_ctx
+        except Exception as e:
+            st.error(f"ERROR: {e}")
+            import traceback; st.code(traceback.format_exc())
+
+m_results = st.session_state.get("momentum_results", [])
+m_ctx = st.session_state.get("momentum_ctx", {})
+
+if not m_results and not m_ctx:
+    render_empty_state("▲", "BELUM ADA HASIL SCAN MOMENTUM",
+                       "Klik SCAN MOMENTUM untuk memulai (~5-6 menit, full universe).", "")
+else:
+    mc1, mc2, mc3, mc4, mc5 = st.columns(5)
+    mc1.metric("UNIVERSE", m_ctx.get("total_universe", 0))
+    mc2.metric("FETCH OK", m_ctx.get("fetched_ok", 0))
+    mc3.metric("MATCH", m_ctx.get("match_count", 0))
+    mc4.metric("★ HIGH CONV.", m_ctx.get("high_conviction_count", 0))
+    mc5.metric("SCAN", m_ctx.get("scan_date", "-"))
+    if m_ctx.get("fetch_failed") or m_ctx.get("crashed"):
+        st.caption(f"Fetch gagal (data <730 hari / listing baru): {m_ctx.get('fetch_failed',0)} | "
+                  f"Crash: {m_ctx.get('crashed',0)}")
+
+    if not m_results:
+        render_empty_state("◎", "TIDAK ADA MOMENTUM FRESH SAAT INI",
+                           "Coba scan lagi nanti — kondisi pasar berubah tiap 4 jam.", "")
+    else:
+        # Helper badge SELF-CONTAINED (lihat catatan di atas soal bug v10.9.0 —
+        # jangan reuse helper dari section lain, section ini harus berdiri sendiri)
+        def _mom_high_conv_badge():
+            return ('<span style="opacity:1;border:1px solid ' + C_WARNING +
+                   ';color:' + C_WARNING + ';border-radius:3px;padding:1px 8px;'
+                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                   'margin-right:4px;font-weight:900">★ HIGH CONVICTION</span>')
+
+        def _mom_kind_badge(kind_scope_str):
+            return ('<span style="opacity:1;border:1px solid ' + C_INFO +
+                   ';color:' + C_INFO + ';border-radius:3px;padding:1px 6px;'
+                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                   'margin-right:4px">' + kind_scope_str + '</span>')
+
+        def _mom_delta_badge(delta_pct):
+            if delta_pct is None:
+                return ""
+            col = NEON_GREEN if delta_pct > 0 else (C_DANGER if delta_pct < 0 else LABEL_COLOR)
+            sign = "+" if delta_pct > 0 else ""
+            return ('<span style="opacity:1;border:1px solid ' + col +
+                   ';color:' + col + ';border-radius:3px;padding:1px 6px;'
+                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                   'margin-right:4px">ΔVOL ' + sign + str(delta_pct) + '%</span>')
+
+        m_cols = st.columns(2)
+        for m_idx, mr in enumerate(sorted(m_results, key=lambda r: r.bars_between)):
+            m_col = m_cols[m_idx % 2]
+            with m_col:
+                m_cc = (NEON_GREEN if mr.bars_between <= 1 else
+                        (C_INFO if mr.bars_between <= 3 else LABEL_COLOR))
+                m_kind_badges = "".join(_mom_kind_badge(c.kind + "(" + c.scope + ")")
+                                        for c in mr.confirmations)
+                m_badges = (
+                    (_mom_high_conv_badge() if mr.high_conviction else "") +
+                    m_kind_badges +
+                    _mom_delta_badge(mr.delta_volume_pct)
+                )
+                m_flip_str = (mr.flip_date.strftime("%d-%b") if hasattr(mr.flip_date, "strftime")
+                             else str(mr.flip_date))
+                m_card_html = (
+                    '<div style="background:var(--bg-card);border:1px solid ' + m_cc + '55;'
+                    'border-left:4px solid ' + m_cc + ';border-radius:var(--r-md);'
+                    'padding:1rem 1.2rem;margin-bottom:0.8rem">'
+                    '<div style="display:flex;justify-content:space-between;align-items:center">'
+                    '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);'
+                    'font-weight:800;color:#E2E8F0">' + mr.ticker + '</span>'
+                    '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
+                    'font-weight:700;color:' + m_cc + '">' + str(mr.bars_between) + ' bar</span>'
+                    '</div>'
+                    '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
+                    'color:var(--text-muted);margin:0.4rem 0">'
+                    'Flip VIDYA ' + m_flip_str +
+                    '</div>'
+                    '<div style="margin-top:0.5rem">' + m_badges + '</div>'
+                    '</div>'
+                )
+                st.markdown(m_card_html, unsafe_allow_html=True)
+
+    st.caption("Momentum = VIDYA baru belok naik + konfirmasi struktur BOS/CHoCH dalam 5 bar "
+              "(4H). Bukan jaminan profit, tetap validasi manual sebelum entry.")
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA DISPLAY

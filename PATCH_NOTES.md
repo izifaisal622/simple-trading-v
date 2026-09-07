@@ -1,66 +1,68 @@
-# Patch 10.9.4 -> 10.9.5 — FIX observability di fase hitung MomentumScanner4H
+# Patch 10.9.5 -> 10.9.6 — Fase 2: UI wiring Momentum (rename + section baru)
 
-Ini FIX KECIL, murni tambahan logging — bukan perubahan logika match.
-Extract di root repo (yang sudah berisi hasil patch 10.9.4 sebelumnya),
-timpa 2 file di bawah.
+Extract di root repo (di atas hasil 10.9.5), timpa 2 file di bawah.
 
 ## Isi paket
 
 ```
-agents/momentum_scanner.py       <-- DIGANTI (tambah heartbeat log di
-                                      fase hitung match MomentumScanner4H.scan(),
-                                      lihat detail di bawah)
-version.json                     <-- DIGANTI (10.9.4 -> 10.9.5, 1 entry baru
-                                      paling atas, 227 entry lama TETAP UTUH)
+pages/2_Follow_Whale.py   <-- DIGANTI (rename section + tambah section MOMENTUM)
+version.json              <-- DIGANTI (10.9.5 -> 10.9.6, 1 entry baru paling atas,
+                                228 entry lama TETAP UTUH)
 ```
 
-Tidak ada perubahan ke `momentum_scan_trial.py`, `validate_momentum_cases.py`,
-`diagnose_momentum_window.py`, atau file lain manapun — log baru otomatis
-kelihatan di trial script karena sudah pakai `logging.basicConfig` yang sama.
+Tidak ada perubahan ke `agents/momentum_scanner.py` atau file produksi lain
+manapun — Fase 2 murni konsumsi `MomentumScanner4H` yang sudah ada & tervalidasi
+(v10.9.4/10.9.5), tidak menyentuh logikanya sama sekali.
 
-## Kenapa fix ini dibuat
+## Yang berubah di pages/2_Follow_Whale.py
 
-Trial full-universe 560 ticker yang kamu jalankan (2026-09-07) outputnya
-berhenti PERSIS di baris:
+1. **Rename**: `sec_head("◆ SCAN CONTROLS")` (baris 307) -> `sec_head("◆ FOLLOW WHALE")`.
+2. **Section baru "MOMENTUM (BETA)"** — tombol `SCAN MOMENTUM`, manggil
+   `MomentumScanner4H().scan()` (lazy import, sama pola dgn `WhaleScanner`
+   di file yang sama), render kartu per ticker: jarak flip->konfirmasi (bar),
+   badge tiap confirmation (mis. `BOS(internal)`), badge `★ HIGH CONVICTION`
+   kalau ada EQL, badge delta-volume. Metric row di atas: universe/fetch
+   ok/match/high-conviction/waktu scan.
 
-```
-10:49:58 [INFO] [Momentum4H] Fetch selesai: 519/560 berhasil (41 gagal/skip)
-```
+## Keputusan penempatan (PENTING, dikonfirmasi 2x dgn kamu di chat)
 
-tanpa progress apa pun sesudahnya sampai kamu copy-paste. Diselidiki: fase
-SESUDAH fetch (loop `find_latest_momentum_match()` per ticker — CPU-bound,
-bukan network) memang **nol logging sama sekali** sebelum fix ini — jadi dari
-terminal tidak bisa dibedakan "masih jalan", "hang", atau "crash silent".
+Kamu awalnya minta MOMENTUM persis sebelum INTEL PANEL. Investigasi kode
+nemu constraint baru: **INTEL PANEL (dan semua section sesudahnya sampai
+OUTCOME TRACKER) ada DI DALAM `if whale_results:`** — cuma tampil kalau
+sudah pernah scan Whale. Kalau MOMENTUM ditaruh di situ, section itu ikut
+"tersembunyi" sampai user scan Whale dulu (~5-6 menit), padahal
+`MomentumScanner4H` scanner independen yang tidak butuh hasil Whale sama
+sekali.
 
-## Yang berubah
+**Keputusan final (kamu pilih "Recommended")**: MOMENTUM ditaruh SEGERA
+setelah trigger FOLLOW WHALE, SEBELUM 8 section whale existing (Akumulasi
+Broker, Hengky Lot Math, dst) — jadi section ke-2 dari atas di halaman,
+SELALU kelihatan tanpa syarat scan Whale dulu. Pola ini identik dengan
+GOLDEN SETUP 4H & BOS/CHoCH/EQL BETA di `pages/1_VIDYA_SMC_Zone.py`
+(keduanya juga sengaja independen, karena pernah ada bug NameError nyata
+di v10.9.0 gara-gara section baru ke-nest di dalam `if` section lain).
 
-`MomentumScanner4H.scan()` sekarang log:
-1. `Mulai hitung match (N ticker)...` — begitu fase fetch selesai.
-2. `Hitung match: X/N ticker diproses (Y match sejauh ini, Zs)` — tiap 50
-   ticker diproses.
-3. `Hitung match selesai: N ticker dalam Zs (C crash)` — begitu loop kelar.
+## Verifikasi sebelum dikirim
 
-Murni tambahan `logger.info(...)` di dalam loop yang sudah ada — urutan,
-isi, dan hasil match **tidak berubah sama sekali**. Self-test `__main__`
-(data sintetis) dijalankan ulang setelah edit, hasilnya identik (1 match,
-sama seperti sebelum fix):
-
-```
-[self-test] total match sepanjang histori sintetis: 1
-  flip=2024-02-17 bar=283 | CHOCH(internal)@2024-02-17 | jarak=3 bar | high_conviction=False
-[self-test] PASS
-```
+- `py_compile` + `ast.parse` `pages/2_Follow_Whale.py` lolos (2397 baris).
+- Smoke test TERPISAH: fungsi pembangun HTML kartu dijalankan terhadap
+  `MomentumMatch` ASLI (dari `find_all_momentum_events()` atas data
+  sintetis yang sama dgn self-test `momentum_scanner.py`) — lolos tanpa
+  error, HTML valid (semua warna hex resolved, tidak ada `var(--x)`
+  dikonkat dgn suffix opacity, tidak ada nested f-string — ikut semua
+  aturan proyek).
 
 ## Yang BELUM diuji
 
-Fix ini sendiri belum pernah dilihat jalan di terminal kamu (risiko rendah,
-murni logging) — tolong jalankan ulang `python momentum_scan_trial.py 560`
-sekali lagi setelah patch ini di-extract, supaya:
-1. Heartbeat baru kelihatan jalan seperti yang diharapkan.
-2. Kita AKHIRNYA bisa lihat blok `HASIL TRIAL` (daftar match) dan
-   `ESTIMASI FULL UNIVERSE` yang selama ini belum pernah kelihatan di 2x
-   percobaan sebelumnya (baik yang 50 ticker maupun yang 560 ticker).
+**Render visual di browser Streamlit terhadap data real.** Jalankan
+`streamlit run gate.py`, buka halaman Follow Whale, cek:
+1. Section "FOLLOW WHALE" (rename) tampil normal, trigger scan whale tetap
+   jalan seperti biasa.
+2. Section "MOMENTUM (BETA)" tampil SEGERA di bawahnya (sebelum Akumulasi
+   Broker dkk) — TIDAK perlu scan Whale dulu untuk melihatnya.
+3. Klik SCAN MOMENTUM — spinner ~5-6 menit, lalu kartu hasil tampil sesuai
+   harapan (bandingkan dgn hasil trial `momentum_scan_trial.py` yang sudah
+   kamu jalankan — harusnya jumlah match & ticker yang sama, mis. UANG
+   dgn badge BOS(internal)+CHOCH(swing)).
 
-Kalau kali ini ternyata prosesnya memang hang di tengah jalan (bukan cuma
-soal logging), heartbeat baru ini akan menunjukkan PERSIS di ticker keberapa
-macetnya — itu info yang kita tidak punya sebelumnya.
+Kalau render OK, ini rilis Fase 1+2 penuh untuk fitur Momentum.
