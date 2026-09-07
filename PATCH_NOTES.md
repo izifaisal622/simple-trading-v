@@ -1,73 +1,66 @@
-# Patch 10.9.3 -> 10.9.4 — Momentum scanner (Fase 1: engine layer, TERVALIDASI)
+# Patch 10.9.4 -> 10.9.5 — FIX observability di fase hitung MomentumScanner4H
 
-Ini paket LENGKAP dan FINAL dari seluruh sesi — extract di root repo,
-timpa/tambah semua 4 file di bawah. Kalau kamu mulai dari commit 10.9.3
-yang bersih, extract paket ini = hasil akhir yang sudah tervalidasi 3/3
-(BUMI/SINI/UANG), tidak ada versi antara yang perlu ditelusuri lagi.
+Ini FIX KECIL, murni tambahan logging — bukan perubahan logika match.
+Extract di root repo (yang sudah berisi hasil patch 10.9.4 sebelumnya),
+timpa 2 file di bawah.
 
 ## Isi paket
 
 ```
-agents/momentum_scanner.py       <-- BARU
-validate_momentum_cases.py       <-- BARU (root, sejajar diagnose_*.py)
-diagnose_momentum_window.py      <-- BARU (root, sejajar diagnose_*.py)
-version.json                     <-- DIGANTI (10.9.3 -> 10.9.4, cuma nambah
-                                      1 entry changelog paling atas, 225
-                                      entry lama TETAP UTUH)
+agents/momentum_scanner.py       <-- DIGANTI (tambah heartbeat log di
+                                      fase hitung match MomentumScanner4H.scan(),
+                                      lihat detail di bawah)
+version.json                     <-- DIGANTI (10.9.4 -> 10.9.5, 1 entry baru
+                                      paling atas, 227 entry lama TETAP UTUH)
 ```
 
-Tidak ada perubahan ke `core/ob_engine.py`, `core/structure_signals.py`,
-`agents/structure_scanner.py`, `agents/golden_setup_scanner.py`, atau file
-produksi lain manapun. Murni aditif + 1 file config (version.json).
+Tidak ada perubahan ke `momentum_scan_trial.py`, `validate_momentum_cases.py`,
+`diagnose_momentum_window.py`, atau file lain manapun — log baru otomatis
+kelihatan di trial script karena sudah pakai `logging.basicConfig` yang sama.
 
-## Status: Fase 1 selesai & tervalidasi. Fase 2 (UI) BELUM dikerjakan.
+## Kenapa fix ini dibuat
 
-Definisi rule "Momentum" (VIDYA flip + BOS/CHoCH union + EQL opsional)
-sudah dites terhadap 3 study case ASLI dari chart TradingView user, via
-`validate_momentum_cases.py` dijalankan di mesin lokal (perlu akses data
-live — Claude sendiri tidak bisa jalankan ini):
+Trial full-universe 560 ticker yang kamu jalankan (2026-09-07) outputnya
+berhenti PERSIS di baris:
 
-| Ticker | Target (dikonfirmasi manual) | Hasil |
-|---|---|---|
-| BUMI | BOS(internal) 20-Jul-2026 | PASS |
-| SINI | CHoCH ~18-Aug-2026 | PASS |
-| UANG | BOS(internal)+CHoCH(swing) bareng, 02/03-Sep-2026 | PASS |
+```
+10:49:58 [INFO] [Momentum4H] Fetch selesai: 519/560 berhasil (41 gagal/skip)
+```
 
-Dua bug ketemu & diperbaiki selama proses (detail lengkap di changelog
-10.9.4 dalam `version.json`, dan di docstring `agents/momentum_scanner.py`):
-1. `high_conviction` (tag EQL) awalnya cek EQL di SELURUH histori, bukan
-   window terbatas — hasilnya True di 38/38 match (jelas bug). Fix: batasi
-   ke 20 bar sebelum confirmation.
-2. Kalau di window yang sama ada >1 event valid (mis. BOS internal DAN
-   CHoCH swing bareng, kasus nyata UANG), versi awal cuma nyimpen yang
-   terdekat dan MEMBUANG sisanya. Fix: `MomentumMatch.confirmations`
-   sekarang list, semua event ditampilkan (niru pola yang sudah ada di
-   `agents/structure_scanner.py`).
+tanpa progress apa pun sesudahnya sampai kamu copy-paste. Diselidiki: fase
+SESUDAH fetch (loop `find_latest_momentum_match()` per ticker — CPU-bound,
+bukan network) memang **nol logging sama sekali** sebelum fix ini — jadi dari
+terminal tidak bisa dibedakan "masih jalan", "hang", atau "crash silent".
 
-## Yang BELUM dikerjakan / belum diuji (baca sebelum lanjut)
+## Yang berubah
 
-- **`MomentumScanner4H` (scan full universe) belum pernah dicoba sama
-  sekali** — baik skala kecil maupun full ~561 ticker. `fetch_4h()` tidak
-  punya caching, jadi ini beban baru yang belum pernah diuji di proyek ini.
-  **Coba subset kecil dulu** sebelum full universe:
-  ```python
-  from agents.momentum_scanner import MomentumScanner4H
-  from core.data_feed import get_catalyst_universe
+`MomentumScanner4H.scan()` sekarang log:
+1. `Mulai hitung match (N ticker)...` — begitu fase fetch selesai.
+2. `Hitung match: X/N ticker diproses (Y match sejauh ini, Zs)` — tiap 50
+   ticker diproses.
+3. `Hitung match selesai: N ticker dalam Zs (C crash)` — begitu loop kelar.
 
-  s = MomentumScanner4H()
-  results, ctx = s.scan(tickers=get_catalyst_universe(full_universe=True)[:50])
-  print(ctx)
-  ```
-- **UI wiring belum disentuh** — rename "Scan Controls" -> "Follow Whale"
-  + subbab baru "Momentum" masih menunggu hasil tes di atas.
-- **Flip yang berdekatan bisa menghasilkan match yang confirmations-nya
-  tumpang-tindih** (contoh nyata: BUMI flip 21 Jul & 23 Jul, cuma 4 bar
-  terpisah, dua-duanya nunjukkin BOS 20-Jul + CHoCH 23-Jul yang sama).
-  Belum di-cluster jadi 1 kartu — sengaja ditunda supaya scope fix tetap
-  sempit. Kalau nanti kelihatan duplikat di UI produksi, ini yang perlu
-  disentuh duluan sebelum Fase 2 selesai.
+Murni tambahan `logger.info(...)` di dalam loop yang sudah ada — urutan,
+isi, dan hasil match **tidak berubah sama sekali**. Self-test `__main__`
+(data sintetis) dijalankan ulang setelah edit, hasilnya identik (1 match,
+sama seperti sebelum fix):
 
-## Catatan format arsip
+```
+[self-test] total match sepanjang histori sintetis: 1
+  flip=2024-02-17 bar=283 | CHOCH(internal)@2024-02-17 | jarak=3 bar | high_conviction=False
+[self-test] PASS
+```
 
-Diminta RAR, environment ini tidak punya encoder `.rar` (proprietary,
-tidak terpasang) — jadi `.zip` biasa, WinRAR/7-Zip buka tanpa masalah.
+## Yang BELUM diuji
+
+Fix ini sendiri belum pernah dilihat jalan di terminal kamu (risiko rendah,
+murni logging) — tolong jalankan ulang `python momentum_scan_trial.py 560`
+sekali lagi setelah patch ini di-extract, supaya:
+1. Heartbeat baru kelihatan jalan seperti yang diharapkan.
+2. Kita AKHIRNYA bisa lihat blok `HASIL TRIAL` (daftar match) dan
+   `ESTIMASI FULL UNIVERSE` yang selama ini belum pernah kelihatan di 2x
+   percobaan sebelumnya (baik yang 50 ticker maupun yang 560 ticker).
+
+Kalau kali ini ternyata prosesnya memang hang di tengah jalan (bukan cuma
+soal logging), heartbeat baru ini akan menunjukkan PERSIS di ticker keberapa
+macetnya — itu info yang kita tidak punya sebelumnya.

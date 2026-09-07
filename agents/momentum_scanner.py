@@ -311,9 +311,23 @@ class MomentumScanner4H:
         logger.info(f"[Momentum4H] Fetch selesai: {len(data)}/{len(tickers)} berhasil "
                     f"({fetch_failed} gagal/skip)")
 
+        # ── Fase hitung (CPU-bound: run_engine + compute_bullish_structure per
+        # ticker) — TIDAK ADA logging sebelumnya di fase ini sama sekali, jadi
+        # kalau lambat/macet, log terakhir yang kelihatan cuma "Fetch selesai"
+        # di atas, dan tidak ada cara membedakan "masih jalan" vs "hang" vs
+        # "crash tak tercatat". Ketemu masalah ini pas trial 560 ticker
+        # (2026-09-07) — output berhenti persis di baris "Fetch selesai" tanpa
+        # kejelasan. Fix: heartbeat progress tiap PROGRESS_EVERY ticker +
+        # timing eksplisit, murni observability, TIDAK mengubah logika match.
+        PROGRESS_EVERY = 50
+        n_compute = len(data)
+        t_compute0 = time.time()
+        logger.info(f"[Momentum4H] Mulai hitung match ({n_compute} ticker, "
+                    f"engine per-ticker, tidak ada progress log sebelum fix ini)...")
+
         results = []
         crashed = 0
-        for ticker, df in data.items():
+        for idx, (ticker, df) in enumerate(data.items(), start=1):
             base_ticker = ticker.replace(".JK", "")
             try:
                 m = find_latest_momentum_match(df, ticker=base_ticker, recent_window=self.recent_window)
@@ -323,6 +337,13 @@ class MomentumScanner4H:
                 continue
             if m is not None:
                 results.append(m)
+            if idx % PROGRESS_EVERY == 0 or idx == n_compute:
+                logger.info(f"[Momentum4H] Hitung match: {idx}/{n_compute} ticker diproses "
+                            f"({len(results)} match sejauh ini, {time.time() - t_compute0:.1f}s)")
+
+        compute_elapsed = time.time() - t_compute0
+        logger.info(f"[Momentum4H] Hitung match selesai: {n_compute} ticker dalam "
+                    f"{compute_elapsed:.1f}s ({crashed} crash)")
 
         results.sort(key=lambda m: m.bars_between)
         ctx = {
