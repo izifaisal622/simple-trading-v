@@ -3,89 +3,69 @@ agents/early_watch_scanner.py — Scanner "Early Watch" (EXPERIMENTAL), 4h.
 
 LABEL WAJIB DI UI: "EXPERIMENTAL" — bukan tingkat kepercayaan yang sama
 dengan agents/momentum_scanner.py (Momentum BETA, 3/3 validated study
-case). Baca CATATAN VALIDASI di bawah SEBELUM percaya output file ini.
+case).
 
-LATAR BELAKANG (sesi 2026-09-07): user menantang premis
-agents/momentum_scanner.py sendiri — "kalau VIDYA (band luar) sudah
-beralih dari merah ke hijau, itu sudah TELAT". Usul: titik "mulai
-pantau" yang benar adalah saat closing price cross ke ATAS garis
-centerline VIDYA (vidya_val, TANPA offset ATR) SEMENTARA band luar
-(is_trend_up) MASIH merah/belum confirmed — lebih dini drpd sinyal
-Momentum yang sudah shipped. Disempurnakan lagi oleh user: centerline
-ini suka "flicker" (berkedip hijau-merah berkali-kali) selama fase
-choppy sebelum flip resmi, jadi perlu dipasangkan dengan konfirmasi
-struktur BOS/CHoCH terdekat supaya bukan noise murni.
+RIWAYAT DEFINISI — v2 ini MENGGANTI TOTAL definisi v1 (dikirim sbg
+v10.9.7, BELUM PERNAH dijalankan live oleh user sebelum diganti):
 
-DEFINISI MEKANIS (final, hasil investigasi 3 diagnostic script
-read-only — diagnose_early_momentum.py, diagnose_early_watch_concept.py,
-diagnose_early_watch_episodes.py — TIDAK ADA di file ini yang
-reimplementasi rumus VIDYA/struktur sendiri, SEMUA fungsi di-import dari
-core/ob_engine.py & core/structure_signals.py yang sudah ada):
+  v1 (10.9.7): WAJIB ada BOS/CHoCH dlm ±5 bar dari episode centerline-flip
+  supaya lolos jadi match -- filter algoritmik ketat, terbukti dari
+  backtest (diagnose_early_watch_episodes.py) cuma meloloskan ~30-36%
+  early candidate, sisanya dibuang sbg "noise" walau belum ada bukti
+  buangan itu memang tidak berguna.
 
-  1. Centerline-flip-up: bar di mana Close melewati vidya_val dari bawah
-     ke atas (`_vidya_calc(df["Close"], VIDYA_LENGTH, VIDYA_MOMENTUM)`,
-     TANPA offset ATR — beda dari upper_band/lower_band yang dipakai
-     is_trend_up).
-  2. "Early candidate": centerline-flip-up di atas yang terjadi SAAT
-     is_trend_up (dari run_engine(), band luar) MASIH False — kalau band
-     luar sudah True, itu domain scanner Momentum yang sudah ada, bukan
-     Early Watch.
-  3. Episode: early candidate yang berdekatan (gap <= EPISODE_GAP bar)
-     digabung jadi SATU episode (pakai bar pertama & terakhir) — supaya
-     flicker berulang dalam fase choppy yang sama tidak menghasilkan
-     alert duplikat. Terbukti PENTING secara empiris: tanpa clustering
-     ini rasio SINI/BUMI cuma bergeser tipis (~5-6 poin persen), jadi
-     BUKAN sumber utama noise, tapi tetap dipakai supaya scanner produksi
-     tidak spam alert per-flicker.
-  4. Match VALID hanya kalau episode itu punya minimal 1 event BOS ATAU
-     CHoCH (compute_bullish_structure, scope apa pun, union) dengan
-     bar_index dalam rentang [episode_start - RECENT_WINDOW,
-     episode_end + RECENT_WINDOW]. Episode TANPA confirmation ini
-     DIBUANG (dianggap noise) — TIDAK dikembalikan oleh fungsi manapun
-     di file ini.
+  v2 (INI, 10.9.8, sesi 2026-09-07 lanjutan): user SENGAJA menyederhanakan
+  setelah melihat hasil v1 -- "saya butuhnya cuma 2 syarat: VIDYA merah +
+  Momentum hijau. Choppy atau tidak biar saya analisa manual. COCH/BOS/EQL
+  cuma tag tambahan." Filter algoritmik jadi CUMA 2 syarat WAJIB (band
+  luar merah + centerline pernah cross ke atas dlm N bar terakhir),
+  keputusan "sinyal ini valid/noise" dipindah SEPENUHNYA ke manusia
+  (user lihat chart sendiri apakah choppy/range atau bersih). BOS/CHoCH/
+  EQL TETAP dihitung & ditampilkan (kalau ada di dekat titik cross) tapi
+  HANYA sbg tag informasi -- kehadiran/ketidakhadirannya TIDAK menggugurkan
+  atau meloloskan match apa pun.
 
-CATATAN VALIDASI — WAJIB DIBACA, INI BEDA DARI MOMENTUM SCANNER:
+DEFINISI MEKANIS v2 (TIDAK ADA di file ini yang reimplementasi rumus
+VIDYA/struktur sendiri -- SEMUA fungsi di-import dari core/ob_engine.py &
+core/structure_signals.py yang sudah ada):
 
-  Momentum scanner (agents/momentum_scanner.py) divalidasi 3/3 terhadap
-  study case chart real (BUMI/SINI/UANG) SEBELUM di-ship. Early Watch
-  BELUM melewati validasi setara. Yang SUDAH diuji (diagnose_early_watch_
-  episodes.py, full histori BUMI & SINI per 2026-09-07):
+  1. WAJIB — Band luar (is_trend_up dari run_engine()) MASIH False di bar
+     TERAKHIR ("VIDYA merah" sekarang). Kalau sudah True, ticker itu
+     domain scanner Momentum, bukan Early Watch.
+  2. WAJIB — Ada centerline-flip-up (Close cross ke atas vidya_val, HITUNG
+     TANPA offset ATR -- beda dari upper/lower band yg dipakai is_trend_up)
+     dalam RECENT_WINDOW bar terakhir DAN band luar MASIH False persis di
+     bar cross itu (kalau band sudah True saat cross terjadi, itu bukan
+     "early", itu Momentum). Diambil yang PALING BARU kalau ada >1 cross
+     yg lolos syarat window ini (choppy/flicker ganda) -- caller cuma
+     dikasih 1 state per ticker per scan.
+  3. OPSIONAL, TAG SAJA — BOS/CHoCH (compute_bullish_structure, scope apa
+     pun, union) dgn bar_index dlm ±RECENT_WINDOW dari bar cross di atas.
+     Ditampilkan kalau ADA, TAPI TIDAK WAJIB ADA. EQL dlm EQL_LOOKBACK_
+     WINDOW bar sebelum bar cross -- SAMA, tag saja.
 
-    - BUMI: 25 episode sepanjang ~2.5 tahun histori, 9 match (BOS/CHoCH
-      confirmed) = 36%.
-    - SINI: 21 episode, 6 match = 29%.
+KONSEKUENSI PERUBAHAN INI: dibanding v1, v2 akan menghasilkan LEBIH BANYAK
+ticker per scan (syarat lolos jauh lebih longgar -- cuma 2 kondisi wajib,
+bukan 4). Ini SESUAI KEINGINAN user (ekspektasi expected-value per alert
+LEBIH RENDAH drpd v1, tapi RECALL lebih tinggi -- user yg saring manual
+dari chart, bukan algoritma). WAJIB tetap label EXPERIMENTAL di UI dan
+JANGAN klaim rasio match apa pun dari sini krn v2 belum pernah dihitung
+distribusinya (v1 punya angka 30-36% dari backtest, itu angka MILIK v1,
+BUKAN v2 -- jangan disamakan).
 
-  Artinya: dari SEMUA episode yang lolos filter definisi di atas, cuma
-  ~30% yang BENAR match (populasi 100% di sini SUDAH melalui filter
-  no-confirmation-dibuang -- 64-71% early candidate MENTAH malah tidak
-  pernah sampai jadi match sama sekali). Yang BELUM diuji sama sekali:
-  apakah 30% yang match ini BENAR mendahului trend-up sungguhan (band
-  luar akhirnya flip True) lebih sering drpd yang tidak match — alias
-  BELUM ada bukti predictive value, cuma bukti "definisi ini mekanis
-  konsisten & tidak generate alert tak terbatas". Keputusan user
-  (2026-09-07): ship as-is dengan label EXPERIMENTAL, validasi lanjut
-  dari observasi pemakaian live, BUKAN dari diagnostic lebih lanjut.
-  Kalau nanti user laporkan alert yang sering meleset, definisi di file
-  ini yang harus direvisi duluan — bukan tanda cara pakainya salah.
-
-  KONSEKUENSI UNTUK UI: tampilkan expected-value SERENDAH ini secara
-  eksplisit ke user tiap kali section ini dirender (jangan biarkan card
-  terlihat se-"pasti" card Momentum yang sudah 3/3 validated).
-
-ASUMSI YANG DIWARISI dari momentum_scanner.py (TIDAK diverifikasi ulang
-di sini): run_engine(df) dipanggil TANPA kwargs -> use_ha_trend=False
-default -> trend_close == df["Close"] raw (lihat core/ob_engine.py
-VidyaSmcEngine.run()). Kalau default itu berubah di masa depan,
-vidya_val yang dihitung manual di file ini (_vidya_calc(df["Close"], ...))
-akan DIVERGEN dari yang dipakai run_engine() secara internal untuk
-is_trend_up -- cek ulang asumsi ini kalau core/ob_engine.py berubah.
+ASUMSI YANG DIWARISI dari momentum_scanner.py (TIDAK diverifikasi ulang):
+run_engine(df) dipanggil TANPA kwargs -> use_ha_trend=False default ->
+trend_close == df["Close"] raw (lihat core/ob_engine.py VidyaSmcEngine.run()).
+Kalau default itu berubah di masa depan, vidya_val yg dihitung manual di
+file ini (_vidya_calc(df["Close"], ...)) akan DIVERGEN dari yg dipakai
+run_engine() secara internal utk is_trend_up -- cek ulang kalau
+core/ob_engine.py berubah.
 
 FILE INI ADITIF — TIDAK mengubah core/ob_engine.py, core/structure_signals.py,
-atau agents/momentum_scanner.py sama sekali. Cuma meng-import fungsi yang
-sudah ada.
+atau agents/momentum_scanner.py sama sekali.
 
 JALANKAN SELF-TEST:
-    python agents/early_watch_scanner.py
+    python -m agents.early_watch_scanner
 """
 
 from __future__ import annotations
@@ -106,74 +86,67 @@ from core.structure_signals import compute_bullish_structure
 logger = logging.getLogger(__name__)
 
 MIN_BARS_REQUIRED = 260   # sama kontrak dgn momentum_scanner.py (buffer ATR200/swing50)
-RECENT_WINDOW = 5         # bar 4h -- SAMA dgn momentum_scanner.py, apple-to-apple
-EPISODE_GAP = 5           # gap maks (bar) antar early-candidate buat digabung 1 episode
+RECENT_WINDOW = 5         # bar 4h -- diwarisi dari v1/momentum_scanner.py utk konsistensi;
+# user TIDAK menyebut angka N spesifik saat minta simplifikasi ini ("cross dalam N bar
+# terakhir") -- 5 dipakai sbg default supaya apple-to-apple dgn scanner lain, GANTI
+# di sini kalau ternyata user mau window lain setelah lihat hasil live.
+EQL_LOOKBACK_WINDOW = 20  # bar 4h -- sama asumsi dgn momentum_scanner.py, tag opsional saja
 VIDYA_LENGTH = 10         # HARUS sama dgn default VidyaSmcEngine, lihat ASUMSI di atas
 VIDYA_MOMENTUM = 20
 
 
 @dataclass
-class EarlyWatchEvent:
+class EarlyWatchState:
     ticker: str
-    episode_start_date: object
-    episode_end_date: object
-    episode_start_bar: int
-    episode_end_bar: int
-    flicker_count: int         # jumlah raw centerline-flip yg tergabung di episode ini
-    confirmations: list        # StructureEvent (BOS/CHoCH), semua yg match, bukan cuma 1
-    bars_between: int          # jarak confirmation TERDEKAT ke ujung episode (freshness)
+    cross_date: object          # tanggal centerline cross yg memicu state ini
+    cross_bar: int
+    bars_since_cross: int       # 0 = cross persis di bar terakhir, >0 = beberapa bar lalu
+    close: float
+    vidya_val: float
+    confirmations: list         # StructureEvent BOS/CHoCH dekat cross_bar -- TAG SAJA,
+    # BISA KOSONG (list kosong = tidak ada, BUKAN berarti state ini invalid/dibuang).
+    eql_date: Optional[object] = None   # tag EQL opsional -- BISA None, BUKAN syarat.
 
     @property
     def kinds_label(self) -> str:
+        """String tag BOS/CHoCH, mis. 'CHOCH(internal)+BOS(swing)' -- '-' kalau kosong
+        (kosong itu NORMAL di v2, bukan tanda error)."""
+        if not self.confirmations:
+            return "-"
         return "+".join(f"{c.kind}({c.scope})" for c in self.confirmations)
 
     @property
-    def latest_confirmation(self):
-        return max(self.confirmations, key=lambda c: c.bar_index)
+    def has_confirmation(self) -> bool:
+        return bool(self.confirmations)
 
 
-def _cluster_into_episodes(flip_bars: list, gap: int) -> list:
-    """Gabungkan bar index yg berdekatan (gap <= threshold) jadi satu
-    episode (start_bar, end_bar, [raw_bars]). Identik dgn logika yg sudah
-    diuji di diagnose_early_watch_episodes.py (clustering test PASS)."""
-    if not flip_bars:
-        return []
-    flip_bars = sorted(flip_bars)
-    episodes = []
-    cur = [flip_bars[0]]
-    for b in flip_bars[1:]:
-        if b - cur[-1] <= gap:
-            cur.append(b)
-        else:
-            episodes.append(cur)
-            cur = [b]
-    episodes.append(cur)
-    return [(ep[0], ep[-1], ep) for ep in episodes]
-
-
-def find_all_early_watch_episodes(
+def find_early_watch_state(
     df: pd.DataFrame,
     ticker: str = "",
     recent_window: int = RECENT_WINDOW,
-    episode_gap: int = EPISODE_GAP,
-) -> list[EarlyWatchEvent]:
-    """Semua episode Early Watch VALID (sudah lolos filter confirmation)
-    sepanjang histori df, urut waktu naik. Episode tanpa BOS/CHoCH dekat
-    TIDAK masuk return value (dibuang sbg noise, sesuai definisi)."""
+) -> Optional[EarlyWatchState]:
+    """Untuk scan produksi: cek APAKAH ticker ini SEDANG dalam kondisi
+    'VIDYA merah + Momentum hijau' SEKARANG. Return None kalau tidak.
+    Return SATU EarlyWatchState (cross paling baru dlm window) kalau ya --
+    BOS/CHoCH/EQL diisi kalau kebetulan ada di dekatnya, TIDAK disyaratkan."""
     if df is None or len(df) < MIN_BARS_REQUIRED:
-        return []
+        return None
     if isinstance(df.columns, pd.MultiIndex):
         df = df.copy()
         df.columns = df.columns.get_level_values(0)
 
-    close = df["Close"]
-    vidya_val = _vidya_calc(close, VIDYA_LENGTH, VIDYA_MOMENTUM)
-    above_centerline = close > vidya_val
-
     engine_states = run_engine(df)
+    if engine_states[-1].is_trend_up:
+        return None  # band luar sudah confirmed HIJAU -- domain Momentum, bukan Early Watch
+
+    close = df["Close"]
+    vidya_val_series = _vidya_calc(close, VIDYA_LENGTH, VIDYA_MOMENTUM)
+    above_centerline = close > vidya_val_series
     is_trend_up_by_bar = {s.bar_index: s.is_trend_up for s in engine_states}
     date_by_bar = {s.bar_index: s.date for s in engine_states}
 
+    n = len(df)
+    cutoff = n - recent_window
     centerline_flips = []
     prev_above = None
     for i in range(len(df)):
@@ -185,91 +158,58 @@ def find_all_early_watch_episodes(
             centerline_flips.append(i)
         prev_above = ab
 
-    early_candidates = [i for i in centerline_flips if is_trend_up_by_bar.get(i) is False]
-    if not early_candidates:
-        return []
+    # WAJIB #2: cross dlm window, DAN band luar masih False PERSIS di bar cross itu
+    # (kalau band sudah True saat itu, itu bukan "early" -- itu Momentum).
+    fresh_early = [i for i in centerline_flips
+                   if i >= cutoff and is_trend_up_by_bar.get(i) is False]
+    if not fresh_early:
+        return None
+    cross_bar = max(fresh_early)  # kalau ada >1 flicker di window, ambil yg PALING BARU
 
-    episodes_raw = _cluster_into_episodes(early_candidates, episode_gap)
-
+    # ── Tag opsional (BOS/CHoCH/EQL) -- TIDAK mempengaruhi valid/tidaknya state ──
+    confirmations = []
+    eql_date = None
     sig = compute_bullish_structure(df, ticker=ticker)
-    structure_events = [e for e in sig.events if e.kind in ("BOS", "CHOCH")] if sig else []
-    if not structure_events:
-        return []
-
-    out: list[EarlyWatchEvent] = []
-    for start_bar, end_bar, raw in episodes_raw:
-        confirmations = [
-            e for e in structure_events
-            if (start_bar - recent_window) <= e.bar_index <= (end_bar + recent_window)
-        ]
-        if not confirmations:
-            continue
+    if sig is not None:
+        structure_events = [e for e in sig.events if e.kind in ("BOS", "CHOCH")]
+        confirmations = [e for e in structure_events
+                          if abs(e.bar_index - cross_bar) <= recent_window]
         confirmations.sort(key=lambda e: e.bar_index)
-        bars_between = min(abs(e.bar_index - end_bar) for e in confirmations)
-        out.append(EarlyWatchEvent(
-            ticker=ticker,
-            episode_start_date=date_by_bar.get(start_bar),
-            episode_end_date=date_by_bar.get(end_bar),
-            episode_start_bar=start_bar,
-            episode_end_bar=end_bar,
-            flicker_count=len(raw),
-            confirmations=confirmations,
-            bars_between=bars_between,
-        ))
 
-    out.sort(key=lambda e: e.episode_end_bar)
-    return out
+        eql_events = [e for e in sig.events if e.kind == "EQL"]
+        eql_cutoff = cross_bar - EQL_LOOKBACK_WINDOW
+        eql_before = [e for e in eql_events if eql_cutoff <= e.bar_index < cross_bar]
+        if eql_before:
+            eql_date = max(eql_before, key=lambda e: e.bar_index).date
 
-
-def find_latest_early_watch(
-    df: pd.DataFrame,
-    ticker: str = "",
-    recent_window: int = RECENT_WINDOW,
-    episode_gap: int = EPISODE_GAP,
-) -> Optional[EarlyWatchEvent]:
-    """Untuk scan produksi: True HANYA kalau ada episode match DAN band
-    luar (is_trend_up) MASIH False di bar terakhir (kalau sudah True,
-    ticker itu sudah pindah domain ke scanner Momentum, bukan Early Watch
-    lagi) DAN episode itu fresh (episode_end_bar dalam recent_window bar
-    dari bar terakhir). Return None kalau tidak ada yang fresh."""
-    if df is None or len(df) < MIN_BARS_REQUIRED:
-        return None
-
-    engine_states = run_engine(df)
-    if engine_states[-1].is_trend_up:
-        return None  # band luar sudah confirmed -- domain Momentum, bukan Early Watch
-
-    episodes = find_all_early_watch_episodes(df, ticker=ticker, recent_window=recent_window,
-                                              episode_gap=episode_gap)
-    if not episodes:
-        return None
-
-    n = len(df)
-    cutoff = n - recent_window
-    fresh = [e for e in episodes if e.episode_end_bar >= cutoff]
-    if not fresh:
-        return None
-    return max(fresh, key=lambda e: e.latest_confirmation.bar_index)
+    return EarlyWatchState(
+        ticker=ticker,
+        cross_date=date_by_bar.get(cross_bar),
+        cross_bar=cross_bar,
+        bars_since_cross=(n - 1) - cross_bar,
+        close=float(close.iloc[cross_bar]),
+        vidya_val=float(vidya_val_series.iloc[cross_bar]),
+        confirmations=confirmations,
+        eql_date=eql_date,
+    )
 
 
 class EarlyWatchScanner4H:
     """Scan universe (default: get_catalyst_universe(full_universe=True),
-    SAMA dgn MomentumScanner4H/StructureFreshScanner) cari ticker dengan
-    Early Watch episode FRESH (centerline flip + BOS/CHoCH dekat, band
-    luar MASIH merah), timeframe 4h.
+    SAMA dgn MomentumScanner4H/StructureFreshScanner) cari ticker yang
+    SEDANG dalam kondisi 'VIDYA merah + Momentum hijau' (2 syarat wajib
+    saja, v2), timeframe 4h.
 
-    EXPERIMENTAL -- lihat CATATAN VALIDASI di docstring modul ini. Pola
-    orkestrasi (class, .scan() -> (results, ctx)) SENGAJA identik dgn
-    MomentumScanner4H (chunking, delay, fetch tanpa cache) supaya reuse
-    layout render yang sama di UI, TIDAK ada logika baru di fase fetch."""
+    EXPERIMENTAL -- lihat docstring modul ini utk riwayat definisi v1->v2.
+    Pola orkestrasi (class, .scan() -> (results, ctx)) SENGAJA identik
+    dgn MomentumScanner4H (chunking, delay, fetch tanpa cache)."""
 
     CHUNK_SIZE = 15
     CHUNK_DELAY = 3.0
     MAX_WORKERS = 8
 
-    def __init__(self, recent_window: int = RECENT_WINDOW, episode_gap: int = EPISODE_GAP):
+    def __init__(self, recent_window: int = RECENT_WINDOW):
         self.recent_window = recent_window
-        self.episode_gap = episode_gap
 
     def _fetch_all(self, tickers: list) -> dict:
         results = {}
@@ -304,31 +244,29 @@ class EarlyWatchScanner4H:
         PROGRESS_EVERY = 50
         n_compute = len(data)
         t_compute0 = time.time()
-        logger.info(f"[EarlyWatch4H] Mulai hitung episode ({n_compute} ticker)...")
+        logger.info(f"[EarlyWatch4H] Mulai hitung state ({n_compute} ticker)...")
 
         results = []
         crashed = 0
         for idx, (ticker, df) in enumerate(data.items(), start=1):
             base_ticker = ticker.replace(".JK", "")
             try:
-                ev = find_latest_early_watch(df, ticker=base_ticker,
-                                              recent_window=self.recent_window,
-                                              episode_gap=self.episode_gap)
+                st_ = find_early_watch_state(df, ticker=base_ticker, recent_window=self.recent_window)
             except Exception as exc:
                 logger.debug(f"[EarlyWatch4H] {ticker}: engine crash — {exc}")
                 crashed += 1
                 continue
-            if ev is not None:
-                results.append(ev)
+            if st_ is not None:
+                results.append(st_)
             if idx % PROGRESS_EVERY == 0 or idx == n_compute:
                 logger.info(f"[EarlyWatch4H] Hitung: {idx}/{n_compute} ticker diproses "
-                            f"({len(results)} episode sejauh ini, {time.time() - t_compute0:.1f}s)")
+                            f"({len(results)} state sejauh ini, {time.time() - t_compute0:.1f}s)")
 
         compute_elapsed = time.time() - t_compute0
         logger.info(f"[EarlyWatch4H] Hitung selesai: {n_compute} ticker dalam "
                     f"{compute_elapsed:.1f}s ({crashed} crash)")
 
-        results.sort(key=lambda e: e.bars_between)
+        results.sort(key=lambda e: e.bars_since_cross)
         ctx = {
             "scan_date": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "total_universe": len(tickers),
@@ -336,25 +274,24 @@ class EarlyWatchScanner4H:
             "fetch_failed": fetch_failed,
             "crashed": crashed,
             "match_count": len(results),
+            "with_confirmation_count": sum(1 for r in results if r.has_confirmation),
         }
-        logger.info(f"[EarlyWatch4H] Done: {len(results)} episode | "
+        logger.info(f"[EarlyWatch4H] Done: {len(results)} state "
+                    f"({ctx['with_confirmation_count']} ada tag BOS/CHoCH) | "
                     f"{fetch_failed} fetch gagal | {crashed} crash")
         return results, ctx
 
 
 if __name__ == "__main__":
-    # ── Self-test dgn data SINTETIS -- buktikan logika clustering+pairing
-    # mekanis benar, BUKAN bukti apa pun soal BUMI/SINI (itu tugas
-    # diagnose_early_watch_episodes.py di mesin dgn akses data live). ──
+    # ── Self-test dgn data SINTETIS -- buktikan logika 2-syarat + tag
+    # opsional mekanis benar, BUKAN bukti apa pun soal ticker real. ──
     import numpy as np
 
     def _make_synthetic_uptrend_df(n=320, flip_at=280, eql_before_structure=True):
-        # SAMA PERSIS dgn generator self-test agents/momentum_scanner.py (seed,
-        # bentuk kurva) -- dipinjam sengaja krn TERBUKTI menghasilkan centerline
-        # cross (bar 282) SATU bar SEBELUM band-luar confirm (vidya_flipped_up
-        # bar 283) yg dipasangkan dgn CHoCH(internal) bar 286 (jarak 4, dalam
-        # RECENT_WINDOW=5) -- persis skenario "early" yg mau dibuktikan di sini,
-        # bukan skenario acak yg belum tentu menghasilkan match apa pun.
+        # SAMA generator dgn momentum_scanner.py -- TERBUKTI menghasilkan centerline
+        # cross bar 282, SATU bar SEBELUM band-luar confirm (vidya_flipped_up bar 283),
+        # dgn CHoCH(internal) bar 286 (jarak 4) di dekatnya -- skenario yg pas utk
+        # buktikan state 'masih merah + baru cross' KETEMU, dan tag CHoCH ikut terisi.
         rng = np.random.default_rng(42)
         dates = pd.date_range("2024-01-01", periods=n, freq="4h")
         base = np.concatenate([
@@ -372,26 +309,30 @@ if __name__ == "__main__":
         return pd.DataFrame({"Open": open_, "High": high, "Low": low,
                               "Close": close, "Volume": vol}, index=dates)
 
-    df_syn = _make_synthetic_uptrend_df()
-    all_ep = find_all_early_watch_episodes(df_syn, ticker="SYN-TEST")
-    print(f"[self-test] total episode Early Watch (sudah filter confirmation) "
-          f"sepanjang histori sintetis: {len(all_ep)}")
-    for e in all_ep:
-        print(f"  episode {e.episode_start_date.date()}..{e.episode_end_date.date()} "
-              f"(#flick={e.flicker_count}) | {e.kinds_label} | jarak={e.bars_between} bar")
+    # ── Skenario A: potong persis di bar 282 (cross baru terjadi, band msh merah,
+    # ini bar TERAKHIR di df) -- harus KETEMU state, DAN dpt tag CHoCH kalau sudah
+    # kebentuk di titik itu (structure di skenario penuh baru muncul bar 286, jadi
+    # DI SINI belum kebentuk -- justru itu yg mau dibuktikan: tag BOLEH kosong). ──
+    df_full = _make_synthetic_uptrend_df()
+    df_cut_at_cross = df_full.iloc[:283].copy()  # bar 0..282, bar terakhir = 282
+    st_a = find_early_watch_state(df_cut_at_cross, ticker="SYN-A")
+    print(f"[self-test A] potong tepat di bar cross (282): "
+          f"{'KETEMU, cross=' + str(st_a.cross_date.date()) + ' tag=' + st_a.kinds_label if st_a else 'None'}")
+    assert st_a is not None, "SELF-TEST A GAGAL: cross di bar terakhir + band msh merah harus ketemu."
+    assert st_a.bars_since_cross == 0
+    print("[self-test A] PASS -- state ketemu tepat saat band masih merah, tag boleh kosong ('-').")
 
-    assert len(all_ep) >= 1, ("SELF-TEST GAGAL: skenario sintetis ini SUDAH terbukti (lihat "
-        "komentar di _make_synthetic_uptrend_df) menghasilkan 1 centerline-cross early "
-        "berjarak 4 bar dari CHoCH(internal) -- 0 match berarti ada bug di clustering/pairing.")
-    print("[self-test] PASS -- logika episode+pairing ketemu minimal 1 match pada skenario "
-          "'early cross 1 bar sebelum band confirm' yang sudah diverifikasi manual.")
+    # ── Skenario B: potong 3 bar setelah cross (285), CHoCH sudah kebentuk (286
+    # belum, tapi structure detection bisa retroaktif kasih tanggal 283-286 range --
+    # cek langsung apa adanya, bukan asumsi) -- band msh merah smp bar 282 (blm
+    # jadi True krn vidya_flipped_up baru di 283 -- tunggu, df_full punya band True
+    # dari 283 dst, jadi potongan >=283 justru harus None). Uji negatif ini penting:
+    # begitu band confirmed True, Early Watch WAJIB berhenti melapor ticker itu. ──
+    df_cut_after_confirm = df_full.iloc[:284].copy()  # bar terakhir = 283 (band sudah True)
+    st_b = find_early_watch_state(df_cut_after_confirm, ticker="SYN-B")
+    print(f"[self-test B] potong SETELAH band confirm (bar 283): "
+          f"{'KETEMU (SALAH!)' if st_b else 'None (benar)'}")
+    assert st_b is None, "SELF-TEST B GAGAL: band sudah True tapi masih dilaporkan Early Watch."
+    print("[self-test B] PASS -- begitu band confirmed hijau, Early Watch berhenti (domain Momentum).")
 
-    latest = find_latest_early_watch(df_syn, ticker="SYN-TEST")
-    print(f"[self-test] latest (production filter): "
-          f"{'ADA -- ' + str(latest.episode_end_date.date()) if latest else 'None'}")
-
-    # Sanity: clustering helper standalone
-    clustered = _cluster_into_episodes([10, 12, 14, 50, 90, 92], gap=5)
-    assert clustered == [(10, 14, [10, 12, 14]), (50, 50, [50]), (90, 92, [90, 92])], \
-        "SELF-TEST GAGAL: clustering helper berubah perilaku."
-    print("[self-test] PASS -- clustering helper konsisten dgn diagnose_early_watch_episodes.py.")
+    print("[self-test] SEMUA PASS.")

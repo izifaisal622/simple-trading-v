@@ -1821,38 +1821,36 @@ else:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# EARLY WATCH (EXPERIMENTAL) — v10.9.7
+# EARLY WATCH (EXPERIMENTAL) — v10.9.8, definisi v2 (simplifikasi 2-syarat)
 #
 # SENGAJA berdiri sendiri, di LUAR `if whale_results:` -- pola & alasan
-# SAMA PERSIS dengan section MOMENTUM (BETA) di atas (lihat komentar di
-# sana): scanner ini independen dari hasil Whale scan.
+# SAMA PERSIS dengan section MOMENTUM (BETA) di atas: scanner ini
+# independen dari hasil Whale scan.
 #
-# LATAR: tantangan konsep dari user (2026-09-07) thd premis Momentum di
-# atas sendiri -- "kalau VIDYA (band luar) sudah beralih merah->hijau,
-# itu SUDAH TELAT". Early Watch = sinyal LEBIH DINI: closing price cross
-# ke atas garis centerline VIDYA (TANPA offset ATR) SEMENTARA band luar
-# MASIH merah, dipasangkan dgn BOS/CHoCH terdekat spy bukan noise murni.
-# Definisi & mesin lengkap: agents/early_watch_scanner.py.
+# RIWAYAT: v1 (10.9.7, TIDAK PERNAH dijalankan live user) wajib ada
+# BOS/CHoCH dekat supaya lolos. User sengaja MENYEDERHANAKAN setelah
+# lihat hasil backtest v1: "saya butuhnya cuma 2 syarat -- VIDYA merah +
+# Momentum hijau, choppy/bersih biar saya analisa manual, COCH/BOS/EQL
+# cuma tag tambahan." v2 (INI) HANYA punya 2 syarat wajib: (1) band luar
+# is_trend_up MASIH False sekarang, (2) ada centerline cross ke atas
+# dalam 5 bar terakhir SAAT band msh merah. BOS/CHoCH/EQL ditampilkan
+# KALAU kebetulan ada di dekat titik cross, TAPI TIDAK WAJIB -- kartu
+# tanpa tag itu SAH, bukan ditolak. Definisi & self-test lengkap:
+# agents/early_watch_scanner.py.
 #
-# BEDA PENTING DGN MOMENTUM DI ATAS -- INI **BUKAN** FITUR TERVALIDASI:
-# Momentum sudah 3/3 divalidasi thd study case chart nyata SEBELUM ship.
-# Early Watch BELUM -- backtest histori (diagnose_early_watch_episodes.py,
-# 2026-09-07) cuma nunjukkin BUMI 9/25=36% & SINI 6/21=29% episode yang
-# match definisi ini beneran diikuti breakout asli; predictive value-nya
-# BELUM diuji vs episode yang tidak match. Keputusan eksplisit user:
-# ship apa adanya dgn label EXPERIMENTAL, validasi lanjut dari observasi
-# pemakaian live -- BUKAN klaim akurat. Makanya UI section ini WAJIB
-# nampilin disclaimer angka itu tiap render, TIDAK boleh dibikin terlihat
-# se-meyakinkan card Momentum di atas.
+# INI **BUKAN** FITUR TERVALIDASI seperti Momentum (3/3 study case chart
+# nyata). v2 belum pernah dihitung distribusi hit-rate-nya sama sekali
+# (angka 30-36% dari v1 SUDAH TIDAK BERLAKU utk v2 -- filter longgar jadi
+# hasil pasti lebih banyak & pasti lebih berisik, itu SENGAJA -- user yg
+# saring manual dari chart, bukan algoritma). WAJIB tampilkan disclaimer
+# ini tiap render.
 # ═══════════════════════════════════════════════════════════════════════
 st.markdown("<br>", unsafe_allow_html=True)
 sec_head("◆ EARLY WATCH (EXPERIMENTAL)")
-st.caption("⚠ EXPERIMENTAL, belum tervalidasi thd study case seperti Momentum di atas. "
-          "Backtest histori BUMI/SINI: cuma ~30-36% episode yang cocok definisi ini "
-          "benar diikuti breakout asli. Anggap sebagai clue tambahan buat mulai pantau "
-          "lebih dini, BUKAN sinyal entry.")
-st.caption("Definisi: Close cross ke atas centerline VIDYA (tanpa offset ATR) SAAT band luar "
-          "masih merah (belum confirmed) + konfirmasi struktur BOS/CHoCH dalam 5 bar (4H).")
+st.caption("⚠ EXPERIMENTAL, BELUM tervalidasi seperti Momentum di atas. Cuma 2 syarat wajib: "
+          "band luar VIDYA masih MERAH + garis Momentum (centerline) baru cross HIJAU dalam "
+          "5 bar terakhir. Choppy atau bersih TIDAK disaring di sini — validasi manual dari "
+          "chart. COCH/BOS/EQL di kartu di bawah CUMA tag informasi, bukan syarat kelulusan.")
 
 ew_run_btn = st.button("⟳ SCAN EARLY WATCH", type="secondary", key="btn_early_watch_scan")
 
@@ -1879,7 +1877,7 @@ else:
     ew1.metric("UNIVERSE", ew_ctx.get("total_universe", 0))
     ew2.metric("FETCH OK", ew_ctx.get("fetched_ok", 0))
     ew3.metric("MATCH", ew_ctx.get("match_count", 0))
-    ew4.metric("SCAN", ew_ctx.get("scan_date", "-"))
+    ew4.metric("ADA TAG BOS/CHoCH", ew_ctx.get("with_confirmation_count", 0))
     if ew_ctx.get("fetch_failed") or ew_ctx.get("crashed"):
         st.caption(f"Fetch gagal (data <730 hari / listing baru): {ew_ctx.get('fetch_failed',0)} | "
                   f"Crash: {ew_ctx.get('crashed',0)}")
@@ -1896,23 +1894,26 @@ else:
                    'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
                    'margin-right:4px">' + kind_scope_str + '</span>')
 
-        def _ew_flicker_badge(count):
-            if count <= 1:
+        def _ew_eql_badge(eql_date):
+            if eql_date is None:
                 return ""
+            eql_str = eql_date.strftime("%d-%b") if hasattr(eql_date, "strftime") else str(eql_date)
             return ('<span style="opacity:1;border:1px solid ' + LABEL_COLOR +
                    ';color:' + LABEL_COLOR + ';border-radius:3px;padding:1px 6px;'
                    'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
-                   'margin-right:4px">' + str(count) + 'x flicker</span>')
+                   'margin-right:4px">EQL@' + eql_str + '</span>')
 
         ew_cols = st.columns(2)
-        for ew_idx, ev in enumerate(sorted(ew_results, key=lambda r: r.bars_between)):
+        for ew_idx, ev in enumerate(sorted(ew_results, key=lambda r: r.bars_since_cross)):
             ew_col = ew_cols[ew_idx % 2]
             with ew_col:
                 ew_kind_badges = "".join(_ew_kind_badge(c.kind + "(" + c.scope + ")")
                                          for c in ev.confirmations)
-                ew_badges = ew_kind_badges + _ew_flicker_badge(ev.flicker_count)
-                ew_end_str = (ev.episode_end_date.strftime("%d-%b") if hasattr(ev.episode_end_date, "strftime")
-                             else str(ev.episode_end_date))
+                ew_badges = ew_kind_badges + _ew_eql_badge(ev.eql_date)
+                ew_cross_str = (ev.cross_date.strftime("%d-%b") if hasattr(ev.cross_date, "strftime")
+                               else str(ev.cross_date))
+                ew_bars_str = ("bar ini" if ev.bars_since_cross == 0
+                              else str(ev.bars_since_cross) + " bar lalu")
                 ew_card_html = (
                     '<div style="background:var(--bg-card);border:1px solid ' + C_WARNING + '55;'
                     'border-left:4px solid ' + C_WARNING + ';border-radius:var(--r-md);'
@@ -1921,19 +1922,24 @@ else:
                     '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);'
                     'font-weight:800;color:#E2E8F0">' + ev.ticker + '</span>'
                     '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
-                    'font-weight:700;color:' + C_WARNING + '">' + str(ev.bars_between) + ' bar</span>'
+                    'font-weight:700;color:' + C_WARNING + '">' + ew_bars_str + '</span>'
                     '</div>'
                     '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
                     'color:var(--text-muted);margin:0.4rem 0">'
-                    'Centerline cross ' + ew_end_str + ' (band luar masih merah)'
+                    'VIDYA merah + Momentum hijau sejak ' + ew_cross_str +
+                    ' (Close ' + f"{ev.close:.0f}" + ' vs centerline ' + f"{ev.vidya_val:.0f}" + ')'
                     '</div>'
-                    '<div style="margin-top:0.5rem">' + ew_badges + '</div>'
+                    '<div style="margin-top:0.5rem">' +
+                    (ew_badges if ew_badges else
+                     '<span style="color:' + LABEL_COLOR + ';font-size:var(--text-2xs);'
+                     'font-family:Share Tech Mono,monospace">(tidak ada tag BOS/CHoCH/EQL dekat sini)</span>') +
+                    '</div>'
                     '</div>'
                 )
                 st.markdown(ew_card_html, unsafe_allow_html=True)
 
-    st.caption("Early Watch = clue mulai pantau lebih dini, BELUM tervalidasi seperti Momentum. "
-              "~30% presisi dari backtest histori — WAJIB validasi manual, jangan entry dari sini saja.")
+    st.caption("Early Watch = VIDYA merah + Momentum hijau, BELUM tervalidasi seperti Momentum "
+              "di atas. Choppy/range TIDAK disaring otomatis — cek chart manual sebelum entry.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

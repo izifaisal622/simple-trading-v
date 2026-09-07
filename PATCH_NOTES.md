@@ -1,98 +1,83 @@
-# Patch 10.9.6 -> 10.9.7 — Fitur baru EXPERIMENTAL: Early Watch scanner
+# Patch 10.9.7 -> 10.9.8 — Redefinisi Early Watch: 2 syarat saja
 
-Extract di root repo (di atas hasil 10.9.6), timpa/tambah 3 file di bawah.
+Extract di root repo (di atas hasil 10.9.7 — kalau kamu BELUM extract
+10.9.7 sama sekali, extract patch ini langsung, tidak masalah karena
+`pages/2_Follow_Whale.py` & `version.json` di sini SUDAH termasuk semua
+perubahan 10.9.7 + 10.9.8 sekaligus).
 
 ## Isi paket
 
 ```
-agents/early_watch_scanner.py   <-- BARU (file baru, ADITIF)
-pages/2_Follow_Whale.py         <-- DIGANTI (tambah section EARLY WATCH baru)
-version.json                    <-- DIGANTI (10.9.6 -> 10.9.7, 1 entry baru
-                                     paling atas, 229 entry lama TETAP UTUH)
+agents/early_watch_scanner.py   <-- DITULIS ULANG TOTAL (bukan file baru,
+                                     TIMPA yang 10.9.7 kalau sudah ada)
+pages/2_Follow_Whale.py         <-- DIGANTI (card Early Watch redesign)
+version.json                    <-- DIGANTI (10.9.7 -> 10.9.8, 1 entry
+                                     baru, 230 entry lama TETAP UTUH)
 ```
 
-Tidak ada perubahan ke `agents/momentum_scanner.py`, `core/ob_engine.py`,
-`core/structure_signals.py`, atau file produksi lain manapun.
+## Kenapa berubah lagi secepat ini
 
-## Latar belakang (kenapa fitur ini ada)
+Kamu lihat hasil backtest 10.9.7 (BUMI 36%, SINI 29% match dgn syarat
+wajib BOS/CHoCH) dan bilang itu kerumitan yang tidak perlu — bukan
+karena angkanya jelek, tapi karena definisinya bukan yang kamu mau.
+Permintaanmu: **cuma 2 syarat** — VIDYA (band luar) merah + garis
+Momentum (centerline) hijau. Choppy atau bersih kamu yang nilai manual
+dari chart. COCH/BOS/EQL turun status jadi tag informasi saja.
 
-Setelah Momentum (BETA) di-ship (v10.9.4-10.9.6), kamu menantang premisnya
-sendiri: *"kalau VIDYA (band luar) sudah beralih dari merah ke hijau, itu
-sudah TELAT."* Early Watch adalah hasil investigasi konsep itu — sinyal
-LEBIH DINI dari Momentum, bukan pengganti.
+File 10.9.7 belum pernah kamu jalankan live, jadi ini bukan "ganti fitur
+yang sudah dipakai" — murni definisi lama diganti sebelum sempat dipakai
+sama sekali.
 
-## Definisi mekanis
+## Definisi baru (v2)
 
-1. Close cross ke ATAS garis **centerline** VIDYA (`_vidya_calc`, TANPA
-   offset ATR — beda dari upper/lower band yang dipakai Momentum).
-2. HANYA dihitung kalau terjadi SAAT band luar (`is_trend_up`) **masih
-   merah** — begitu band luar confirmed, itu domain Momentum, bukan Early
-   Watch lagi.
-3. Flicker yang berdekatan (gap <=5 bar) digabung jadi 1 **episode** —
-   supaya fase choppy (flicker hijau-merah berkali-kali) tidak
-   menghasilkan alert duplikat.
-4. Episode WAJIB punya minimal 1 BOS/CHoCH (union, scope apapun) dalam
-   ±5 bar dari rentang episode. Episode tanpa ini dibuang sebagai noise.
+**Wajib (2 syarat, keduanya harus benar):**
+1. Band luar VIDYA (`is_trend_up`) MASIH merah di bar terakhir (sekarang).
+2. Ada cross Close ke ATAS centerline VIDYA (`vidya_val`, tanpa offset
+   ATR) dalam 5 bar terakhir, DAN band luar masih merah PERSIS di bar
+   cross itu.
 
-## PENTING — level validasi BEDA dari Momentum, WAJIB dibaca
+**Tag saja, TIDAK wajib ada:**
+- BOS/CHoCH dalam ±5 bar dari titik cross — ditampilkan kalau ada.
+- EQL dalam 20 bar sebelum titik cross — ditampilkan kalau ada.
+- Kartu TANPA tag sama sekali itu SAH, bukan dibuang.
 
-**Momentum** (v10.9.4) divalidasi 3/3 terhadap study case chart nyata
-(BUMI/SINI/UANG) SEBELUM di-ship.
+## Konsekuensi yang perlu kamu tahu
 
-**Early Watch BELUM** melewati validasi setara. Yang sudah diuji lewat 3
-diagnostic script read-only (`diagnose_early_momentum.py` →
-`diagnose_early_watch_concept.py` → `diagnose_early_watch_episodes.py`,
-semua masih ada di root repo hasil sesi ini):
-
-- BUMI: 25 episode sepanjang ~2.5 tahun histori, 9 match BOS/CHoCH = **36%**.
-- SINI: 21 episode, 6 match = **29%**.
-- Hipotesis "flicker berulang bikin angka ini keliatan rendah karena
-  duplicate-counting" **TERBUKTI SALAH** — setelah episode-clustering,
-  angka cuma bergeser tipis (30%→36%, 25%→29%). Bukan sumber noise utama.
-
-Yang **BELUM** diuji: apakah 30-36% episode yang match ini BENAR lebih
-sering mendahului breakout asli dibanding yang tidak match (predictive
-value). Keputusan eksplisit kamu (2026-09-07): **ship apa adanya dengan
-label EXPERIMENTAL**, validasi lanjut dari observasi pemakaian live —
-bukan dari diagnostic tambahan.
-
-Konsekuensinya di UI: section ini nampilin disclaimer angka ~30% itu
-langsung di caption, dan kartu hasil pakai warna amber (C_WARNING) yang
-sengaja beda dari Momentum — supaya tidak terlihat se-meyakinkan fitur
-yang sudah tervalidasi.
-
-## Penempatan UI
-
-`pages/2_Follow_Whale.py`: section **"EARLY WATCH (EXPERIMENTAL)"**
-ditaruh SEGERA setelah section MOMENTUM (BETA), sebelum 8 section whale
-existing — standalone, di luar `if whale_results:`, pola identik dengan
-MOMENTUM & GOLDEN SETUP 4H (independen dari hasil scan Whale, jadi selalu
-kelihatan tanpa perlu scan Whale dulu).
+Scan Early Watch v2 akan menampilkan **LEBIH BANYAK** ticker per scan
+dibanding v1 — filternya jauh lebih longgar (2 syarat vs 4). Ini SESUAI
+permintaanmu (kamu yang saring manual), tapi berarti:
+- Jangan kaget kalau hasil scan jadi panjang.
+- Angka 30-36% dari backtest v1 **TIDAK BERLAKU** untuk v2 — belum ada
+  angka hit-rate baru sama sekali untuk definisi ini, karena definisinya
+  sengaja dibuat "tidak menyaring", validasinya ada di mata kamu pas
+  baca chart.
 
 ## Verifikasi sebelum dikirim
 
-- `py_compile` + `ast.parse` `agents/early_watch_scanner.py` dan
-  `pages/2_Follow_Whale.py` (2513 baris) — PASS.
-- Self-test module (`python -m agents.early_watch_scanner`): skenario
-  sintetis yang SUDAH diverifikasi manual (centerline cross 1 bar sebelum
-  band confirm, berjarak 4 bar dari CHoCH) — assert eksplisit ketemu
-  minimal 1 episode, BUKAN cuma "tidak error". PASS.
+- `py_compile` `agents/early_watch_scanner.py` — PASS.
+- 2 self-test skenario (bukan cuma "tidak error", ada assert eksplisit):
+  - **A**: potong data persis di bar centerline-cross (band masih merah)
+    → HARUS ketemu state, tag BOS/CHoCH boleh kosong. PASS.
+  - **B**: potong data 1 bar SETELAH band confirm jadi hijau → HARUS
+    `None` (negative test — begitu band beneran hijau, itu domain
+    Momentum, bukan Early Watch lagi). PASS.
+- `py_compile` `pages/2_Follow_Whale.py` (2519 baris) — PASS.
 - Smoke test terpisah: card-HTML-builder dijalankan terhadap
-  `EarlyWatchEvent` ASLI (dari `find_all_early_watch_episodes()` atas
-  data sintetis yang sama) — HTML valid, semua warna hex resolved, tidak
-  ada `var(--x)` dikonkat suffix opacity, tidak ada nested f-string.
-  PASS.
+  `EarlyWatchState` ASLI, termasuk jalur TANPA tag (fallback teks
+  "(tidak ada tag...)") — PASS, HTML valid, tidak ada `var(--x)` konkat
+  suffix opacity, tidak ada nested f-string.
 
-## Yang BELUM diuji (sama seperti pola v10.9.6)
+## Yang BELUM diuji
 
-1. **Scan live full-universe** (~560 ticker) — belum pernah dijalankan
-   dengan `EarlyWatchScanner4H().scan()` di data real. Coba scope kecil
-   dulu kalau ragu (`scan(tickers=[...50 ticker...])`) sebelum full
-   universe, ikuti rekomendasi yang sama seperti Momentum dulu.
-2. **Render visual browser** — `streamlit run gate.py`, buka Follow
-   Whale, cek section "EARLY WATCH (EXPERIMENTAL)" muncul di bawah
-   MOMENTUM (BETA), tombol SCAN EARLY WATCH jalan, kartu hasil tampil
-   dengan accent warna amber.
+1. **Scan live full-universe** dengan definisi v2 — belum pernah
+   dijalankan terhadap data real sama sekali (baik v1 maupun v2).
+2. **Render visual browser** — `streamlit run gate.py`, cek kartu Early
+   Watch tampil dengan info Close/centerline/jarak bar, dan kartu tanpa
+   tag BOS/CHoCH menampilkan fallback teks dengan benar (bukan kosong
+   atau error).
 
-Kalau live scan & render OK, ini rilis fitur Early Watch (EXPERIMENTAL)
-penuh.
+Kalau live scan ternyata TERLALU banyak hasil (choppy market bikin
+banyak ticker lolos 2 syarat ini), opsinya nanti: perketat window 5 bar
+jadi lebih pendek, atau tambah 1 syarat longgar (bukan BOS/CHoCH wajib
+lagi, tapi mis. minimal jarak dari band luar) — didiskusikan lagi kalau
+kejadian, bukan diasumsikan sekarang.
