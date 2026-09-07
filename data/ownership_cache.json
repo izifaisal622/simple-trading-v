@@ -115,5 +115,41 @@
     "top_holders": [],
     "source": "yfinance",
     "_fetched": "2026-09-01T13:32:01.031698"
+  },
+  "yf_BTPS": {
+    "ticker": "BTPS",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-07T13:32:25.139407"
+  },
+  "yf_UDNG": {
+    "ticker": "UDNG",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-07T13:32:25.178352"
+  },
+  "yf_MEDS": {
+    "ticker": "MEDS",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-07T13:32:25.223638"
+  },
+  "yf_PRDA": {
+    "ticker": "PRDA",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-07T13:32:25.242978"
   }
 }

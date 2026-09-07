@@ -1714,7 +1714,10 @@ border-radius:var(--r-sm);padding:0.5rem 0.65rem">
     )
 
 # ═══════════════════════════════════════════════════════════════════════
-# MOMENTUM (BETA) — Fase 2 UI wiring, v10.9.6
+# MOMENTUM — Fase 2 UI wiring, v10.9.6. Label "(BETA)" dihapus di v10.9.10
+# atas permintaan eksplisit user setelah verifikasi live sukses (fetch
+# 519/560, 0 crash, angka konsisten dgn baseline) — TIDAK ada perubahan
+# definisi/logic, murni labeling.
 #
 # SENGAJA berdiri sendiri, TIDAK di dalam blok `if whale_results:` di bawah
 # dan TIDAK menyentuh session_state whale_*/momentum apa pun milik section
@@ -1747,10 +1750,18 @@ border-radius:var(--r-sm);padding:0.5rem 0.65rem">
 # lagi satu-satunya sumber data spt versi 10.9.6-10.9.8.
 # ═══════════════════════════════════════════════════════════════════════
 st.markdown("<br>", unsafe_allow_html=True)
-sec_head("◆ MOMENTUM (BETA)")
+sec_head("◆ MOMENTUM")
 st.caption("VIDYA baru belok hijau (dari merah) + konfirmasi struktur BOS/CHoCH dalam 5 bar "
           "(4H) — union, cukup salah satu. EQL sebelum konfirmasi = tag HIGH CONVICTION "
           "opsional, bukan syarat wajib. Full universe, fetch tanpa cache — scan ~5-6 menit.")
+
+# Filter tampilan "berapa bar lalu" (v10.9.10, request user) — HANYA
+# mempengaruhi kartu yang dirender, TIDAK mempengaruhi angka metric
+# (UNIVERSE/FETCH OK/MATCH/HIGH CONV.) yang tetap laporan scan penuh.
+BAR_FILTER_OPTIONS = ["Semua", "Bar ini (0)", "≤1 bar lalu", "≤2 bar lalu",
+                      "≤3 bar lalu", "≤4 bar lalu", "≤5 bar lalu"]
+BAR_FILTER_MAP = {"Semua": None, "Bar ini (0)": 0, "≤1 bar lalu": 1, "≤2 bar lalu": 2,
+                  "≤3 bar lalu": 3, "≤4 bar lalu": 4, "≤5 bar lalu": 5}
 
 if "momentum_results" not in st.session_state:
     st.session_state["momentum_results"] = momentum_cached_results
@@ -1806,34 +1817,49 @@ else:
         render_empty_state("◎", "TIDAK ADA MOMENTUM FRESH SAAT INI",
                            "Coba scan lagi nanti — kondisi pasar berubah tiap 4 jam.", "")
     else:
-        # Helper badge SELF-CONTAINED (lihat catatan di atas soal bug v10.9.0 —
-        # jangan reuse helper dari section lain, section ini harus berdiri sendiri)
-        def _mom_high_conv_badge():
-            return ('<span style="opacity:1;border:1px solid ' + C_WARNING +
-                   ';color:' + C_WARNING + ';border-radius:3px;padding:1px 8px;'
-                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
-                   'margin-right:4px;font-weight:900">★ HIGH CONVICTION</span>')
+        m_filter_col = st.columns([1, 3])[0]
+        with m_filter_col:
+            m_bar_filter = st.selectbox("Filter bar", BAR_FILTER_OPTIONS,
+                                        key="momentum_bar_filter")
+        m_max_bar = BAR_FILTER_MAP[m_bar_filter]
+        m_results_view = (m_results if m_max_bar is None
+                          else [r for r in m_results if r.bars_between <= m_max_bar])
+        if m_max_bar is not None:
+            st.caption(f"Menampilkan {len(m_results_view)} dari {len(m_results)} match "
+                      f"(filter: {m_bar_filter})")
 
-        def _mom_kind_badge(kind_scope_str):
-            return ('<span style="opacity:1;border:1px solid ' + C_INFO +
-                   ';color:' + C_INFO + ';border-radius:3px;padding:1px 6px;'
-                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
-                   'margin-right:4px">' + kind_scope_str + '</span>')
+        if not m_results_view:
+            render_empty_state("◎", "TIDAK ADA MATCH DI RENTANG BAR INI",
+                               "Coba longgarkan filter atau pilih 'Semua'.", "")
+        else:
+            # Helper badge SELF-CONTAINED (lihat catatan di atas soal bug v10.9.0 —
+            # jangan reuse helper dari section lain, section ini harus berdiri sendiri)
+            def _mom_high_conv_badge():
+                return ('<span style="opacity:1;border:1px solid ' + C_WARNING +
+                       ';color:' + C_WARNING + ';border-radius:3px;padding:1px 8px;'
+                       'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                       'margin-right:4px;font-weight:900">★ HIGH CONVICTION</span>')
 
-        def _mom_delta_badge(delta_pct):
-            if delta_pct is None:
-                return ""
-            col = NEON_GREEN if delta_pct > 0 else (C_DANGER if delta_pct < 0 else LABEL_COLOR)
-            sign = "+" if delta_pct > 0 else ""
-            return ('<span style="opacity:1;border:1px solid ' + col +
-                   ';color:' + col + ';border-radius:3px;padding:1px 6px;'
-                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
-                   'margin-right:4px">ΔVOL ' + sign + str(delta_pct) + '%</span>')
+            def _mom_kind_badge(kind_scope_str):
+                return ('<span style="opacity:1;border:1px solid ' + C_INFO +
+                       ';color:' + C_INFO + ';border-radius:3px;padding:1px 6px;'
+                       'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                       'margin-right:4px">' + kind_scope_str + '</span>')
 
-        m_cols = st.columns(2)
-        for m_idx, mr in enumerate(sorted(m_results, key=lambda r: r.bars_between)):
-            m_col = m_cols[m_idx % 2]
-            with m_col:
+            def _mom_delta_badge(delta_pct):
+                if delta_pct is None:
+                    return ""
+                col = NEON_GREEN if delta_pct > 0 else (C_DANGER if delta_pct < 0 else LABEL_COLOR)
+                sign = "+" if delta_pct > 0 else ""
+                return ('<span style="opacity:1;border:1px solid ' + col +
+                       ';color:' + col + ';border-radius:3px;padding:1px 6px;'
+                       'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                       'margin-right:4px">ΔVOL ' + sign + str(delta_pct) + '%</span>')
+
+            m_cols = st.columns(2)
+            for m_idx, mr in enumerate(sorted(m_results_view, key=lambda r: r.bars_between)):
+              m_col = m_cols[m_idx % 2]
+              with m_col:
                 m_cc = (NEON_GREEN if mr.bars_between <= 1 else
                         (C_INFO if mr.bars_between <= 3 else LABEL_COLOR))
                 m_kind_badges = "".join(_mom_kind_badge(c.kind + "(" + c.scope + ")")
@@ -1869,36 +1895,25 @@ else:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# EARLY WATCH (EXPERIMENTAL) — v10.9.8, definisi v2 (simplifikasi 2-syarat)
+# EARLY WATCH — v10.9.8, definisi v2 (simplifikasi 2-syarat). Label
+# "(EXPERIMENTAL)" + disclaimer besar dihapus di v10.9.10 atas permintaan
+# eksplisit user setelah verifikasi live sukses (40 state, 0 crash,
+# fetch gagal cocok baseline). CATATAN JUJUR (tetap berlaku walau label
+# UI dihapus): definisi v2 TIDAK PERNAH dihitung hit-rate/backtest-nya
+# sama sekali (angka 30-36% dari v1 SUDAH TIDAK BERLAKU utk v2) — desain
+# section ini MEMANG menyerahkan saringan choppy/bersih ke chart manual
+# user, bukan ke algoritma, jadi ketiadaan label bukan klaim "sudah
+# tervalidasi". Baca agents/early_watch_scanner.py utk definisi lengkap.
 #
 # SENGAJA berdiri sendiri, di LUAR `if whale_results:` -- pola & alasan
-# SAMA PERSIS dengan section MOMENTUM (BETA) di atas: scanner ini
-# independen dari hasil Whale scan.
-#
-# RIWAYAT: v1 (10.9.7, TIDAK PERNAH dijalankan live user) wajib ada
-# BOS/CHoCH dekat supaya lolos. User sengaja MENYEDERHANAKAN setelah
-# lihat hasil backtest v1: "saya butuhnya cuma 2 syarat -- VIDYA merah +
-# Momentum hijau, choppy/bersih biar saya analisa manual, COCH/BOS/EQL
-# cuma tag tambahan." v2 (INI) HANYA punya 2 syarat wajib: (1) band luar
-# is_trend_up MASIH False sekarang, (2) ada centerline cross ke atas
-# dalam 5 bar terakhir SAAT band msh merah. BOS/CHoCH/EQL ditampilkan
-# KALAU kebetulan ada di dekat titik cross, TAPI TIDAK WAJIB -- kartu
-# tanpa tag itu SAH, bukan ditolak. Definisi & self-test lengkap:
-# agents/early_watch_scanner.py.
-#
-# INI **BUKAN** FITUR TERVALIDASI seperti Momentum (3/3 study case chart
-# nyata). v2 belum pernah dihitung distribusi hit-rate-nya sama sekali
-# (angka 30-36% dari v1 SUDAH TIDAK BERLAKU utk v2 -- filter longgar jadi
-# hasil pasti lebih banyak & pasti lebih berisik, itu SENGAJA -- user yg
-# saring manual dari chart, bukan algoritma). WAJIB tampilkan disclaimer
-# ini tiap render.
+# SAMA PERSIS dengan section MOMENTUM di atas: scanner ini independen
+# dari hasil Whale scan.
 # ═══════════════════════════════════════════════════════════════════════
 st.markdown("<br>", unsafe_allow_html=True)
-sec_head("◆ EARLY WATCH (EXPERIMENTAL)")
-st.caption("⚠ EXPERIMENTAL, BELUM tervalidasi seperti Momentum di atas. Cuma 2 syarat wajib: "
-          "band luar VIDYA masih MERAH + garis Momentum (centerline) baru cross HIJAU dalam "
-          "5 bar terakhir. Choppy atau bersih TIDAK disaring di sini — validasi manual dari "
-          "chart. COCH/BOS/EQL di kartu di bawah CUMA tag informasi, bukan syarat kelulusan.")
+sec_head("◆ EARLY WATCH")
+st.caption("Syarat: band luar VIDYA masih MERAH + garis Momentum (centerline) baru cross HIJAU "
+          "dalam 5 bar terakhir. Choppy atau bersih tidak disaring di sini — validasi manual dari "
+          "chart. COCH/BOS/EQL di kartu di bawah cuma tag informasi, bukan syarat kelulusan.")
 st.caption("Hasil dimuat otomatis dari scan terakhir (orchestrator.py --mode all/early_watch) "
           "begitu dashboard dibuka — SCAN EARLY WATCH di bawah cuma untuk refresh manual.")
 
@@ -1955,27 +1970,42 @@ else:
         render_empty_state("◎", "TIDAK ADA EARLY WATCH FRESH SAAT INI",
                            "Coba scan lagi nanti — kondisi pasar berubah tiap 4 jam.", "")
     else:
-        # Helper badge SELF-CONTAINED (ikuti prinsip yg sama dgn section
-        # MOMENTUM & GOLDEN SETUP -- jangan reuse helper section lain)
-        def _ew_kind_badge(kind_scope_str):
-            return ('<span style="opacity:1;border:1px solid ' + C_WARNING +
-                   ';color:' + C_WARNING + ';border-radius:3px;padding:1px 6px;'
-                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
-                   'margin-right:4px">' + kind_scope_str + '</span>')
+        ew_filter_col = st.columns([1, 3])[0]
+        with ew_filter_col:
+            ew_bar_filter = st.selectbox("Filter bar", BAR_FILTER_OPTIONS,
+                                         key="early_watch_bar_filter")
+        ew_max_bar = BAR_FILTER_MAP[ew_bar_filter]
+        ew_results_view = (ew_results if ew_max_bar is None
+                           else [r for r in ew_results if r.bars_since_cross <= ew_max_bar])
+        if ew_max_bar is not None:
+            st.caption(f"Menampilkan {len(ew_results_view)} dari {len(ew_results)} state "
+                      f"(filter: {ew_bar_filter})")
 
-        def _ew_eql_badge(eql_date):
-            if eql_date is None:
-                return ""
-            eql_str = eql_date.strftime("%d-%b") if hasattr(eql_date, "strftime") else str(eql_date)
-            return ('<span style="opacity:1;border:1px solid ' + LABEL_COLOR +
-                   ';color:' + LABEL_COLOR + ';border-radius:3px;padding:1px 6px;'
-                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
-                   'margin-right:4px">EQL@' + eql_str + '</span>')
+        if not ew_results_view:
+            render_empty_state("◎", "TIDAK ADA STATE DI RENTANG BAR INI",
+                               "Coba longgarkan filter atau pilih 'Semua'.", "")
+        else:
+            # Helper badge SELF-CONTAINED (ikuti prinsip yg sama dgn section
+            # MOMENTUM & GOLDEN SETUP -- jangan reuse helper section lain)
+            def _ew_kind_badge(kind_scope_str):
+                return ('<span style="opacity:1;border:1px solid ' + C_WARNING +
+                       ';color:' + C_WARNING + ';border-radius:3px;padding:1px 6px;'
+                       'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                       'margin-right:4px">' + kind_scope_str + '</span>')
 
-        ew_cols = st.columns(2)
-        for ew_idx, ev in enumerate(sorted(ew_results, key=lambda r: r.bars_since_cross)):
-            ew_col = ew_cols[ew_idx % 2]
-            with ew_col:
+            def _ew_eql_badge(eql_date):
+                if eql_date is None:
+                    return ""
+                eql_str = eql_date.strftime("%d-%b") if hasattr(eql_date, "strftime") else str(eql_date)
+                return ('<span style="opacity:1;border:1px solid ' + LABEL_COLOR +
+                       ';color:' + LABEL_COLOR + ';border-radius:3px;padding:1px 6px;'
+                       'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                       'margin-right:4px">EQL@' + eql_str + '</span>')
+
+            ew_cols = st.columns(2)
+            for ew_idx, ev in enumerate(sorted(ew_results_view, key=lambda r: r.bars_since_cross)):
+              ew_col = ew_cols[ew_idx % 2]
+              with ew_col:
                 ew_kind_badges = "".join(_ew_kind_badge(c.kind + "(" + c.scope + ")")
                                          for c in ev.confirmations)
                 ew_badges = ew_kind_badges + _ew_eql_badge(ev.eql_date)
@@ -2007,8 +2037,8 @@ else:
                 )
                 st.markdown(ew_card_html, unsafe_allow_html=True)
 
-    st.caption("Early Watch = VIDYA merah + Momentum hijau, BELUM tervalidasi seperti Momentum "
-              "di atas. Choppy/range TIDAK disaring otomatis — cek chart manual sebelum entry.")
+    st.caption("Early Watch = VIDYA merah + Momentum hijau. Choppy/range tidak disaring "
+              "otomatis — cek chart manual sebelum entry.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
