@@ -1820,6 +1820,122 @@ else:
               "(4H). Bukan jaminan profit, tetap validasi manual sebelum entry.")
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# EARLY WATCH (EXPERIMENTAL) — v10.9.7
+#
+# SENGAJA berdiri sendiri, di LUAR `if whale_results:` -- pola & alasan
+# SAMA PERSIS dengan section MOMENTUM (BETA) di atas (lihat komentar di
+# sana): scanner ini independen dari hasil Whale scan.
+#
+# LATAR: tantangan konsep dari user (2026-09-07) thd premis Momentum di
+# atas sendiri -- "kalau VIDYA (band luar) sudah beralih merah->hijau,
+# itu SUDAH TELAT". Early Watch = sinyal LEBIH DINI: closing price cross
+# ke atas garis centerline VIDYA (TANPA offset ATR) SEMENTARA band luar
+# MASIH merah, dipasangkan dgn BOS/CHoCH terdekat spy bukan noise murni.
+# Definisi & mesin lengkap: agents/early_watch_scanner.py.
+#
+# BEDA PENTING DGN MOMENTUM DI ATAS -- INI **BUKAN** FITUR TERVALIDASI:
+# Momentum sudah 3/3 divalidasi thd study case chart nyata SEBELUM ship.
+# Early Watch BELUM -- backtest histori (diagnose_early_watch_episodes.py,
+# 2026-09-07) cuma nunjukkin BUMI 9/25=36% & SINI 6/21=29% episode yang
+# match definisi ini beneran diikuti breakout asli; predictive value-nya
+# BELUM diuji vs episode yang tidak match. Keputusan eksplisit user:
+# ship apa adanya dgn label EXPERIMENTAL, validasi lanjut dari observasi
+# pemakaian live -- BUKAN klaim akurat. Makanya UI section ini WAJIB
+# nampilin disclaimer angka itu tiap render, TIDAK boleh dibikin terlihat
+# se-meyakinkan card Momentum di atas.
+# ═══════════════════════════════════════════════════════════════════════
+st.markdown("<br>", unsafe_allow_html=True)
+sec_head("◆ EARLY WATCH (EXPERIMENTAL)")
+st.caption("⚠ EXPERIMENTAL, belum tervalidasi thd study case seperti Momentum di atas. "
+          "Backtest histori BUMI/SINI: cuma ~30-36% episode yang cocok definisi ini "
+          "benar diikuti breakout asli. Anggap sebagai clue tambahan buat mulai pantau "
+          "lebih dini, BUKAN sinyal entry.")
+st.caption("Definisi: Close cross ke atas centerline VIDYA (tanpa offset ATR) SAAT band luar "
+          "masih merah (belum confirmed) + konfirmasi struktur BOS/CHoCH dalam 5 bar (4H).")
+
+ew_run_btn = st.button("⟳ SCAN EARLY WATCH", type="secondary", key="btn_early_watch_scan")
+
+if ew_run_btn:
+    with st.spinner("◈ Scan Early Watch — fetch 4H full universe (tanpa cache, ~5-6 menit)..."):
+        try:
+            from agents.early_watch_scanner import EarlyWatchScanner4H
+            ew_scanner = EarlyWatchScanner4H()
+            ew_results, ew_ctx = ew_scanner.scan()
+            st.session_state["early_watch_results"] = ew_results
+            st.session_state["early_watch_ctx"] = ew_ctx
+        except Exception as e:
+            st.error(f"ERROR: {e}")
+            import traceback; st.code(traceback.format_exc())
+
+ew_results = st.session_state.get("early_watch_results", [])
+ew_ctx = st.session_state.get("early_watch_ctx", {})
+
+if not ew_results and not ew_ctx:
+    render_empty_state("▲", "BELUM ADA HASIL SCAN EARLY WATCH",
+                       "Klik SCAN EARLY WATCH untuk memulai (~5-6 menit, full universe).", "")
+else:
+    ew1, ew2, ew3, ew4 = st.columns(4)
+    ew1.metric("UNIVERSE", ew_ctx.get("total_universe", 0))
+    ew2.metric("FETCH OK", ew_ctx.get("fetched_ok", 0))
+    ew3.metric("MATCH", ew_ctx.get("match_count", 0))
+    ew4.metric("SCAN", ew_ctx.get("scan_date", "-"))
+    if ew_ctx.get("fetch_failed") or ew_ctx.get("crashed"):
+        st.caption(f"Fetch gagal (data <730 hari / listing baru): {ew_ctx.get('fetch_failed',0)} | "
+                  f"Crash: {ew_ctx.get('crashed',0)}")
+
+    if not ew_results:
+        render_empty_state("◎", "TIDAK ADA EARLY WATCH FRESH SAAT INI",
+                           "Coba scan lagi nanti — kondisi pasar berubah tiap 4 jam.", "")
+    else:
+        # Helper badge SELF-CONTAINED (ikuti prinsip yg sama dgn section
+        # MOMENTUM & GOLDEN SETUP -- jangan reuse helper section lain)
+        def _ew_kind_badge(kind_scope_str):
+            return ('<span style="opacity:1;border:1px solid ' + C_WARNING +
+                   ';color:' + C_WARNING + ';border-radius:3px;padding:1px 6px;'
+                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                   'margin-right:4px">' + kind_scope_str + '</span>')
+
+        def _ew_flicker_badge(count):
+            if count <= 1:
+                return ""
+            return ('<span style="opacity:1;border:1px solid ' + LABEL_COLOR +
+                   ';color:' + LABEL_COLOR + ';border-radius:3px;padding:1px 6px;'
+                   'font-size:var(--text-2xs);font-family:Share Tech Mono,monospace;'
+                   'margin-right:4px">' + str(count) + 'x flicker</span>')
+
+        ew_cols = st.columns(2)
+        for ew_idx, ev in enumerate(sorted(ew_results, key=lambda r: r.bars_between)):
+            ew_col = ew_cols[ew_idx % 2]
+            with ew_col:
+                ew_kind_badges = "".join(_ew_kind_badge(c.kind + "(" + c.scope + ")")
+                                         for c in ev.confirmations)
+                ew_badges = ew_kind_badges + _ew_flicker_badge(ev.flicker_count)
+                ew_end_str = (ev.episode_end_date.strftime("%d-%b") if hasattr(ev.episode_end_date, "strftime")
+                             else str(ev.episode_end_date))
+                ew_card_html = (
+                    '<div style="background:var(--bg-card);border:1px solid ' + C_WARNING + '55;'
+                    'border-left:4px solid ' + C_WARNING + ';border-radius:var(--r-md);'
+                    'padding:1rem 1.2rem;margin-bottom:0.8rem">'
+                    '<div style="display:flex;justify-content:space-between;align-items:center">'
+                    '<span style="font-family:Orbitron,monospace;font-size:var(--text-lg);'
+                    'font-weight:800;color:#E2E8F0">' + ev.ticker + '</span>'
+                    '<span style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
+                    'font-weight:700;color:' + C_WARNING + '">' + str(ev.bars_between) + ' bar</span>'
+                    '</div>'
+                    '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);'
+                    'color:var(--text-muted);margin:0.4rem 0">'
+                    'Centerline cross ' + ew_end_str + ' (band luar masih merah)'
+                    '</div>'
+                    '<div style="margin-top:0.5rem">' + ew_badges + '</div>'
+                    '</div>'
+                )
+                st.markdown(ew_card_html, unsafe_allow_html=True)
+
+    st.caption("Early Watch = clue mulai pantau lebih dini, BELUM tervalidasi seperti Momentum. "
+              "~30% presisi dari backtest histori — WAJIB validasi manual, jangan entry dari sini saja.")
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA DISPLAY
 # ══════════════════════════════════════════════════════════════════════════════
