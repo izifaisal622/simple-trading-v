@@ -638,20 +638,98 @@ def check_universe_health(
 #       independen krn sandbox pengembang tak py akses data pasar. TIDAK
 #       diperlakukan sbg bug, tapi jg tak diklaim confirmed-normal.
 #
-# BELUM dikerjakan sengaja (di luar scope Fase 1, lihat catatan versi):
-#   - Belum terhubung ke pipeline cache incremental (_FRESH_DAYS dkk) —
-#     itu didesain utk granularitas HARI via _is_cache_stale_trading yang
-#     cuma cek TANGGAL, bukan jam. Kalau fetch_4h() disambungkan ke situ
-#     tanpa rework, cache bisa dianggap "fresh" walau bucket sore belum
-#     ke-fetch (tanggal sama, jam beda). fetch_4h() SENGAJA full re-fetch
-#     tiap panggilan (mahal tapi benar) sampai staleness session-aware
-#     dibangun di fase lanjutan.
+# v1.1.2 — CACHE SESSION/BUCKET-AWARE ditambahkan (lihat _is_4h_cache_fresh
+# dkk di bawah). TIDAK reuse _FRESH_DAYS/_is_cache_stale_trading milik jalur
+# daily/weekly (itu cuma cek TANGGAL, bukan jam — reuse apa adanya akan
+# menghasilkan bug persis yang dulu dihindari: bucket sore dianggap fresh
+# padahal belum ke-fetch). Sebagai gantinya: freshness dicek per (tanggal,
+# bucket) pakai cutoff 13:00 WIB yang sama dgn resample, plus buffer settle
+# 16:00 WIB utk bucket sore (sesi II tutup 15:49:59 + margin). Gap kecil
+# (<= _4H_MAX_INC_DAYS hari) → delta fetch (60m window pendek) + merge via
+# _merge_incremental (termasuk junction-outlier guard yang sama dgn daily).
+# Gap besar / cache kosong / delta gagal → full re-fetch (path lama, tak
+# diubah). use_cache=False di fetch_4h() = kill-switch instan ke behavior
+# lama tanpa deploy ulang.
+#
+# STATUS: BELUM divalidasi empiris di mesin produksi (lihat learnings.md —
+# "empirical testing on the actual production machine is essential before
+# assuming performance gains"). Sebelum dipercaya utk keputusan live:
+#   1. Jalankan `orchestrator.py --mode momentum` 2x berturut (run kedua
+#      harus jauh lebih cepat dari ~5-6 menit kalau cache bekerja).
+#      Bandingkan log "[DataFeed] ... 4h ✓ fresh" vs "delta" vs full-refetch.
+#   2. Cross-check beberapa ticker via diagnose_4h_resample.py (sudah ada)
+#      supaya bar hasil delta-merge tidak beda dari full re-fetch.
+#   3. Kalau ada indikasi bar hilang/duplikat/stale, set use_cache=False
+#      dulu di pemanggil (momentum_scanner.py/early_watch_scanner.py) —
+#      JANGAN diam-diam debug di produksi.
+#
+# Belum dikerjakan (masih di luar scope, tidak berubah dari sebelumnya):
 #   - Belum ada fallback Stooq (Stooq cuma sediakan data daily/weekly, nol
 #     endpoint intraday) — kalau yfinance gagal, fetch_4h() return None
-#     apa adanya, TIDAK diam-diam jatuh ke sumber granularitas lain.
+#     apa adanya (atau cache lama kalau ada), TIDAK diam-diam jatuh ke
+#     sumber granularitas lain.
 #   - Belum dipasang sebagai DataFeed(timeframe="4h") generik (class-level)
 #     — dibuat method eksplisit fetch_4h() supaya nol risiko regresi ke
 #     jalur daily/weekly yang sudah produksi di page 1/2.
+
+_4H_BUCKET_CUTOFF_HOUR = 13   # WIB — sama dgn cutoff resample AM/PM di atas
+_4H_PM_SETTLE_HOUR     = 16   # WIB — buffer setelah sesi II tutup (15:49:59)
+_4H_INC_LOOKBACK_DAYS  = 5    # hari kalender overlap utk delta fetch (filosofi sama dgn _INC_OVERLAP)
+_4H_MAX_INC_DAYS       = 10   # gap lebih dari ini → full re-fetch (delta multi-hari kurang worth it)
+
+
+def _expected_last_4h_bucket(now_wib: datetime):
+    """Bucket (tanggal, 0=AM/1=PM) TERAKHIR yang seharusnya sudah settle
+    (tidak akan berubah lagi) pada waktu now_wib. Weekend-aware: mundur ke
+    hari kerja terakhir, pola sama dgn _is_cache_stale_trading."""
+    from datetime import time as _dtime
+    candidate = now_wib.date()
+    is_weekday = candidate.weekday() < 5
+    if not is_weekday or now_wib.time() < _dtime(_4H_BUCKET_CUTOFF_HOUR, 0):
+        candidate = candidate - timedelta(days=1)
+        while candidate.weekday() >= 5:
+            candidate -= timedelta(days=1)
+        return (candidate, 1)
+    if now_wib.time() < _dtime(_4H_PM_SETTLE_HOUR, 0):
+        return (candidate, 0)
+    return (candidate, 1)
+
+
+def _is_4h_cache_fresh(cached_last_date: datetime, now_wib: datetime) -> bool:
+    """True kalau bucket terakhir di cache >= bucket terakhir yang
+    diekspektasikan sudah settle — nol network call kalau begitu."""
+    from datetime import time as _dtime
+    expected_date, expected_bucket = _expected_last_4h_bucket(now_wib)
+    cached_date   = cached_last_date.date()
+    cached_bucket = 0 if cached_last_date.time() < _dtime(_4H_BUCKET_CUTOFF_HOUR, 0) else 1
+    if cached_date > expected_date:
+        return True  # jam sistem lokal mundur/aneh — jangan re-fetch krn ini
+    if cached_date == expected_date:
+        return cached_bucket >= expected_bucket
+    return False
+
+
+def _fetch_4h_delta(ticker: str, last_date: datetime) -> Optional[pd.DataFrame]:
+    """Delta fetch 60m sejak (last_date - buffer) s/d sekarang, resample ke
+    4h. Window HARI, bukan _MAX_INTRADAY_60M_DAYS penuh — jauh lebih murah
+    drpd full re-fetch. Nol fallback Stooq (sama spt _fetch_60m_raw, Stooq
+    nol endpoint intraday)."""
+    import time as _time
+    lookback_days = (datetime.now() - last_date).days + _4H_INC_LOOKBACK_DAYS
+    period_str = f"{max(lookback_days, 5)}d"
+    for attempt in range(3):
+        try:
+            raw = yf.download(ticker, period=period_str, interval="60m",
+                              progress=False, auto_adjust=True)
+            if raw is not None and len(raw) >= 2:
+                if isinstance(raw.columns, pd.MultiIndex):
+                    raw.columns = raw.columns.get_level_values(0)
+                return _resample_60m_to_4h(raw)
+        except Exception as exc:
+            logger.debug(f"[DataFeed] {ticker} 4h delta attempt {attempt+1}: {exc}")
+            if attempt < 2:
+                _time.sleep(2 ** attempt)
+    return None
 
 # v10.4.1 KOREKSI: dokumentasi yfinance/pihak ketiga menyatakan batas 730
 # hari utk interval 60m/1h — TAPI data real (2026-08-06, 5 ticker IDX)
@@ -724,13 +802,9 @@ def _resample_60m_to_4h(df_60m: Optional[pd.DataFrame]) -> Optional[pd.DataFrame
     return out
 
 
-def fetch_4h(ticker: str, days: int = _MAX_INTRADAY_60M_DAYS) -> Optional[pd.DataFrame]:
-    """Jalur data 4h (2 bar/hari bursa) — FASE 1, lihat catatan modul.
-    Fungsi standalone (bukan method DataFeed) sengaja, spy pemanggilan
-    eksplisit & tidak tersambung diam-diam ke pipeline cache/dispatch
-    timeframe yang ada."""
-    if not ticker.endswith(".JK"):
-        ticker += ".JK"
+def _fetch_4h_full(ticker: str, days: int = _MAX_INTRADAY_60M_DAYS) -> Optional[pd.DataFrame]:
+    """Full re-fetch 4h — path ASLI fetch_4h() sebelum v1.1.2, TIDAK diubah
+    sama sekali. Dipakai sbg fallback saat cache kosong/gap besar/delta gagal."""
     raw = _fetch_60m_raw(ticker, days=days)
     if raw is None:
         return None
@@ -739,6 +813,56 @@ def fetch_4h(ticker: str, days: int = _MAX_INTRADAY_60M_DAYS) -> Optional[pd.Dat
         logger.warning(f"[DataFeed] {ticker} 4h resample hasil <20 bar — kemungkinan data 60m tak cukup")
         return None
     return resampled
+
+
+def fetch_4h(ticker: str, days: int = _MAX_INTRADAY_60M_DAYS, use_cache: bool = True) -> Optional[pd.DataFrame]:
+    """Jalur data 4h (2 bar/hari bursa) — FASE 1, lihat catatan modul.
+    Fungsi standalone (bukan method DataFeed) sengaja, spy pemanggilan
+    eksplisit & tidak tersambung diam-diam ke pipeline cache/dispatch
+    timeframe yang ada.
+
+    v1.1.2: cache session/bucket-aware, lihat catatan modul di atas utk
+    desain lengkap. use_cache=False = kill-switch ke behavior lama (full
+    re-fetch tiap panggilan) tanpa ubah kode pemanggil."""
+    if not ticker.endswith(".JK"):
+        ticker += ".JK"
+
+    if not use_cache:
+        return _fetch_4h_full(ticker, days)
+
+    cpath  = _cache_path(ticker, "4h", "4h")
+    cached = _cache_load_any(cpath)
+
+    if cached is not None:
+        last_date = _get_last_bar_date(cached)
+        if last_date is not None:
+            import pytz
+            wib     = pytz.timezone("Asia/Jakarta")
+            now_wib = datetime.now(wib).replace(tzinfo=None)
+
+            if _is_4h_cache_fresh(last_date, now_wib):
+                logger.debug(f"[DataFeed] {ticker} 4h ✓ fresh bucket (last={last_date})")
+                return cached
+
+            gap_days = (now_wib.date() - last_date.date()).days
+            if gap_days <= _4H_MAX_INC_DAYS:
+                delta = _fetch_4h_delta(ticker, last_date)
+                if delta is not None and len(delta) > 0:
+                    merged = _merge_incremental(cached, delta, ticker=ticker)
+                    if merged is not None:
+                        _cache_save(cpath, merged)
+                        logger.debug(f"[DataFeed] {ticker} 4h ↑ delta merged ({len(delta)} bar baru)")
+                        return merged
+                    logger.debug(f"[DataFeed] {ticker} 4h merge junction outlier → full re-fetch")
+                else:
+                    logger.debug(f"[DataFeed] {ticker} 4h delta kosong/gagal — pakai cache lama, skip full re-fetch")
+                    return cached
+
+    df = _fetch_4h_full(ticker, days)
+    if df is not None:
+        _cache_save(cpath, df)
+        return df
+    return cached   # full re-fetch gagal total → fallback cache lama (kalau ada) drpd None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

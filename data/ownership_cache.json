@@ -6,7 +6,7 @@
     "free_float": 100.0,
     "top_holders": [],
     "source": "yfinance",
-    "_fetched": "2026-07-06T13:15:04.913278"
+    "_fetched": "2026-09-14T11:00:28.092259"
   },
   "yf_KRYA": {
     "ticker": "KRYA",
@@ -151,5 +151,59 @@
     "top_holders": [],
     "source": "yfinance",
     "_fetched": "2026-09-07T13:32:25.242978"
+  },
+  "yf_BAJA": {
+    "ticker": "BAJA",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-09T09:24:47.166018"
+  },
+  "yf_AYAM": {
+    "ticker": "AYAM",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-15T12:29:20.986055"
+  },
+  "yf_SMRA": {
+    "ticker": "SMRA",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-15T12:29:20.989272"
+  },
+  "yf_MNCN": {
+    "ticker": "MNCN",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-15T12:29:20.999137"
+  },
+  "yf_MAPI": {
+    "ticker": "MAPI",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-15T12:29:21.017324"
+  },
+  "yf_BMTR": {
+    "ticker": "BMTR",
+    "pct_insider": 0.0,
+    "pct_inst": 0.0,
+    "free_float": 100.0,
+    "top_holders": [],
+    "source": "yfinance",
+    "_fetched": "2026-09-15T12:29:21.023213"
   }
 }
